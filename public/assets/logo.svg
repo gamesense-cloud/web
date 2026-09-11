@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="gamesense.cloud">
+  <title>gamesense.cloud</title>
+  <!-- the loader window: shell, 1px frame, and the 2px hue sweep on the top edge -->
+  <rect x="0" y="0" width="64" height="64" fill="#0d0d0d"/>
+  <rect x="0.5" y="0.5" width="63" height="63" fill="none" stroke="#3a3a3a"/>
+
+  <defs>
+    <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0"    stop-color="#ff6161"/>
+      <stop offset="0.17" stop-color="#ffd861"/>
+      <stop offset="0.34" stop-color="#61ff8b"/>
+      <stop offset="0.5"  stop-color="#61f0ff"/>
+      <stop offset="0.67" stop-color="#6171ff"/>
+      <stop offset="0.84" stop-color="#e061ff"/>
+      <stop offset="1"    stop-color="#ff6161"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="62" height="3" fill="url(#sweep)"/>
+
+  <!-- titlebar -->
+  <rect x="1" y="4" width="62" height="14" fill="#131313"/>
+  <path d="M1 18h62" stroke="#282828" stroke-width="1"/>
+
+  <!-- group box: 1px frame with the label knocked into the top border -->
+  <rect x="9.5" y="27.5" width="45" height="26" fill="#131313" stroke="#282828"/>
+  <rect x="13" y="26" width="13" height="3" fill="#0d0d0d"/>
+
+  <!-- the accent bar that marks a selected row -->
+  <rect x="10" y="33" width="2" height="8" fill="#8e6ff7"/>
+  <rect x="16" y="35" width="22" height="3" fill="#dcdcdc" opacity="0.55"/>
+  <rect x="16" y="43" width="16" height="3" fill="#808080" opacity="0.5"/>
+
+  <!-- status dot -->
+  <circle cx="49" cy="37" r="2" fill="#5fc98a"/>
+</svg>

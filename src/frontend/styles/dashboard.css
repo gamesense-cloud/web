@@ -1,0 +1,481 @@
+/* ------------------------------------------------------------ dashboard --
+   Component styles: masthead, panels, stat rows, tables, chart, forms.
+   Primitives live in global.css; nothing here redefines one. */
+
+/* -------------------------------------------------------------- masthead -- */
+.masthead { position: sticky; top: 0; z-index: 60; }
+
+/* the signature piece: a 2px hue sweep pinned to the top edge, scrolling one
+   full cycle every 16.7s — the loader's RainbowBar at time * 0.06 */
+.rainbow {
+  height: 2px;
+  background: repeating-linear-gradient(90deg,
+    hsl(0 100% 69%) 0px,    hsl(30 100% 69%) 50px,  hsl(60 100% 69%) 100px,
+    hsl(90 100% 69%) 150px, hsl(120 100% 69%) 200px, hsl(150 100% 69%) 250px,
+    hsl(180 100% 69%) 300px, hsl(210 100% 69%) 350px, hsl(240 100% 69%) 400px,
+    hsl(270 100% 69%) 450px, hsl(300 100% 69%) 500px, hsl(330 100% 69%) 550px,
+    hsl(360 100% 69%) 600px);
+  animation: hue-sweep 16.7s linear infinite;
+}
+@keyframes hue-sweep { to { background-position: 600px 0; } }
+
+.navbar { background: var(--panel); border-bottom: 1px solid var(--border); }
+.navbar-inner {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-4);
+  height: 42px;
+  padding: 0 var(--sp-4);
+  max-width: var(--shell-max);
+  margin: 0 auto;
+}
+.wordmark { display: flex; align-items: center; font: bold var(--fs-xl) / 1 var(--ui);
+  letter-spacing: -0.2px; flex: none; }
+.wordmark i { color: var(--accent); font-style: normal; }
+
+.navlinks { display: flex; align-items: stretch; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.navlinks::-webkit-scrollbar { display: none; }
+.navlinks a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: var(--fs-sm);
+  color: var(--dim);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.navlinks a:hover { color: var(--text); background: var(--hover); }
+.navlinks a.is-active { color: var(--text); border-bottom-color: var(--accent); }
+.navlinks .count {
+  font: bold 10px/14px var(--mono);
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  text-align: center;
+}
+
+.navbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: none; }
+.whoami {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 6px 0 10px;
+  border: 0;
+  border-left: 1px solid var(--border);
+  height: 24px;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+.whoami b { font: bold var(--fs-sm) var(--ui); }
+.whoami em { color: var(--faint); font-size: var(--fs-xs); font-style: normal; }
+.whoami:hover b { color: var(--accent); }
+@media (max-width: 640px) { .whoami em { display: none; } }
+
+.menu {
+  position: absolute;
+  top: 44px;
+  right: var(--sp-4);
+  width: 190px;
+  background: var(--panel);
+  border: 1px solid var(--frame);
+  z-index: 70;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.7);
+}
+.menu .head {
+  padding: 9px var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  color: var(--dim);
+}
+.menu a, .menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px var(--sp-3);
+  background: none;
+  border: 0;
+  color: var(--dim);
+  font: var(--fs-sm) var(--ui);
+  cursor: pointer;
+  text-align: left;
+}
+.menu a:hover, .menu button:hover { background: var(--hover); color: var(--text); }
+.menu hr { margin: 0; border: 0; border-top: 1px solid var(--border); }
+
+/* ---------------------------------------------------------------- layout --
+   One 12-column grid for every screen. Panels in the same row stretch to the
+   same height, so the edges line up instead of leaving the ragged holes a
+   run of auto-height panels produces. */
+.page {
+  position: relative;
+  z-index: 1;
+  /* width:100% is load-bearing — .shell is a column flex container, and the
+     `margin: 0 auto` that centres this cancels cross-axis stretch, so without
+     it the page shrinks to fit its content and a sparse screen renders in a
+     narrow strip. */
+  width: 100%;
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: var(--sp-4) var(--sp-4) 40px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--sp-4);
+  align-content: start;
+}
+.page > * { grid-column: span 12; min-width: 0; }
+
+.col-3  { grid-column: span 3; }
+.col-4  { grid-column: span 4; }
+.col-5  { grid-column: span 5; }
+.col-6  { grid-column: span 6; }
+.col-7  { grid-column: span 7; }
+.col-8  { grid-column: span 8; }
+.col-9  { grid-column: span 9; }
+.col-12 { grid-column: span 12; }
+
+@media (max-width: 1100px) {
+  .page > .col-3, .page > .col-4, .page > .col-5,
+  .page > .col-6, .page > .col-7, .page > .col-8, .page > .col-9 { grid-column: span 6; }
+}
+/* Each selector below is `.page > .col-n`, so it matches the specificity of
+   the 1100px block above and wins on source order. `.page > *` would lose to
+   it — two classes beat one, and the wider query still applies down here. */
+@media (max-width: 680px) {
+  .page > .col-3, .page > .col-4, .page > .col-5, .page > .col-6,
+  .page > .col-7, .page > .col-8, .page > .col-9, .page > .col-12 { grid-column: span 12; }
+  .page { padding: var(--sp-3) var(--sp-3) 32px; gap: var(--sp-3); }
+}
+
+/* Panels are columns, so a feed or a table inside one can fill the height the
+   row gives it rather than leaving a gap under itself. */
+.page > .gb { display: flex; flex-direction: column; }
+.page > .gb > .fill { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* a column of panels that together occupy one grid cell */
+.stackcol { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+.stackcol > .gb { display: flex; flex-direction: column; }
+.stackcol > .gb.grow { flex: 1; }
+
+.page-head { display: flex; align-items: flex-start; gap: var(--sp-3); flex-wrap: wrap; }
+.page-head h1 { margin: 0 0 3px; font: bold var(--fs-lg) / 1.3 var(--ui); }
+.page-head p { margin: 0; color: var(--faint); font-size: var(--fs-sm); max-width: 64ch; }
+.page-head .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* ------------------------------------------------------------- meta grid --
+   A label/value list reads badly stretched across a wide panel — the eye
+   loses the pairing over 600px of nothing. Wide panels stack the label over
+   the value in columns instead of spanning the width. */
+.metagrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--sp-3) var(--sp-4);
+  margin: 0;
+}
+.metagrid > div { min-width: 0; }
+.metagrid dt { color: var(--faint); font-size: var(--fs-xs); margin-bottom: 4px; }
+.metagrid dd {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* prose inside a panel never runs the full width of a wide panel */
+.prose { margin: 0; color: var(--dim); font-size: var(--fs-sm); line-height: 1.6;
+  white-space: pre-line; max-width: 78ch; }
+
+/* ---------------------------------------------------------- stat figures --
+   The admin overview leads with figures because on an ops screen the figures
+   are the point. They stay one framed object rather than six cards. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--sp-4) 0;
+  margin: 0;
+}
+.stats > div { padding: 0 var(--sp-4); border-left: 1px solid var(--border); min-width: 0; }
+.stats > div:first-child { border-left: 0; padding-left: 0; }
+.stats dt { color: var(--faint); font-size: var(--fs-xs); margin-bottom: 6px; }
+.stats dd {
+  margin: 0;
+  font: bold 22px / 1 var(--ui);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.stats dd small { font: var(--fs-xs) var(--ui); color: var(--faint); font-weight: normal; }
+.stats dd.is-alert { color: var(--warn); }
+@media (max-width: 620px) {
+  .stats > div { border-left: 0; padding: 0; }
+}
+
+/* one headline figure, when a panel has exactly one number worth reading */
+.figure { display: flex; align-items: baseline; gap: 8px; }
+.figure b { font: bold 26px / 1 var(--ui); font-variant-numeric: tabular-nums; }
+.figure span { color: var(--faint); font-size: var(--fs-sm); }
+
+/* ----------------------------------------------------------------- meter --
+   Days remaining on a plan. The track is the field colour so it reads as a
+   slot, and the fill is the one accent. */
+.meter { margin-top: 10px; }
+.meter .track {
+  height: 8px;
+  background: var(--field);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.meter .fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+.meter .fill.is-warn { background: var(--warn); }
+.meter .fill.is-bad { background: var(--bad); }
+.meter .scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  color: var(--faint);
+  font-size: var(--fs-xs);
+}
+
+/* ---------------------------------------------------------------- status -- */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.status.undetected, .status.active, .status.approved, .status.closed { color: var(--ok); }
+.status.updating, .status.pending, .status.answered, .status.paused { color: var(--warn); }
+.status.detected, .status.expired, .status.denied, .status.banned { color: var(--bad); }
+.status.open { color: var(--accent); }
+
+/* ----------------------------------------------------------------- rows -- */
+.rows { display: flex; flex-direction: column; }
+.row {
+  position: relative;
+  display: grid;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 10px var(--sp-3);
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  color: inherit;
+  font: var(--fs-md) var(--ui);
+}
+.row:first-child { border-top: 0; }
+.row.is-clickable { cursor: pointer; }
+.row.is-clickable:hover { background: var(--hover); }
+.row.is-flagged::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+}
+.row .primary { color: var(--text); font-size: var(--fs-sm); }
+.row .primary.strong { font-weight: bold; }
+.row .sub { color: var(--faint); font-size: var(--fs-xs); margin-top: 4px; }
+.row .num {
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  color: var(--dim);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.row .when { font-family: var(--mono); font-size: var(--fs-xs); color: var(--faint); text-align: right; }
+
+/* a plain table, for anything that is genuinely tabular */
+.table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.table th {
+  text-align: left;
+  font-weight: normal;
+  color: var(--faint);
+  font-size: var(--fs-xs);
+  padding: 0 var(--sp-3) 9px;
+  border-bottom: 1px solid var(--border);
+}
+.table th.right, .table td.right { text-align: right; }
+.table td { padding: 9px var(--sp-3); border-bottom: 1px solid var(--border); color: var(--dim); }
+.table tr:last-child td { border-bottom: 0; }
+.table tbody tr:hover td { background: var(--hover); }
+.table td.strong { color: var(--text); }
+.table .mono { font-size: var(--fs-xs); }
+.table-wrap { overflow-x: auto; }
+
+/* ------------------------------------------------------------- log feed --
+   The loader's status pane: mono timestamp, dim message. */
+.feed { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.feed li {
+  display: flex;
+  gap: 10px;
+  font-size: var(--fs-sm);
+  color: var(--dim);
+  line-height: 1.45;
+  padding: var(--sp-2) var(--sp-3);
+  border-top: 1px solid var(--border);
+}
+.feed li:first-child { border-top: 0; }
+.feed time { font-family: var(--mono); font-size: var(--fs-xs); color: var(--faint); flex: none; }
+.feed .who { color: var(--accent); }
+/* scrolls whole rows — a feed clipped through the middle of a line reads as broken */
+.feed.is-scroll { overflow-y: auto; flex: 1; min-height: 0; }
+
+/* --------------------------------------------------------- announcements -- */
+.notice { border-left: 2px solid var(--border); padding: 0 0 0 var(--sp-3); }
+.notice + .notice { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--border); }
+.notice.info { border-left-color: var(--accent-dark); }
+.notice.warn { border-left-color: var(--warn); }
+.notice.bad { border-left-color: var(--bad); }
+.notice h3 { margin: 0 0 5px; font: bold var(--fs-sm) var(--ui); color: var(--text); }
+.notice p { margin: 0; color: var(--dim); font-size: var(--fs-sm); line-height: 1.55; white-space: pre-line; }
+.notice .when { display: block; margin-top: 6px; color: var(--faint); font-size: var(--fs-xs); font-family: var(--mono); }
+
+/* ----------------------------------------------------------------- chart --
+   One series, 14 days. No legend — the panel label names it. Axes recessive,
+   endpoint emphasised, values also available as a table.               */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; }
+.chart .grid-line { stroke: var(--border); stroke-width: 1; }
+.chart .axis-label { fill: var(--faint); font: 10px var(--mono); }
+.chart .area { fill: var(--accent); opacity: 0.12; }
+.chart .line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.chart .endpoint { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.chart .hit { fill: transparent; cursor: crosshair; }
+.chart .crosshair { stroke: var(--accent-dark); stroke-width: 1; stroke-dasharray: 2 2; }
+.chart .marker { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.chart-tip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--raised);
+  border: 1px solid var(--frame);
+  padding: 5px 8px;
+  font-size: var(--fs-xs);
+  color: var(--text);
+  white-space: nowrap;
+  transform: translate(-50%, -130%);
+  z-index: 5;
+}
+.chart-tip b { font-family: var(--mono); color: var(--accent); }
+.chart-figures { margin-top: var(--sp-3); }
+.chart-figures summary { color: var(--faint); font-size: var(--fs-xs); cursor: pointer; list-style: none; }
+.chart-figures summary::-webkit-details-marker { display: none; }
+.chart-figures summary:hover { color: var(--accent); }
+.chart-figures table { margin-top: 9px; }
+
+/* ----------------------------------------------------------------- forms -- */
+.form { display: flex; flex-direction: column; gap: var(--sp-3); }
+.form label { display: block; color: var(--faint); font-size: var(--fs-sm); margin-bottom: 5px; }
+.form .field, .form textarea.field { width: 100%; }
+.form .line { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.form .line > div { flex: 1; min-width: 150px; }
+.form .foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.form .foot .hint { color: var(--faint); font-size: var(--fs-xs); }
+.form-error {
+  border: 1px solid #5a2f33;
+  background: #1a1113;
+  color: var(--bad);
+  padding: 9px var(--sp-3);
+  font-size: var(--fs-sm);
+  border-radius: var(--radius);
+}
+.form-ok {
+  border: 1px solid #2f5a44;
+  background: #101a15;
+  color: var(--ok);
+  padding: 9px var(--sp-3);
+  font-size: var(--fs-sm);
+  border-radius: var(--radius);
+}
+.checkline {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 0;
+  font-size: var(--fs-sm);
+  color: var(--dim);
+  cursor: pointer;
+}
+.checkline input { accent-color: #8e6ff7; }
+
+/* -------------------------------------------------------------- messages -- */
+.message { display: flex; gap: var(--sp-3); padding: var(--sp-3); border-top: 1px solid var(--border); }
+.message:first-child { border-top: 0; }
+.message.is-staff { background: #141019; }
+.message .body { min-width: 0; flex: 1; }
+.message .head { display: flex; align-items: baseline; gap: 9px; margin-bottom: 6px; }
+.message .head b { font: bold var(--fs-sm) var(--ui); }
+.message .head time { margin-left: auto; color: var(--faint); font-family: var(--mono); font-size: var(--fs-xs); }
+.message p { margin: 0 0 8px; line-height: 1.55; max-width: 70ch; white-space: pre-line; }
+.message p:last-child { margin-bottom: 0; }
+
+/* ------------------------------------------------------------ auth pages -- */
+.auth-shell {
+  position: relative;
+  z-index: 1;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 56px var(--sp-4) 64px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.auth-shell .note { color: var(--faint); font-size: var(--fs-xs); text-align: center; line-height: 1.7; }
+.auth-shell .note a { color: var(--accent); }
+.auth-shell .accounts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.auth-shell .accounts button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px var(--sp-3);
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--dim);
+  font: var(--fs-sm) var(--ui);
+  cursor: pointer;
+  text-align: left;
+}
+.auth-shell .accounts button:hover { border-color: var(--accent-dark); color: var(--text); background: var(--raised); }
+.auth-shell .accounts b { color: var(--text); }
+.auth-shell .accounts .role { margin-left: auto; }
+
+/* ---------------------------------------------------------------- footer -- */
+.site-footer { border-top: 1px solid var(--border); background: var(--panel); color: var(--faint); font-size: var(--fs-xs); }
+.site-footer > div {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: var(--sp-4);
+  display: flex;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.site-footer .push { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+.loading { padding: 40px var(--sp-3); text-align: center; color: var(--faint); font-size: var(--fs-sm); }
+
+/* The footer sits at the bottom of the viewport on a short page rather than
+   floating halfway up it. */
+.shell { display: flex; flex-direction: column; min-height: 100vh; }
+.shell > .page { flex: 1; }

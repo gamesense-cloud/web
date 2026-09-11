@@ -1,0 +1,25 @@
+# gamesense.cloud
+
+User-agent: *
+Allow: /$
+Allow: /b/
+Allow: /t/
+
+# Nothing behind a login, and nothing that is only useful to a crawler as a
+# way to enumerate members or fetch files.
+Disallow: /inbox
+Disallow: /notifications
+Disallow: /settings
+Disallow: /bookmarks
+Disallow: /watched
+Disallow: /login
+Disallow: /register
+Disallow: /search
+Disallow: /members
+Disallow: /u/
+Disallow: /uploads/
+Disallow: /api/
+
+Crawl-delay: 10
+
+Sitemap: https://gamesense.cloud/sitemap.xml

@@ -1,0 +1,197 @@
+/* --------------------------------------------------------------- global --
+   Reset and the primitives every screen shares: the group box, fields,
+   buttons, tags, avatars, meta rows. Layout and component styles live in
+   dashboard.css; nothing there redefines anything here. */
+
+@import './theme.css';
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { height: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--shell);
+  color: var(--text);
+  font: var(--fs-md) / 1.35 var(--ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* one soft accent bloom behind the masthead, nothing else on the page */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: 420px;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(70% 100% at 50% 0, rgba(142, 111, 247, 0.09), transparent 72%);
+}
+
+a { color: inherit; text-decoration: none; }
+h1, h2, h3 { text-wrap: balance; }
+img, video { max-width: 100%; }
+button { font-family: var(--ui); }
+dl, dd { margin: 0; }
+
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+
+/* ------------------------------------------------------------- group box --
+   1px frame with the label knocked into the top border, the way
+   BeginGroupBox draws it by hand in the loader. The label's ground has to
+   match whatever is behind the frame, which is always --shell. */
+.gb {
+  position: relative;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: var(--sp-4) var(--sp-3) var(--sp-3);
+  min-width: 0;
+}
+.gb > .gb-label {
+  position: absolute;
+  top: 0;
+  left: 9px;
+  transform: translateY(-50%);
+  margin: 0;
+  background: var(--shell);
+  padding: 0 var(--sp-1);
+  font: var(--fs-sm) / 1 var(--ui);
+  font-weight: normal;
+  color: var(--dim);
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gb.flush { padding: var(--sp-4) 0 0; }
+
+/* ---------------------------------------------------------------- fields -- */
+.field {
+  height: 28px;
+  background: var(--field);
+  color: var(--text);
+  font: var(--fs-sm) var(--ui);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 8px;
+  outline: none;
+  max-width: 100%;
+}
+.field::placeholder { color: var(--faint); }
+.field:hover { background: var(--raised); }
+.field:focus { border-color: var(--accent-dark); background: var(--raised); }
+select.field { padding: 0 6px; }
+textarea.field {
+  height: auto;
+  min-height: 110px;
+  resize: vertical;
+  padding: 10px;
+  font: var(--fs-md) / 1.55 var(--ui);
+}
+
+/* --------------------------------------------------------------- buttons -- */
+.btn {
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: bold var(--fs-sm) var(--ui);
+  cursor: pointer;
+  padding: 7px 14px;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+.btn:active { background: var(--accent-dark); border-color: var(--accent-dark); }
+.btn:disabled { background: var(--field); border-color: var(--border); color: var(--faint); cursor: default; }
+
+.btn-ghost {
+  background: var(--field);
+  border-color: var(--border);
+  color: var(--dim);
+  font-weight: normal;
+}
+.btn-ghost:hover:not(:disabled) { background: var(--raised); border-color: var(--accent-dark); color: var(--text); }
+.btn-ghost.is-on { border-color: var(--accent); color: var(--accent); }
+.btn-sm { padding: 5px 10px; }
+
+/* ------------------------------------------------------------------ tags -- */
+.tag {
+  font: var(--fs-xs) / 1 var(--ui);
+  padding: 3px 5px;
+  border: 1px solid var(--border);
+  color: var(--faint);
+  border-radius: var(--radius);
+  white-space: nowrap;
+  display: inline-block;
+}
+.tag-pin  { border-color: var(--accent-dark); color: var(--accent); }
+.tag-ok   { border-color: #2f5a44; color: var(--ok); }
+.tag-warn { border-color: #5a4a26; color: var(--warn); }
+.tag-lock { border-color: #5a2f33; color: var(--bad); }
+
+/* --------------------------------------------------------------- avatars --
+   An initial in a bordered square. The frame takes the role colour, so who
+   someone is reads before their name does. */
+.avatar {
+  display: grid;
+  place-items: center;
+  background: var(--field);
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-weight: bold;
+  font-family: var(--ui);
+  flex: none;
+  width: 30px;
+  height: 30px;
+  font-size: var(--fs-md);
+  user-select: none;
+  text-decoration: none;
+}
+.avatar.g-admin  { border-color: var(--accent-dark); color: var(--accent); }
+.avatar.g-member { color: var(--text); }
+.avatar.g-banned { border-color: #5a2f33; color: var(--bad); text-decoration: none; }
+.avatar-sm { width: 24px; height: 24px; font-size: var(--fs-xs); }
+.avatar-lg { width: 44px; height: 44px; font-size: 19px; }
+
+/* -------------------------------------------------------------- meta row --
+   Label hard left, value hard right. The loader's MetaRow. */
+.meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-3);
+  margin: 0 0 8px;
+}
+.meta:last-child { margin-bottom: 0; }
+.meta dt { color: var(--faint); font-size: var(--fs-sm); flex: none; }
+.meta dd { margin: 0; color: var(--dim); font-size: var(--fs-sm); text-align: right; min-width: 0; }
+
+/* ------------------------------------------------------------- utilities -- */
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.rule { height: 1px; background: var(--border); margin: var(--sp-3) 0; }
+.t-ok { color: var(--ok); }
+.t-warn { color: var(--warn); }
+.t-bad { color: var(--bad); }
+.t-dim { color: var(--faint); }
+.stack { display: flex; flex-direction: column; gap: var(--sp-2); }
+.row-x { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.push { margin-left: auto; }
+.empty {
+  padding: var(--sp-5) var(--sp-3);
+  color: var(--faint);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------ scrollbars -- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--raised); }
+::-webkit-scrollbar-thumb:hover { background: var(--frame); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

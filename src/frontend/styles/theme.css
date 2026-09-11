@@ -1,0 +1,84 @@
+/* ---------------------------------------------------------------- theme --
+   Lifted straight out of the loader's `col` namespace (src/ui.cpp in the
+   loader repo). accent is the only decorative hue; ok / warn / bad are
+   semantic and carry status meaning — build state, plan state, role.
+
+   Single theme by intent. This is a dark tool surface, not a document, so
+   every ink and every ground is painted explicitly rather than inherited. */
+
+:root {
+  /* surfaces, darkest to lightest */
+  --shell:  #0d0d0d;   /* page ground, and the ground a group-box label sits on */
+  --panel:  #131313;   /* every framed panel */
+  --raised: #1c1c1c;   /* section headers, tooltips */
+  --hover:  #181818;   /* row hover */
+  --field:  #171717;   /* inputs, tracks, code */
+
+  /* lines */
+  --frame:  #3a3a3a;   /* outermost edge — used sparingly */
+  --border: #282828;   /* every panel frame and rule */
+
+  /* ink */
+  --text:  #dcdcdc;
+  --dim:   #808080;
+  --faint: #555555;
+
+  /* the one hue */
+  --accent:      #8e6ff7;
+  --accent-hi:   #a086ff;
+  --accent-dark: #6b50c4;
+  --on-accent:   #0f0c18;
+
+  /* semantic */
+  --ok:   #5fc98a;
+  --warn: #e0b04b;
+  --bad:  #e0656a;
+
+  /* type — Tahoma is the face the loader uses. There is no good substitute on
+     a webfont host, so the stack falls back the way the loader itself does
+     rather than loading something that is only approximately right. */
+  --ui:   Tahoma, Verdana, "DejaVu Sans", Geneva, sans-serif;
+  --mono: Consolas, "DejaVu Sans Mono", Menlo, monospace;
+
+  /* scale */
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-lg: 15px;
+  --fs-xl: 17px;
+
+  /* spacing — everything on the page is a multiple of these */
+  --sp-1: 4px;
+  --sp-2: 7px;
+  --sp-3: 11px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+
+  --radius: 2px;
+  --shell-max: 1280px;
+
+  color-scheme: dark;
+}
+
+/* Role colours. Role is the one thing allowed to colour a name, so these are
+   defined once, here, and used everywhere. Keep them in step with
+   config/permissions.js — a role with no class here renders unstyled. */
+.g-admin  { color: var(--accent); }
+.g-member { color: var(--text); }
+.g-banned { color: var(--bad); text-decoration: line-through; }
+
+/* Status dot, with the faint halo the loader draws at alpha 0x22. */
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  display: inline-block;
+  background: var(--c, var(--faint));
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--c, var(--faint)) 13%, transparent);
+}
+.dot-ok      { --c: var(--ok); }
+.dot-warn    { --c: var(--warn); }
+.dot-bad     { --c: var(--bad); }
+.dot-idle    { --c: var(--faint); }
+.dot-offline { --c: #2e2e2e; }
