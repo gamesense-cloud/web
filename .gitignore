@@ -4,3 +4,8 @@ out/
 .env*.local
 *.tsbuildinfo
 next-env.d.ts
+
+# never commit secrets — the old vite .env was not covered by .env*.local
+.env
+.env.local
+.env.*.local
