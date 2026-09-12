@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getReleaseAsset } from "@/lib/github";
 
 export async function GET() {
-  const asset = await getReleaseAsset("dll", "gs_lua_api.dll");
+  const asset = await getReleaseAsset("dll", "gamesense.dll");
   if (!asset || !asset.stream) {
     return NextResponse.json({ error: "Module not available" }, { status: 404 });
   }

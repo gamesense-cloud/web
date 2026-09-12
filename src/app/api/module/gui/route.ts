@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getReleaseAsset } from "@/lib/github";
+import { getReleaseAssetStream } from "@/lib/github";
 
 export async function GET() {
-  const asset = await getReleaseAsset("dll", "gs_gui.dll");
+  const asset = await getReleaseAssetStream("gui");
   if (!asset || !asset.stream) {
     return NextResponse.json({ error: "Module not available" }, { status: 404 });
   }

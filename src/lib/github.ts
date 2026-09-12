@@ -11,7 +11,7 @@ type Release = {
   name: string;
   body: string;
   published_at: string;
-  assets: { name: string; browser_download_url: string; size: number }[];
+  assets: { id: number; name: string; browser_download_url: string; size: number }[];
 };
 
 async function ghFetch<T>(path: string): Promise<T> {
@@ -24,6 +24,21 @@ async function ghFetch<T>(path: string): Promise<T> {
   });
   if (!res.ok) throw new Error(`GitHub API ${res.status}: ${path}`);
   return res.json();
+}
+
+async function downloadAsset(assetId: number, repo: string) {
+  const res = await fetch(
+    `https://api.github.com/repos/${ORG}/${repo}/releases/assets/${assetId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/octet-stream",
+      },
+      redirect: "follow",
+    }
+  );
+  if (!res.ok) return null;
+  return res;
 }
 
 export async function getCommits(repo: string, count = 30) {
@@ -42,10 +57,8 @@ export async function getReleaseAssetStream(repo: string) {
   const release = await getLatestRelease(repo);
   if (!release || release.assets.length === 0) return null;
   const asset = release.assets[0];
-  const res = await fetch(asset.browser_download_url, {
-    headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: "application/octet-stream" },
-  });
-  if (!res.ok) return null;
+  const res = await downloadAsset(asset.id, repo);
+  if (!res) return null;
   return { stream: res.body, name: asset.name, size: asset.size };
 }
 
@@ -54,9 +67,7 @@ export async function getReleaseAsset(repo: string, assetName: string) {
   if (!release) return null;
   const asset = release.assets.find((a) => a.name === assetName);
   if (!asset) return null;
-  const res = await fetch(asset.browser_download_url, {
-    headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: "application/octet-stream" },
-  });
-  if (!res.ok) return null;
+  const res = await downloadAsset(asset.id, repo);
+  if (!res) return null;
   return { stream: res.body, name: asset.name, size: asset.size };
 }
