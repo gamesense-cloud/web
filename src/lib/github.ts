@@ -20,7 +20,7 @@ async function ghFetch<T>(path: string): Promise<T> {
       Authorization: `Bearer ${GITHUB_TOKEN}`,
       Accept: "application/vnd.github+json",
     },
-    next: { revalidate: 300 }, // cache 5 min
+    next: { revalidate: 300 },
   });
   if (!res.ok) throw new Error(`GitHub API ${res.status}: ${path}`);
   return res.json();
@@ -42,6 +42,18 @@ export async function getReleaseAssetStream(repo: string) {
   const release = await getLatestRelease(repo);
   if (!release || release.assets.length === 0) return null;
   const asset = release.assets[0];
+  const res = await fetch(asset.browser_download_url, {
+    headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: "application/octet-stream" },
+  });
+  if (!res.ok) return null;
+  return { stream: res.body, name: asset.name, size: asset.size };
+}
+
+export async function getReleaseAsset(repo: string, assetName: string) {
+  const release = await getLatestRelease(repo);
+  if (!release) return null;
+  const asset = release.assets.find((a) => a.name === assetName);
+  if (!asset) return null;
   const res = await fetch(asset.browser_download_url, {
     headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: "application/octet-stream" },
   });
