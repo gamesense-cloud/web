@@ -1508,31 +1508,58 @@ function RadarCanvas() {
         return (
           <div className="radar-bombbanner" style={{
             position: "absolute", top: 40, left: "50%", transform: "translateX(-50%)", zIndex: 15,
-            padding: "4px 20px", pointerEvents: "none",
+            padding: "4px 20px 6px", pointerEvents: "none",
             background: "rgba(224,60,60,0.15)", border: "1px solid rgba(224,60,60,0.3)",
             borderRadius: 2, fontFamily: "Tahoma, sans-serif",
             animation: "bombPulse 1s ease-in-out infinite alternate",
-            display: "flex", alignItems: "center", gap: 12,
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+            minWidth: 200,
           }}>
-            <span style={{ fontSize: 11, fontWeight: "bold", color: "#e03c3c", letterSpacing: 2 }}>
-              BOMB PLANTED{hud.bomb.site ? ` ${hud.bomb.site}` : ""}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: "bold", color: "#e03c3c", letterSpacing: 2 }}>
+                BOMB PLANTED{hud.bomb.site ? ` ${hud.bomb.site}` : ""}
+              </span>
+              {remaining != null && remaining > 0 && (
+                <span style={{
+                  fontSize: 14, fontWeight: "bold",
+                  color: remaining < 10 ? "#e03c3c" : "#e0b04b",
+                  fontFamily: "Consolas, monospace",
+                }}>
+                  {remaining.toFixed(1)}s
+                </span>
+              )}
+              {defuseRemaining != null && (
+                <span style={{
+                  fontSize: 10, fontFamily: "Consolas, monospace",
+                  color: "#5fc98a", letterSpacing: 1,
+                }}>
+                  DEF {defuseRemaining.toFixed(1)}s
+                </span>
+              )}
+            </div>
             {remaining != null && remaining > 0 && (
-              <span style={{
-                fontSize: 14, fontWeight: "bold",
-                color: remaining < 10 ? "#e03c3c" : "#e0b04b",
-                fontFamily: "Consolas, monospace",
+              <div style={{
+                width: "100%", height: 3, background: "rgba(224,60,60,0.15)",
+                borderRadius: 1, overflow: "hidden", position: "relative",
               }}>
-                {remaining.toFixed(1)}s
-              </span>
-            )}
-            {defuseRemaining != null && (
-              <span style={{
-                fontSize: 10, fontFamily: "Consolas, monospace",
-                color: "#5fc98a", letterSpacing: 1,
-              }}>
-                DEF {defuseRemaining.toFixed(1)}s
-              </span>
+                <div style={{
+                  width: `${Math.min(remaining / 40 * 100, 100)}%`, height: "100%",
+                  background: remaining < 10
+                    ? "linear-gradient(90deg, #e03c3c, #ff4444)"
+                    : "linear-gradient(90deg, #e0b04b, #e0656a)",
+                  borderRadius: 1,
+                  transition: "width 0.2s linear",
+                }} />
+                {defuseRemaining != null && (
+                  <div style={{
+                    position: "absolute", top: 0, left: 0,
+                    width: `${Math.min(defuseRemaining / 40 * 100, 100)}%`, height: "100%",
+                    background: "#5fc98a",
+                    borderRadius: 1,
+                    transition: "width 0.2s linear",
+                  }} />
+                )}
+              </div>
             )}
           </div>
         );
