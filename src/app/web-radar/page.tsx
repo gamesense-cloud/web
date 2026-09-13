@@ -202,8 +202,8 @@ function RadarCanvas() {
   const [followMode, setFollowMode] = useState(false);
   const followRef = useRef(false);
   const [flashOverlay, setFlashOverlay] = useState(0);
-  const killFeedRef = useRef<{ killer: string; victim: string; weapon: string; headshot: boolean; killerTeam: number; victimTeam: number; time: number }[]>([]);
-  const [killFeed, setKillFeed] = useState<{ killer: string; victim: string; weapon: string; headshot: boolean; killerTeam: number; victimTeam: number; time: number }[]>([]);
+  const killFeedRef = useRef<{ killer: string; victim: string; weapon: string; headshot: boolean; killerTeam: number; victimTeam: number; time: number; gameTime?: number }[]>([]);
+  const [killFeed, setKillFeed] = useState<{ killer: string; victim: string; weapon: string; headshot: boolean; killerTeam: number; victimTeam: number; time: number; gameTime?: number }[]>([]);
   const prevAliveRef = useRef<Record<string, boolean>>({});
   const deathsRef = useRef<DeathMarker[]>([]);
   const trailsRef = useRef<Record<string, { x: number; y: number; t: number }[]>>({});
@@ -355,13 +355,13 @@ function RadarCanvas() {
             if (data.kills && Array.isArray(data.kills) && data.kills.length > 0) {
               type KillEntry = { killer: string; victim: string; weapon: string; hs: boolean; t: number };
               const dllKills = data.kills as KillEntry[];
-              const existing = new Set(killFeedRef.current.map(k => `${k.killer}-${k.victim}-${k.weapon}`));
+              const existing = new Set(killFeedRef.current.map(k => `${k.killer}-${k.victim}-${k.weapon}-${k.gameTime ?? 0}`));
               const newEntries = dllKills
-                .filter(k => !existing.has(`${k.killer}-${k.victim}-${k.weapon}`))
+                .filter(k => !existing.has(`${k.killer}-${k.victim}-${k.weapon}-${k.t}`))
                 .map(k => ({
                   killer: k.killer, victim: k.victim, weapon: k.weapon, headshot: k.hs,
                   killerTeam: teamByName[k.killer] ?? 0, victimTeam: teamByName[k.victim] ?? 0,
-                  time: now,
+                  time: now, gameTime: k.t,
                 }));
               if (newEntries.length > 0) {
                 const feed = [...killFeedRef.current, ...newEntries].slice(-8);
@@ -421,9 +421,10 @@ function RadarCanvas() {
               if (trails[key].length > 20) trails[key] = trails[key].slice(-20);
             }
             if (data.players) {
-              for (const p of data.players) {
+              for (let i = 0; i < data.players.length; i++) {
+                const p: Player = data.players[i];
                 if (!p.alive) continue;
-                const key = p.name || "?";
+                const key = p.slot != null ? `s${p.slot}` : (p.name || `p${i}`);
                 activeKeys.add(key);
                 if (!trails[key]) trails[key] = [];
                 trails[key].push({ x: p.x, y: p.y, t: now });
@@ -1047,7 +1048,10 @@ function RadarCanvas() {
         for (const [key, pts] of Object.entries(trails)) {
           if (pts.length < 2) continue;
           const isLocal = key === "__local";
-          const player = isLocal ? data.localPlayer : data.players?.find(p => p.name === key);
+          const player = isLocal ? data.localPlayer : data.players?.find((p, i) => {
+            const pk = p.slot != null ? `s${p.slot}` : (p.name || `p${i}`);
+            return pk === key;
+          });
           if (!player || !player.alive) continue;
           const baseColor = isLocal ? "142,111,247" : player.enemy ? "224,101,106" : "74,158,255";
           for (let j = 0; j < pts.length - 1; j++) {
@@ -1084,7 +1088,7 @@ function RadarCanvas() {
         if (data.players) {
           for (let i = 0; i < data.players.length; i++) {
             const p = data.players[i];
-            const key = p.name || `p${i}`;
+            const key = p.slot != null ? `s${p.slot}` : (p.name || `p${i}`);
             const ip = getInterpolated(key, p);
             const pos = worldToCanvas(ip.x, ip.y, mapInfo, radarSize, 0, 0);
             if (nukeLevel) {
