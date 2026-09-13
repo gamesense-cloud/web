@@ -791,7 +791,9 @@ function RadarCanvas() {
       ctx: CanvasRenderingContext2D,
       pos: { x: number; y: number },
       planted: boolean,
-      site?: string
+      site?: string,
+      timerFrac?: number,
+      defusing?: boolean
     ) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() / (planted ? 300 : 1000));
       const r = planted ? 7 : 5;
@@ -800,6 +802,18 @@ function RadarCanvas() {
         ctx.beginPath(); ctx.arc(pos.x, pos.y, r + 6, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(224,60,60,${(pulse * 0.4).toFixed(2)})`;
         ctx.lineWidth = 2; ctx.stroke();
+
+        // Timer arc — shows remaining time as a depleting ring
+        if (timerFrac != null && timerFrac > 0 && timerFrac <= 1) {
+          const timerR = r + 10;
+          const startAngle = -Math.PI / 2;
+          const endAngle = startAngle + timerFrac * Math.PI * 2;
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, timerR, startAngle, endAngle);
+          ctx.strokeStyle = defusing ? "rgba(95,201,138,0.6)" : (timerFrac < 0.25 ? "rgba(224,60,60,0.7)" : "rgba(224,176,75,0.5)");
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+        }
       }
 
       // Diamond shape
@@ -907,7 +921,10 @@ function RadarCanvas() {
             const bombOnLower = data.bomb.z < zSplit;
             ctx.globalAlpha = (nukeLevel === "lower") === bombOnLower ? 1.0 : 0.25;
           }
-          drawBomb(ctx, bpos, data.bomb.planted, data.bomb.site);
+          const bombTimerFrac = (data.bomb.planted && data.bomb.blowTime && data.curtime && data.bomb.blowTime > data.curtime)
+            ? Math.max(0, (data.bomb.blowTime - data.curtime) / 40) : undefined;
+          const bombDefusing = data.bomb.planted && data.bomb.defuseEnd != null && data.curtime != null && data.bomb.defuseEnd > data.curtime;
+          drawBomb(ctx, bpos, data.bomb.planted, data.bomb.site, bombTimerFrac, bombDefusing);
           ctx.globalAlpha = 1;
         }
 
@@ -1466,8 +1483,19 @@ function RadarCanvas() {
             minWidth: 340, maxWidth: 500, padding: "16px 0",
             fontFamily: "Tahoma, Verdana, sans-serif",
           }}>
-            <div style={{ textAlign: "center", fontSize: 13, color: "#dcdcdc", fontWeight: "bold", marginBottom: 12, letterSpacing: 1 }}>
-              {hud.map}
+            <div style={{ textAlign: "center", marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: "#dcdcdc", fontWeight: "bold", letterSpacing: 1 }}>
+                {hud.map}
+              </div>
+              {hud.roundPhase && (
+                <div style={{ fontSize: 9, color: "#55555588", fontFamily: "Consolas, monospace", marginTop: 2 }}>
+                  {hud.roundPhase.warmup ? "WARMUP" : hud.roundPhase.freeze ? "FREEZE TIME" : hud.roundPhase.roundsPlayed > 0 ? `Round ${hud.roundPhase.roundsPlayed + 1}` : ""}
+                  {!hud.roundPhase.warmup && !hud.roundPhase.freeze && hud.roundPhase.roundStartTime && hud.roundPhase.roundTime && hud.curtime && (() => {
+                    const remaining = Math.max(0, hud.roundPhase!.roundTime! - (hud.curtime! - hud.roundPhase!.roundStartTime!));
+                    return ` — ${Math.floor(remaining / 60)}:${String(Math.floor(remaining % 60)).padStart(2, "0")}`;
+                  })()}
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 4 }}>
               <div style={{ textAlign: "center" }}>
@@ -1482,13 +1510,25 @@ function RadarCanvas() {
             </div>
             {(() => {
               const allPlayers = [...(hud.localPlayer ? [{ ...hud.localPlayer } as Player] : []), ...(hud.players ?? [])];
-              const ctMoney = allPlayers.filter(p => p.team === 3 && p.alive).reduce((s, p) => s + (p.money ?? 0), 0);
-              const tMoney = allPlayers.filter(p => p.team === 2 && p.alive).reduce((s, p) => s + (p.money ?? 0), 0);
+              const ctAliveList = allPlayers.filter(p => p.team === 3 && p.alive);
+              const tAliveList = allPlayers.filter(p => p.team === 2 && p.alive);
+              const ctMoney = ctAliveList.reduce((s, p) => s + (p.money ?? 0), 0);
+              const tMoney = tAliveList.reduce((s, p) => s + (p.money ?? 0), 0);
+              const buyType = (avg: number) => avg >= 4000 ? "FULL" : avg >= 2000 ? "FORCE" : "ECO";
+              const ctAvg = ctAliveList.length > 0 ? ctMoney / ctAliveList.length : 0;
+              const tAvg = tAliveList.length > 0 ? tMoney / tAliveList.length : 0;
+              const buyColor = (avg: number) => avg >= 4000 ? "#5fc98a55" : avg >= 2000 ? "#e0b04b55" : "#e0656a55";
               return (ctMoney > 0 || tMoney > 0) ? (
-                <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 12 }}>
-                  <span style={{ fontSize: 10, color: "#4a9eff55", fontFamily: "Consolas, monospace" }}>${ctMoney.toLocaleString()}</span>
-                  <span style={{ fontSize: 10, color: "#5fc98a33", fontFamily: "Consolas, monospace" }}>economy</span>
-                  <span style={{ fontSize: 10, color: "#e0b04b55", fontFamily: "Consolas, monospace" }}>${tMoney.toLocaleString()}</span>
+                <div style={{ display: "flex", justifyContent: "center", gap: 24, marginBottom: 12, alignItems: "center" }}>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 10, color: "#4a9eff55", fontFamily: "Consolas, monospace" }}>${ctMoney.toLocaleString()}</div>
+                    <div style={{ fontSize: 7, color: buyColor(ctAvg), fontFamily: "Consolas, monospace", letterSpacing: 1 }}>{buyType(ctAvg)}</div>
+                  </div>
+                  <span style={{ fontSize: 10, color: "#5fc98a22", fontFamily: "Consolas, monospace" }}>economy</span>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 10, color: "#e0b04b55", fontFamily: "Consolas, monospace" }}>${tMoney.toLocaleString()}</div>
+                    <div style={{ fontSize: 7, color: buyColor(tAvg), fontFamily: "Consolas, monospace", letterSpacing: 1 }}>{buyType(tAvg)}</div>
+                  </div>
                 </div>
               ) : <div style={{ marginBottom: 8 }} />;
             })()}
