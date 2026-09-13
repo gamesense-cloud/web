@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { rateLimit } from "@/lib/rate-limit";
 
 const MAX_PAYLOAD_BYTES = 64 * 1024;
 
@@ -31,6 +32,11 @@ export async function POST(req: Request) {
 
     if (!/^[a-f0-9]+$/.test(session_id as string)) {
       return NextResponse.json({ error: "invalid session_id format" }, { status: 400 });
+    }
+
+    const rl = rateLimit(`radar:${session_id}`, 30, 10_000);
+    if (!rl.ok) {
+      return NextResponse.json({ error: "rate_limited" }, { status: 429 });
     }
 
     const db = supabaseAdmin();
