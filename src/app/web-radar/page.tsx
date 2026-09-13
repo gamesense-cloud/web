@@ -91,6 +91,8 @@ function RadarCanvas() {
   const pollCountRef = useRef(0);
   const mapImgRef = useRef<HTMLImageElement | null>(null);
   const mapImgNameRef = useRef<string>("");
+  const [showDebug, setShowDebug] = useState(false);
+  const [showScoreboard, setShowScoreboard] = useState(false);
 
   const [hud, setHud] = useState<{
     status: RadarStatus; map: string; ct: number; t: number;
@@ -230,6 +232,20 @@ function RadarCanvas() {
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
+  }, []);
+
+  // Keyboard events
+  useEffect(() => {
+    function onDown(e: KeyboardEvent) {
+      if (e.key === "d" || e.key === "D") setShowDebug(v => !v);
+      if (e.key === "Tab") { e.preventDefault(); setShowScoreboard(true); }
+    }
+    function onUp(e: KeyboardEvent) {
+      if (e.key === "Tab") setShowScoreboard(false);
+    }
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    return () => { window.removeEventListener("keydown", onDown); window.removeEventListener("keyup", onUp); };
   }, []);
 
   // Mouse events (zoom, pan)
@@ -549,44 +565,152 @@ function RadarCanvas() {
         </div>
       )}
 
-      {/* Debug overlay (bottom-left) */}
-      <div style={{
-        position: "absolute", bottom: 28, left: 8, zIndex: 10,
-        fontSize: 9, color: "#444", fontFamily: "Consolas, monospace",
-        pointerEvents: "none", lineHeight: 1.6,
-        background: "rgba(0,0,0,0.5)", padding: "6px 8px", borderRadius: 2,
-      }}>
-        <div style={{ color: "#666", marginBottom: 2 }}>-- debug --</div>
-        <div>polls: {hud.pollCount} | status: {hud.status}</div>
-        {hud.reason && <div>reason: {hud.reason}</div>}
-        {hud.age != null && <div>age: {Math.round(hud.age)}ms</div>}
-        <div>session: {session?.slice(0, 8)}…</div>
-        {hud.localPlayer && (
-          <div style={{ color: "#8e6ff7" }}>
-            local: ({Math.round(hud.localPlayer.x)}, {Math.round(hud.localPlayer.y)}, {Math.round(hud.localPlayer.z)}) hp={hud.localPlayer.health} team={hud.localPlayer.team}
+      {/* Debug overlay (bottom-left) — toggle with D key */}
+      {showDebug && (
+        <div style={{
+          position: "absolute", bottom: 28, left: 8, zIndex: 10,
+          fontSize: 9, color: "#444", fontFamily: "Consolas, monospace",
+          pointerEvents: "none", lineHeight: 1.6,
+          background: "rgba(0,0,0,0.6)", padding: "6px 8px", borderRadius: 2,
+          maxHeight: "40vh", overflowY: "auto",
+        }}>
+          <div style={{ color: "#666", marginBottom: 2 }}>-- debug (D to hide) --</div>
+          <div>polls: {hud.pollCount} | status: {hud.status}</div>
+          {hud.reason && <div>reason: {hud.reason}</div>}
+          {hud.age != null && <div>age: {Math.round(hud.age)}ms</div>}
+          <div>session: {session?.slice(0, 8)}…</div>
+          {hud.localPlayer && (
+            <div style={{ color: "#8e6ff7" }}>
+              local: ({Math.round(hud.localPlayer.x)}, {Math.round(hud.localPlayer.y)}, {Math.round(hud.localPlayer.z)}) hp={hud.localPlayer.health} team={hud.localPlayer.team}
+            </div>
+          )}
+          {hud.entityScan && (
+            <div>
+              entities: {hud.entityScan.added} found | {hud.entityScan.null} null | {hud.entityScan.noPawn} noPawn | {hud.entityScan.badPos ?? hud.entityScan.noTeam ?? 0} badPos
+            </div>
+          )}
+          {hud.players && hud.players.length > 0 && (
+            <div style={{ color: "#4a9eff" }}>
+              players({hud.players.length}): {hud.players.map((p, i) => `[${p.name}:t${p.team} (${Math.round(p.x)},${Math.round(p.y)}) hp${p.health}]`).join(" ")}
+            </div>
+          )}
+          {hud.debug && (
+            <div style={{ maxWidth: 350, wordBreak: "break-all" }}>
+              sdk: {Object.entries(hud.debug).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(" ")}
+            </div>
+          )}
+          {hud.entDebug && hud.entDebug.length > 0 && (
+            <div style={{ maxWidth: 400, wordBreak: "break-all", marginTop: 2, color: "#555" }}>
+              ents: {hud.entDebug.map(e => `[${e.i}:ct${e.ct} pt${e.pt} h1=${e.h1} h2=${e.h2} pawn=${e.pawn}]`).join(" ")}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Compact player list (right side) */}
+      {hud.status === "live" && hud.players && hud.players.length > 0 && !showScoreboard && (
+        <div style={{
+          position: "absolute", top: 44, right: 8, zIndex: 10,
+          pointerEvents: "none", fontFamily: "Tahoma, sans-serif",
+        }}>
+          {hud.players.filter(p => p.alive).map((p, i) => (
+            <div key={i} style={{
+              display: "flex", alignItems: "center", gap: 6, marginBottom: 2,
+              opacity: 0.8,
+            }}>
+              <span style={{
+                width: 3, height: 3, borderRadius: "50%",
+                background: p.enemy ? "#e0656a" : "#4a9eff",
+                display: "inline-block",
+              }} />
+              <span style={{ fontSize: 9, color: p.enemy ? "#e0656a99" : "#4a9eff99", minWidth: 60 }}>
+                {p.name?.length > 10 ? p.name.slice(0, 10) + ".." : p.name}
+              </span>
+              <div style={{
+                width: 30, height: 3, background: "#1a1a1a", borderRadius: 1, overflow: "hidden",
+              }}>
+                <div style={{
+                  width: `${p.health}%`, height: "100%",
+                  background: p.health > 50 ? "#5fc98a" : p.health > 25 ? "#e0b04b" : "#e0656a",
+                }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Scoreboard overlay (hold Tab) */}
+      {showScoreboard && hud.status === "live" && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 20,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(10,14,20,0.85)", pointerEvents: "none",
+        }}>
+          <div style={{
+            background: "#111418", border: "1px solid #1e1e1e", borderRadius: 4,
+            minWidth: 340, maxWidth: 500, padding: "16px 0",
+            fontFamily: "Tahoma, Verdana, sans-serif",
+          }}>
+            <div style={{ textAlign: "center", fontSize: 13, color: "#dcdcdc", fontWeight: "bold", marginBottom: 12, letterSpacing: 1 }}>
+              {hud.map}
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 12 }}>
+              <span style={{ fontSize: 18, fontWeight: "bold", color: "#4a9eff" }}>CT {hud.ct}</span>
+              <span style={{ fontSize: 14, color: "#555", alignSelf: "center" }}>vs</span>
+              <span style={{ fontSize: 18, fontWeight: "bold", color: "#e0b04b" }}>T {hud.t}</span>
+            </div>
+            {/* CT players */}
+            <div style={{ padding: "0 16px", marginBottom: 8 }}>
+              <div style={{ fontSize: 9, color: "#4a9eff88", letterSpacing: 1, marginBottom: 4 }}>COUNTER-TERRORISTS</div>
+              {[...(hud.localPlayer?.team === 3 ? [{
+                name: "You", health: hud.localPlayer.health, alive: true, team: 3, enemy: false,
+              }] : []),
+              ...(hud.players?.filter(p => p.team === 3) ?? [])].map((p, i) => (
+                <div key={`ct-${i}`} style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "3px 0",
+                  opacity: p.alive ? 1 : 0.35,
+                }}>
+                  <span style={{
+                    width: 4, height: 4, borderRadius: "50%",
+                    background: p.alive ? "#4a9eff" : "#333",
+                    display: "inline-block", flexShrink: 0,
+                  }} />
+                  <span style={{ fontSize: 11, color: "#dcdcdc", flex: 1 }}>{p.name}</span>
+                  <span style={{ fontSize: 10, color: p.alive ? "#4a9eff" : "#555", fontFamily: "Consolas, monospace", width: 36, textAlign: "right" }}>
+                    {p.alive ? `${p.health}hp` : "DEAD"}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {/* T players */}
+            <div style={{ padding: "0 16px" }}>
+              <div style={{ fontSize: 9, color: "#e0b04b88", letterSpacing: 1, marginBottom: 4 }}>TERRORISTS</div>
+              {[...(hud.localPlayer?.team === 2 ? [{
+                name: "You", health: hud.localPlayer.health, alive: true, team: 2, enemy: false,
+              }] : []),
+              ...(hud.players?.filter(p => p.team === 2) ?? [])].map((p, i) => (
+                <div key={`t-${i}`} style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "3px 0",
+                  opacity: p.alive ? 1 : 0.35,
+                }}>
+                  <span style={{
+                    width: 4, height: 4, borderRadius: "50%",
+                    background: p.alive ? "#e0b04b" : "#333",
+                    display: "inline-block", flexShrink: 0,
+                  }} />
+                  <span style={{ fontSize: 11, color: "#dcdcdc", flex: 1 }}>{p.name}</span>
+                  <span style={{ fontSize: 10, color: p.alive ? "#e0b04b" : "#555", fontFamily: "Consolas, monospace", width: 36, textAlign: "right" }}>
+                    {p.alive ? `${p.health}hp` : "DEAD"}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div style={{ textAlign: "center", marginTop: 12, fontSize: 9, color: "#333" }}>
+              release Tab to close
+            </div>
           </div>
-        )}
-        {hud.entityScan && (
-          <div>
-            entities: {hud.entityScan.added} found | {hud.entityScan.null} null | {hud.entityScan.noPawn} noPawn | {hud.entityScan.badPos ?? hud.entityScan.noTeam ?? 0} badPos
-          </div>
-        )}
-        {hud.players && hud.players.length > 0 && (
-          <div style={{ color: "#4a9eff" }}>
-            players({hud.players.length}): {hud.players.map((p, i) => `[${p.name}:t${p.team} (${Math.round(p.x)},${Math.round(p.y)}) hp${p.health}]`).join(" ")}
-          </div>
-        )}
-        {hud.debug && (
-          <div style={{ maxWidth: 350, wordBreak: "break-all" }}>
-            sdk: {Object.entries(hud.debug).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(" ")}
-          </div>
-        )}
-        {hud.entDebug && hud.entDebug.length > 0 && (
-          <div style={{ maxWidth: 400, wordBreak: "break-all", marginTop: 2, color: "#555" }}>
-            ents: {hud.entDebug.map(e => `[${e.i}:ct${e.ct} pt${e.pt} h1=${e.h1} h2=${e.h2} pawn=${e.pawn}]`).join(" ")}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Bottom bar */}
       <div style={{
@@ -595,7 +719,7 @@ function RadarCanvas() {
         color: "#ffffff15", fontSize: 10, letterSpacing: 2,
         fontFamily: "Tahoma, sans-serif",
       }}>
-        gamesense.cloud web radar
+        gamesense.cloud web radar {!showDebug && <span style={{ color: "#ffffff0a", marginLeft: 12 }}>[D] debug</span>}
       </div>
 
       <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
