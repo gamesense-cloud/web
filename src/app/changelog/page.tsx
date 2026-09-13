@@ -4,11 +4,26 @@ export const revalidate = 300;
 
 export const metadata = { title: "Changelog — gamesense.cloud" };
 
+const REPOS = [
+  { name: "launcher", label: "Launcher" },
+  { name: "dll", label: "DLL" },
+  { name: "web", label: "Web" },
+] as const;
+
 export default async function Changelog() {
-  const [commits, release] = await Promise.all([
-    getCommits("launcher", 50).catch(() => []),
+  const [release, ...commitSets] = await Promise.all([
     getLatestRelease("launcher"),
+    ...REPOS.map((r) =>
+      getCommits(r.name, 30)
+        .then((commits) => commits.map((c) => ({ ...c, repo: r.label })))
+        .catch(() => [] as { sha: string; commit: { message: string; author: { name: string; date: string } }; repo: string }[])
+    ),
   ]);
+
+  const allCommits = commitSets
+    .flat()
+    .sort((a, b) => new Date(b.commit.author.date).getTime() - new Date(a.commit.author.date).getTime())
+    .slice(0, 80);
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-16">
@@ -27,11 +42,12 @@ export default async function Changelog() {
 
       <h2 className="text-xl font-semibold mt-12 mb-4">Recent commits</h2>
       <div className="space-y-1">
-        {commits.map((c) => {
+        {allCommits.map((c) => {
           const firstLine = c.commit.message.split("\n")[0];
           return (
             <div key={c.sha} className="flex items-baseline gap-3 py-2 border-b border-border/50 last:border-0">
               <code className="text-accent text-xs font-mono shrink-0">{c.sha.slice(0, 7)}</code>
+              <span className="text-text-faint text-xs font-mono shrink-0 w-16">{c.repo}</span>
               <span className="text-sm flex-1 truncate">{firstLine}</span>
               <time className="text-xs text-text-muted shrink-0">
                 {new Date(c.commit.author.date).toLocaleDateString()}
@@ -39,7 +55,7 @@ export default async function Changelog() {
             </div>
           );
         })}
-        {commits.length === 0 && <p className="text-text-muted text-sm">No commits yet.</p>}
+        {allCommits.length === 0 && <p className="text-text-muted text-sm">No commits yet.</p>}
       </div>
     </div>
   );
