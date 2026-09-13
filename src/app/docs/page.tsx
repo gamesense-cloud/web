@@ -1,4 +1,5 @@
 import Link from "next/link";
+import DocsSearch from "./DocsSearch";
 
 export const metadata = { title: "Lua API Docs — gamesense.cloud" };
 
@@ -49,15 +50,17 @@ function Fn({
   name,
   args,
   ret,
+  desc,
   children,
 }: {
   name: string;
   args: string;
   ret?: string;
+  desc?: string;
   children?: React.ReactNode;
 }) {
   return (
-    <div className="py-2">
+    <div className="py-2" data-fn={name} data-desc={desc ?? ""}>
       <Sig name={name} args={args} ret={ret} />
       {children && <div className="text-text-muted text-xs leading-relaxed">{children}</div>}
     </div>
@@ -109,6 +112,7 @@ export default function Docs() {
             <a
               key={n.id}
               href={`#${n.id}`}
+              data-nav-id={n.id}
               className="block text-xs py-1 text-text-muted hover:text-accent transition-colors font-mono"
             >
               {n.label}
@@ -130,6 +134,8 @@ export default function Docs() {
           the Starline convention — global tables with PascalCase function names. Entity
           functions transparently resolve controllers to pawns for CS2 compatibility.
         </p>
+
+        <DocsSearch navItems={NAV} />
 
         {/* ───────────── globals ───────────── */}
         <Section id="globals" title="globals">
