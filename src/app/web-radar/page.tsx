@@ -16,85 +16,16 @@ const MAPS: Record<string, { x: number; y: number; scale: number }> = {
   de_train:   { x: -2477, y: 2392, scale: 4.7 },
 };
 
-// Labels for key areas of each map in world coordinates
-const MAP_LABELS: Record<string, { label: string; x: number; y: number }[]> = {
-  de_mirage: [
-    { label: "A", x: -200, y: -1800 },
-    { label: "B", x: -2150, y: 500 },
-    { label: "MID", x: -500, y: -600 },
-    { label: "PALACE", x: 900, y: -2100 },
-    { label: "APPS", x: -1900, y: 1150 },
-    { label: "WINDOW", x: -900, y: -1200 },
-    { label: "CONN", x: -900, y: -800 },
-    { label: "RAMP", x: 200, y: -1300 },
-    { label: "JUNGLE", x: -600, y: -1600 },
-    { label: "MARKET", x: -1050, y: -2400 },
-  ],
-  de_dust2: [
-    { label: "A", x: 1300, y: 2500 },
-    { label: "B", x: -1500, y: 2800 },
-    { label: "MID", x: -400, y: 1500 },
-    { label: "LONG", x: 1500, y: 700 },
-    { label: "CAT", x: 300, y: 1800 },
-    { label: "T SPAWN", x: -500, y: -600 },
-    { label: "CT", x: 500, y: 3200 },
-    { label: "TUNNELS", x: -1000, y: 1100 },
-    { label: "PIT", x: 1800, y: 2000 },
-  ],
-  de_inferno: [
-    { label: "A", x: 400, y: 2700 },
-    { label: "B", x: -2000, y: 700 },
-    { label: "MID", x: 200, y: 1200 },
-    { label: "BANANA", x: -800, y: 600 },
-    { label: "APPS", x: 300, y: 550 },
-    { label: "ARCH", x: -200, y: 2100 },
-    { label: "LIBRARY", x: 600, y: 2200 },
-    { label: "T SPAWN", x: 1000, y: -200 },
-    { label: "CT", x: -400, y: 3100 },
-  ],
-  de_anubis: [
-    { label: "A", x: -500, y: -1400 },
-    { label: "B", x: -1700, y: 800 },
-    { label: "MID", x: -200, y: -200 },
-    { label: "CANAL", x: 100, y: 600 },
-    { label: "BRIDGE", x: -1200, y: -300 },
-    { label: "T SPAWN", x: 600, y: -500 },
-    { label: "CT", x: -1200, y: -1000 },
-  ],
-  de_ancient: [
-    { label: "A", x: -800, y: -1500 },
-    { label: "B", x: -700, y: 1300 },
-    { label: "MID", x: 200, y: -300 },
-    { label: "DONUT", x: -400, y: -800 },
-    { label: "ELBOW", x: -400, y: 600 },
-    { label: "T SPAWN", x: 1600, y: 200 },
-    { label: "CT", x: -1500, y: 300 },
-  ],
-  de_nuke: [
-    { label: "A (UPPER)", x: -400, y: -900 },
-    { label: "B (LOWER)", x: -400, y: -500 },
-    { label: "OUTSIDE", x: -1600, y: 300 },
-    { label: "RAMP", x: 300, y: -200 },
-    { label: "SECRET", x: 100, y: 400 },
-    { label: "T SPAWN", x: -800, y: 1700 },
-    { label: "CT", x: 700, y: -1200 },
-  ],
-  de_overpass: [
-    { label: "A", x: -2700, y: -300 },
-    { label: "B", x: -1700, y: 300 },
-    { label: "LONG", x: -2200, y: -700 },
-    { label: "CONN", x: -3500, y: 200 },
-    { label: "MONSTER", x: -1200, y: -200 },
-    { label: "T SPAWN", x: -3400, y: 1100 },
-    { label: "CT", x: -2000, y: -1000 },
-  ],
-  de_vertigo: [
-    { label: "A", x: -700, y: -600 },
-    { label: "B", x: -1800, y: 300 },
-    { label: "MID", x: -1100, y: -200 },
-    { label: "RAMP", x: -400, y: 0 },
-    { label: "T SPAWN", x: -200, y: 800 },
-  ],
+// Radar image filenames — served from /maps/
+const MAP_IMAGES: Record<string, string> = {
+  de_dust2:   "/maps/de_dust2_radar.png",
+  de_mirage:  "/maps/de_mirage_radar.png",
+  de_inferno: "/maps/de_inferno_radar.png",
+  de_nuke:    "/maps/de_nuke_radar.png",
+  de_ancient: "/maps/de_ancient_radar.png",
+  de_anubis:  "/maps/de_anubis_radar.png",
+  de_overpass:"/maps/de_overpass_radar.png",
+  de_vertigo: "/maps/de_vertigo_radar.png",
 };
 
 interface Player {
@@ -158,6 +89,8 @@ function RadarCanvas() {
   const panRef = useRef({ x: 0, y: 0 });
   const dragRef = useRef({ active: false, startX: 0, startY: 0, panX: 0, panY: 0 });
   const pollCountRef = useRef(0);
+  const mapImgRef = useRef<HTMLImageElement | null>(null);
+  const mapImgNameRef = useRef<string>("");
 
   const [hud, setHud] = useState<{
     status: RadarStatus; map: string; ct: number; t: number;
@@ -455,18 +388,24 @@ function RadarCanvas() {
 
       drawGrid(ctx, 0, 0, radarSize);
 
-      // Draw map area labels
+      // Draw radar image background
       if (mapName && mapInfo) {
-        const labels = MAP_LABELS[mapName];
-        if (labels) {
-          ctx.textAlign = "center";
-          for (const lbl of labels) {
-            const p = worldToCanvas(lbl.x, lbl.y, mapInfo, radarSize, 0, 0);
-            ctx.font = "bold 11px Tahoma, Verdana, sans-serif";
-            ctx.fillStyle = "rgba(142,111,247,0.18)";
-            ctx.fillText(lbl.label, p.x, p.y);
+        const imgPath = MAP_IMAGES[mapName];
+        if (imgPath) {
+          // Load image if map changed
+          if (mapImgNameRef.current !== mapName) {
+            mapImgNameRef.current = mapName;
+            const img = new Image();
+            img.src = imgPath;
+            img.onload = () => { mapImgRef.current = img; };
+            img.onerror = () => { mapImgRef.current = null; };
           }
-          ctx.textAlign = "left";
+          // Draw loaded image
+          if (mapImgRef.current) {
+            ctx.globalAlpha = 0.7;
+            ctx.drawImage(mapImgRef.current, 0, 0, radarSize, radarSize);
+            ctx.globalAlpha = 1;
+          }
         }
       }
 
