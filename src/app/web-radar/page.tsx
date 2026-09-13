@@ -104,6 +104,10 @@ interface Player {
   yaw?: number;
 }
 
+interface EntDebug {
+  i: number; t: number; h1: string; h2: string; p1: boolean; p2: boolean;
+}
+
 interface ApiResponse {
   status: "live" | "waiting" | "stale" | "no_session" | "error";
   connected: boolean;
@@ -114,6 +118,7 @@ interface ApiResponse {
   players?: Player[];
   debug?: Record<string, unknown>;
   entityScan?: { total: number; null: number; noPawn: number; noTeam: number; added: number };
+  entDebug?: EntDebug[];
 }
 
 type RadarStatus = "connecting" | "no_session" | "stale" | "waiting" | "live" | "error";
@@ -159,6 +164,7 @@ function RadarCanvas() {
     reason?: string; age?: number; pollCount: number;
     debug?: Record<string, unknown>;
     entityScan?: { total: number; null: number; noPawn: number; noTeam: number; added: number };
+    entDebug?: EntDebug[];
     localPlayer?: { x: number; y: number; z: number; health: number; team: number };
   }>({
     status: "connecting", map: "---", ct: 0, t: 0, pollCount: 0,
@@ -257,6 +263,7 @@ function RadarCanvas() {
             pollCount: n,
             debug: data.debug,
             entityScan: data.entityScan,
+            entDebug: data.entDebug,
             localPlayer: data.localPlayer ? {
               x: data.localPlayer.x, y: data.localPlayer.y, z: data.localPlayer.z,
               health: data.localPlayer.health, team: data.localPlayer.team,
@@ -621,6 +628,11 @@ function RadarCanvas() {
         {hud.debug && (
           <div style={{ maxWidth: 350, wordBreak: "break-all" }}>
             sdk: {Object.entries(hud.debug).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(" ")}
+          </div>
+        )}
+        {hud.entDebug && hud.entDebug.length > 0 && (
+          <div style={{ maxWidth: 400, wordBreak: "break-all", marginTop: 2, color: "#555" }}>
+            ents: {hud.entDebug.map(e => `[${e.i}:t${e.t} h1=${e.h1} p1=${e.p1} h2=${e.h2} p2=${e.p2}]`).join(" ")}
           </div>
         )}
       </div>
