@@ -45,7 +45,7 @@ interface Player {
   hasBomb?: boolean;
   flashAlpha?: number; money?: number;
   color?: number;
-  kills?: number; deaths?: number; assists?: number;
+  kills?: number; deaths?: number; assists?: number; mvps?: number;
   ping?: number;
   slot?: number;
 }
@@ -1700,6 +1700,7 @@ function RadarCanvas() {
               <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
                 <span style={{ fontSize: 9, color: "#4a9eff88", letterSpacing: 1, flex: 1 }}>COUNTER-TERRORISTS</span>
                 <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 40, textAlign: "center" }}>K/D/A</span>
+                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 20, textAlign: "center" }}>MVP</span>
                 <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 28, textAlign: "right" }}>PING</span>
                 <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 42, textAlign: "right" }}>HP</span>
               </div>
@@ -1736,6 +1737,9 @@ function RadarCanvas() {
                       {p.kills ?? 0}/{p.deaths ?? 0}/{p.assists ?? 0}
                     </div>
                   )}
+                  <div style={{ textAlign: "center", minWidth: 20, fontFamily: "Consolas, monospace", fontSize: 8, color: (p.mvps ?? 0) > 0 ? "#e0b04b88" : "#ffffff0a" }}>
+                    {(p.mvps ?? 0) > 0 ? `★${p.mvps}` : "—"}
+                  </div>
                   {p.ping != null && p.ping > 0 && (
                     <div style={{ textAlign: "right", minWidth: 28, fontFamily: "Consolas, monospace", fontSize: 8, color: p.ping < 80 ? "#5fc98a55" : p.ping < 150 ? "#e0b04b55" : "#e0656a55" }}>
                       {p.ping}ms
@@ -1765,6 +1769,7 @@ function RadarCanvas() {
               <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
                 <span style={{ fontSize: 9, color: "#e0b04b88", letterSpacing: 1, flex: 1 }}>TERRORISTS</span>
                 <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 40, textAlign: "center" }}>K/D/A</span>
+                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 20, textAlign: "center" }}>MVP</span>
                 <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 28, textAlign: "right" }}>PING</span>
                 <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 42, textAlign: "right" }}>HP</span>
               </div>
@@ -1803,6 +1808,9 @@ function RadarCanvas() {
                       {p.kills ?? 0}/{p.deaths ?? 0}/{p.assists ?? 0}
                     </div>
                   )}
+                  <div style={{ textAlign: "center", minWidth: 20, fontFamily: "Consolas, monospace", fontSize: 8, color: (p.mvps ?? 0) > 0 ? "#e0b04b88" : "#ffffff0a" }}>
+                    {(p.mvps ?? 0) > 0 ? `★${p.mvps}` : "—"}
+                  </div>
                   {p.ping != null && p.ping > 0 && (
                     <div style={{ textAlign: "right", minWidth: 28, fontFamily: "Consolas, monospace", fontSize: 8, color: p.ping < 80 ? "#5fc98a55" : p.ping < 150 ? "#e0b04b55" : "#e0656a55" }}>
                       {p.ping}ms
@@ -2147,6 +2155,12 @@ function RadarCanvas() {
                 <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>A</div>
                 <div style={{ color: "#dcdcdc", fontFamily: "Consolas, monospace" }}>{hoveredPlayer.player.assists ?? 0}</div>
               </div>
+              {(hoveredPlayer.player.mvps ?? 0) > 0 && (
+                <div>
+                  <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>MVP</div>
+                  <div style={{ color: "#e0b04b", fontFamily: "Consolas, monospace" }}>★{hoveredPlayer.player.mvps}</div>
+                </div>
+              )}
               {hoveredPlayer.player.ping != null && hoveredPlayer.player.ping > 0 && (
                 <div>
                   <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>PING</div>
