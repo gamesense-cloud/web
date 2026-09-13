@@ -32,6 +32,7 @@ interface ApiResponse {
   localPlayer?: Player & { yaw: number };
   players?: Player[];
   debug?: Record<string, unknown>;
+  entityScan?: { total: number; null: number; noPawn: number; noTeam: number; added: number };
 }
 
 type RadarStatus = "connecting" | "no_session" | "stale" | "waiting" | "live" | "error";
@@ -76,6 +77,9 @@ function RadarCanvas() {
   const [hud, setHud] = useState<{
     status: RadarStatus; map: string; ct: number; t: number;
     reason?: string; age?: number; pollCount: number;
+    debug?: Record<string, unknown>;
+    entityScan?: { total: number; null: number; noPawn: number; noTeam: number; added: number };
+    localPlayer?: { x: number; y: number; z: number; health: number; team: number };
   }>({
     status: "connecting", map: "---", ct: 0, t: 0, pollCount: 0,
   });
@@ -171,6 +175,12 @@ function RadarCanvas() {
             reason: data.reason,
             age: data.age_ms,
             pollCount: n,
+            debug: data.debug,
+            entityScan: data.entityScan,
+            localPlayer: data.localPlayer ? {
+              x: data.localPlayer.x, y: data.localPlayer.y, z: data.localPlayer.z,
+              health: data.localPlayer.health, team: data.localPlayer.team,
+            } : undefined,
           });
         } catch (e) {
           console.error(`[radar] poll #${n} FETCH ERROR:`, e);
@@ -512,14 +522,30 @@ function RadarCanvas() {
       {/* Debug overlay (bottom-left) */}
       <div style={{
         position: "absolute", bottom: 28, left: 8, zIndex: 10,
-        fontSize: 9, color: "#333", fontFamily: "Consolas, monospace",
-        pointerEvents: "none", lineHeight: 1.5,
+        fontSize: 9, color: "#444", fontFamily: "Consolas, monospace",
+        pointerEvents: "none", lineHeight: 1.6,
+        background: "rgba(0,0,0,0.5)", padding: "6px 8px", borderRadius: 2,
       }}>
-        <div>polls: {hud.pollCount}</div>
-        <div>status: {hud.status}</div>
+        <div style={{ color: "#666", marginBottom: 2 }}>-- debug --</div>
+        <div>polls: {hud.pollCount} | status: {hud.status}</div>
         {hud.reason && <div>reason: {hud.reason}</div>}
         {hud.age != null && <div>age: {Math.round(hud.age)}ms</div>}
         <div>session: {session?.slice(0, 8)}…</div>
+        {hud.localPlayer && (
+          <div style={{ color: "#8e6ff7" }}>
+            local: ({Math.round(hud.localPlayer.x)}, {Math.round(hud.localPlayer.y)}, {Math.round(hud.localPlayer.z)}) hp={hud.localPlayer.health} team={hud.localPlayer.team}
+          </div>
+        )}
+        {hud.entityScan && (
+          <div>
+            entities: {hud.entityScan.added} found | {hud.entityScan.null} null | {hud.entityScan.noPawn} noPawn | {hud.entityScan.noTeam} noTeam
+          </div>
+        )}
+        {hud.debug && (
+          <div style={{ maxWidth: 350, wordBreak: "break-all" }}>
+            sdk: {Object.entries(hud.debug).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(" ")}
+          </div>
+        )}
       </div>
 
       {/* Bottom bar */}
