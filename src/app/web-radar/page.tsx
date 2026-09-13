@@ -1640,7 +1640,7 @@ function RadarCanvas() {
           }}>
             <div style={{ textAlign: "center", marginBottom: 12 }}>
               <div style={{ fontSize: 13, color: "#dcdcdc", fontWeight: "bold", letterSpacing: 1 }}>
-                {hud.map}
+                {hud.mapDisplay}
               </div>
               {hud.roundPhase && (
                 <div style={{ fontSize: 9, color: "#55555588", fontFamily: "Consolas, monospace", marginTop: 2 }}>
