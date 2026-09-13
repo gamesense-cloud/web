@@ -479,6 +479,32 @@ export default function Docs() {
               <code className="text-text-faint">events.BUTTON_FORCE_ON</code> (2)
             </p>
           </div>
+          <div className="mt-4">
+            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-2">Event Reference</h4>
+            <div className="space-y-1 text-xs">
+              {[
+                { name: "frame", args: "dt: number" },
+                { name: "paint", args: "(none — draw here)" },
+                { name: "key", args: "key: number, down: boolean" },
+                { name: "round_start", args: "timelimit: number" },
+                { name: "round_end", args: "winner, reason, message" },
+                { name: "round_freeze_end", args: "(none)" },
+                { name: "player_death", args: "userid, attacker, headshot, distance, weapon" },
+                { name: "player_hurt", args: "userid, attacker, health, armor, dmg_health, dmg_armor, hitgroup, weapon" },
+                { name: "item_purchase", args: "userid, team, weapon" },
+                { name: "weapon_fire", args: "userid, weapon" },
+                { name: "bullet_impact", args: "userid, x, y, z" },
+                { name: "bomb_planted", args: "userid" },
+                { name: "bomb_defused", args: "userid" },
+                { name: "bomb_exploded", args: "(none)" },
+              ].map(e => (
+                <div key={e.name} className="flex gap-2">
+                  <code className="text-accent min-w-[120px]">{e.name}</code>
+                  <span className="text-text-faint">{e.args}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </Section>
 
         {/* ───────────── hooks ───────────── */}
