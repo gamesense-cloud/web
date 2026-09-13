@@ -559,14 +559,16 @@ end)`}</Example>
           </div>
           <div className="mt-4">
             <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-2">Event Reference</h4>
-            <div className="space-y-1 text-xs">
-              {[
+            {[
+              { group: "Platform", events: [
                 { name: "frame", args: "dt: number" },
                 { name: "paint", args: "(none — draw here)" },
                 { name: "key", args: "key: number, down: boolean" },
                 { name: "resize", args: "width: number, height: number" },
                 { name: "focus", args: "focused: boolean" },
                 { name: "unload", args: "(none)" },
+              ]},
+              { group: "Engine", events: [
                 { name: "createmove", args: "cmd: CUserCmd" },
                 { name: "movement", args: "cmd: CUserCmd" },
                 { name: "frame_stage", args: "stage: number" },
@@ -574,35 +576,52 @@ end)`}</Example>
                 { name: "edgebug", args: "(none)" },
                 { name: "jumpbug", args: "(none)" },
                 { name: "pixelsurf", args: "(none)" },
+              ]},
+              { group: "Round", events: [
                 { name: "round_start", args: "timelimit: number" },
                 { name: "round_end", args: "winner, reason, message" },
                 { name: "round_freeze_end", args: "(none)" },
+                { name: "round_mvp", args: "userid, reason" },
+                { name: "begin_new_match", args: "(none)" },
+                { name: "announce_phase_end", args: "(none)" },
+              ]},
+              { group: "Player", events: [
                 { name: "player_death", args: "userid, attacker, headshot, distance, weapon" },
                 { name: "player_hurt", args: "userid, attacker, health, armor, dmg_health, dmg_armor, hitgroup, weapon" },
+                { name: "player_spawn", args: "userid, team" },
+                { name: "player_disconnect", args: "userid, reason" },
                 { name: "item_purchase", args: "userid, team, weapon" },
+              ]},
+              { group: "Weapon", events: [
                 { name: "weapon_fire", args: "userid, weapon" },
                 { name: "bullet_impact", args: "userid, x, y, z" },
+              ]},
+              { group: "Bomb", events: [
                 { name: "bomb_planted", args: "userid" },
                 { name: "bomb_defused", args: "userid" },
                 { name: "bomb_exploded", args: "(none)" },
+              ]},
+              { group: "Grenades", events: [
                 { name: "flashbang_detonate", args: "userid, entityid, x, y, z" },
                 { name: "smokegrenade_detonate", args: "userid, entityid, x, y, z" },
                 { name: "hegrenade_detonate", args: "userid, x, y, z" },
                 { name: "inferno_startburn", args: "entityid, x, y, z" },
                 { name: "inferno_expire", args: "entityid, x, y, z" },
                 { name: "decoy_started", args: "userid, entityid, x, y, z" },
-                { name: "round_mvp", args: "userid, reason" },
-                { name: "player_spawn", args: "userid, team" },
-                { name: "player_disconnect", args: "userid, reason" },
-                { name: "begin_new_match", args: "(none)" },
-                { name: "announce_phase_end", args: "(none)" },
-              ].map(e => (
-                <div key={e.name} className="flex gap-2">
-                  <code className="text-accent min-w-[160px]">{e.name}</code>
-                  <span className="text-text-faint">{e.args}</span>
+              ]},
+            ].map(g => (
+              <div key={g.group} className="mb-3">
+                <div className="text-[10px] font-bold text-text-faint uppercase tracking-wider mb-1 mt-2">{g.group}</div>
+                <div className="space-y-1 text-xs">
+                  {g.events.map(e => (
+                    <div key={e.name} className="flex gap-2">
+                      <code className="text-accent min-w-[160px]">{e.name}</code>
+                      <span className="text-text-faint">{e.args}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
           <Example title="Example — track kills">{`local myKills = 0
 
