@@ -198,10 +198,6 @@ export default async function Home() {
           Changelog
         </Link>
         <span className="text-border">|</span>
-        <Link href="/login" className="hover:text-text-muted transition-colors">
-          Dashboard
-        </Link>
-        <span className="text-border">|</span>
         <Link href="/contact" className="hover:text-text-muted transition-colors">
           Contact
         </Link>

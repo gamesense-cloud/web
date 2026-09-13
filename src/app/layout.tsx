@@ -43,9 +43,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/contact" className="hover:text-text-muted transition-colors">
               Contact
             </Link>
-            <Link href="/login" className="hover:text-text-muted transition-colors">
-              Login
-            </Link>
           </div>
         </nav>
         <main className="flex-1 flex flex-col">{children}</main>
