@@ -696,9 +696,15 @@ function RadarCanvas() {
           background: "#131313", border: "1px solid #1e1e1e",
           maxWidth: 400, textAlign: "center", borderRadius: 2,
         }}>
-          <p style={{ color: "#808080", fontSize: 12, lineHeight: 1.6, margin: 0 }}>
-            No session ID provided. Enable the web radar from the cheat to get a shareable link.
+          <p style={{ color: "#808080", fontSize: 12, lineHeight: 1.6, margin: "0 0 12px 0" }}>
+            No session ID provided.
           </p>
+          <div style={{ textAlign: "left", color: "#555", fontSize: 11, lineHeight: 1.8 }}>
+            <div>1. Open gamesense.cloud in CS2</div>
+            <div>2. Go to <span style={{ color: "#8e6ff7" }}>Settings</span> &rarr; <span style={{ color: "#8e6ff7" }}>Web Radar</span></div>
+            <div>3. Click <span style={{ color: "#5fc98a" }}>Start Web Radar</span></div>
+            <div>4. Copy and share the link</div>
+          </div>
         </div>
       </div>
     );
@@ -915,11 +921,23 @@ function RadarCanvas() {
             <div style={{ textAlign: "center", fontSize: 13, color: "#dcdcdc", fontWeight: "bold", marginBottom: 12, letterSpacing: 1 }}>
               {hud.map}
             </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 4 }}>
               <span style={{ fontSize: 18, fontWeight: "bold", color: "#4a9eff" }}>CT {hud.ct}</span>
               <span style={{ fontSize: 14, color: "#555", alignSelf: "center" }}>vs</span>
               <span style={{ fontSize: 18, fontWeight: "bold", color: "#e0b04b" }}>T {hud.t}</span>
             </div>
+            {(() => {
+              const allPlayers = [...(hud.localPlayer ? [{ ...hud.localPlayer, alive: true } as Player] : []), ...(hud.players ?? [])];
+              const ctMoney = allPlayers.filter(p => p.team === 3 && p.alive).reduce((s, p) => s + (p.money ?? 0), 0);
+              const tMoney = allPlayers.filter(p => p.team === 2 && p.alive).reduce((s, p) => s + (p.money ?? 0), 0);
+              return (ctMoney > 0 || tMoney > 0) ? (
+                <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 12 }}>
+                  <span style={{ fontSize: 10, color: "#4a9eff55", fontFamily: "Consolas, monospace" }}>${ctMoney.toLocaleString()}</span>
+                  <span style={{ fontSize: 10, color: "#5fc98a33", fontFamily: "Consolas, monospace" }}>economy</span>
+                  <span style={{ fontSize: 10, color: "#e0b04b55", fontFamily: "Consolas, monospace" }}>${tMoney.toLocaleString()}</span>
+                </div>
+              ) : <div style={{ marginBottom: 8 }} />;
+            })()}
             {/* CT players */}
             <div style={{ padding: "0 16px", marginBottom: 8 }}>
               <div style={{ fontSize: 9, color: "#4a9eff88", letterSpacing: 1, marginBottom: 4 }}>COUNTER-TERRORISTS</div>
