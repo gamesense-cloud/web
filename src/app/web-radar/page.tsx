@@ -4,16 +4,16 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
-const MAPS: Record<string, { x: number; y: number; scale: number }> = {
-  de_dust2:   { x: -2476, y: 3239, scale: 4.4 },
-  de_mirage:  { x: -3230, y: 1713, scale: 5.0 },
-  de_inferno: { x: -2087, y: 3870, scale: 4.9 },
-  de_nuke:    { x: -3453, y: 2887, scale: 7.0 },
-  de_ancient: { x: -2953, y: 2164, scale: 5.0 },
-  de_anubis:  { x: -2796, y: 3328, scale: 5.22 },
-  de_overpass:{ x: -4831, y: 1781, scale: 5.2 },
-  de_vertigo: { x: -3168, y: 1762, scale: 4.0 },
-  de_train:   { x: -2477, y: 2392, scale: 4.7 },
+const MAPS: Record<string, { x: number; y: number; scale: number; display: string }> = {
+  de_dust2:   { x: -2476, y: 3239, scale: 4.4, display: "Dust II" },
+  de_mirage:  { x: -3230, y: 1713, scale: 5.0, display: "Mirage" },
+  de_inferno: { x: -2087, y: 3870, scale: 4.9, display: "Inferno" },
+  de_nuke:    { x: -3453, y: 2887, scale: 7.0, display: "Nuke" },
+  de_ancient: { x: -2953, y: 2164, scale: 5.0, display: "Ancient" },
+  de_anubis:  { x: -2796, y: 3328, scale: 5.22, display: "Anubis" },
+  de_overpass:{ x: -4831, y: 1781, scale: 5.2, display: "Overpass" },
+  de_vertigo: { x: -3168, y: 1762, scale: 4.0, display: "Vertigo" },
+  de_train:   { x: -2477, y: 2392, scale: 4.7, display: "Train" },
 };
 
 // Radar image filenames — served from /maps/
@@ -26,17 +26,27 @@ const MAP_IMAGES: Record<string, string> = {
   de_anubis:  "/maps/de_anubis_radar.png",
   de_overpass:"/maps/de_overpass_radar.png",
   de_vertigo: "/maps/de_vertigo_radar.png",
+  de_train:   "/maps/de_train_radar.png",
 };
+
+const NUKE_Z_SPLIT = -495;
+const NUKE_LOWER_IMAGE = "/maps/de_nuke_lower_radar.png";
 
 interface Player {
   x: number; y: number; z: number;
   team: number; alive: boolean; health: number;
   name: string; dormant: boolean; enemy: boolean;
   yaw?: number;
+  armor?: number; weapon?: string;
+  scoped?: boolean; helmet?: boolean; defuser?: boolean; defusing?: boolean;
 }
 
 interface EntDebug {
   i: number; ct: number; pt: number; h1: string; h2: string; pawn: boolean;
+}
+
+interface BombInfo {
+  x: number; y: number; z: number; planted: boolean;
 }
 
 interface ApiResponse {
@@ -47,6 +57,7 @@ interface ApiResponse {
   map?: string;
   localPlayer?: Player & { yaw: number };
   players?: Player[];
+  bomb?: BombInfo;
   debug?: Record<string, unknown>;
   entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
   entDebug?: EntDebug[];
@@ -76,6 +87,37 @@ function worldToCanvas(
 
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
+const WEAPON_DISPLAY: Record<string, string> = {
+  ak47: "AK-47", m4a1: "M4A1-S", m4a1_silencer: "M4A1-S", m4a1_silencer_off: "M4A4",
+  awp: "AWP", deagle: "Deagle", glock: "Glock", usp_silencer: "USP-S",
+  famas: "FAMAS", galil: "Galil", aug: "AUG", sg556: "SG 553",
+  ssg08: "Scout", scar20: "SCAR-20", g3sg1: "G3SG1",
+  mp9: "MP9", mac10: "MAC-10", mp7: "MP7", mp5sd: "MP5-SD", ump45: "UMP-45", p90: "P90",
+  nova: "Nova", xm1014: "XM1014", mag7: "MAG-7", sawedoff: "Sawed-Off", negev: "Negev", m249: "M249",
+  hkp2000: "P2000", elite: "Dualies", p250: "P250", fiveseven: "Five-Seven", tec9: "Tec-9", cz75a: "CZ75",
+  revolver: "R8", knife: "Knife", knife_t: "Knife", bayonet: "Knife",
+  c4: "C4", hegrenade: "HE", flashbang: "Flash", smokegrenade: "Smoke",
+  molotov: "Molotov", incgrenade: "Incendiary", decoy: "Decoy",
+  taser: "Zeus",
+};
+
+function weaponDisplayName(raw: string): string {
+  if (!raw) return "";
+  const key = raw.replace(/^weapon_/, "").toLowerCase();
+  return WEAPON_DISPLAY[key] || key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+function weaponColor(raw: string): string {
+  if (!raw) return "#666";
+  const key = raw.replace(/^weapon_/, "").toLowerCase();
+  if (key === "awp" || key === "ssg08" || key === "scar20" || key === "g3sg1") return "#e0656a99";
+  if (key.includes("knife") || key === "bayonet") return "#e0b04b88";
+  if (key === "c4") return "#e0b04bcc";
+  if (["hegrenade", "flashbang", "smokegrenade", "molotov", "incgrenade", "decoy"].includes(key)) return "#5fc98a88";
+  if (key === "taser") return "#4a9eff88";
+  return "#88888899";
+}
+
 function RadarCanvas() {
   const params = useSearchParams();
   const session = params.get("session");
@@ -94,18 +136,25 @@ function RadarCanvas() {
   const touchRef = useRef<{ id1: number; id2: number; dist: number; cx: number; cy: number }>({ id1: -1, id2: -1, dist: 0, cx: 0, cy: 0 });
   const [showDebug, setShowDebug] = useState(false);
   const [showScoreboard, setShowScoreboard] = useState(false);
+  const [showLower, setShowLower] = useState(false);
+  const showLowerRef = useRef(false);
+  const nukeLowerImgRef = useRef<HTMLImageElement | null>(null);
+  const [zoomDisplay, setZoomDisplay] = useState(100);
 
   const [hud, setHud] = useState<{
-    status: RadarStatus; map: string; ct: number; t: number;
+    status: RadarStatus; map: string; mapDisplay: string; ct: number; t: number;
     reason?: string; age?: number; pollCount: number;
     debug?: Record<string, unknown>;
     entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
     entDebug?: EntDebug[];
     players?: Player[];
     localPlayer?: { x: number; y: number; z: number; health: number; team: number };
+    bomb?: BombInfo;
   }>({
-    status: "connecting", map: "---", ct: 0, t: 0, pollCount: 0,
+    status: "connecting", map: "---", mapDisplay: "---", ct: 0, t: 0, pollCount: 0,
   });
+
+  useEffect(() => { showLowerRef.current = showLower; }, [showLower]);
 
   const getInterpolated = useCallback((key: string, current: Player): Player => {
     const prev = prevPosRef.current[key];
@@ -191,9 +240,12 @@ function RadarCanvas() {
             });
           }
 
+          const mapKey = data.map || "";
+          const mapMeta = MAPS[mapKey];
           setHud({
             status: radarStatus,
-            map: data.map?.toUpperCase() || "---",
+            map: mapKey.toUpperCase() || "---",
+            mapDisplay: mapMeta?.display || mapKey || "---",
             ct, t,
             reason: data.reason,
             age: data.age_ms,
@@ -206,6 +258,7 @@ function RadarCanvas() {
               x: data.localPlayer.x, y: data.localPlayer.y, z: data.localPlayer.z,
               health: data.localPlayer.health, team: data.localPlayer.team,
             } : undefined,
+            bomb: data.bomb,
           });
         } catch (e) {
           console.error(`[radar] poll #${n} FETCH ERROR:`, e);
@@ -239,6 +292,7 @@ function RadarCanvas() {
   useEffect(() => {
     function onDown(e: KeyboardEvent) {
       if (e.key === "d" || e.key === "D") setShowDebug(v => !v);
+      if (e.key === "n" || e.key === "N") setShowLower(v => !v);
       if (e.key === "Tab") { e.preventDefault(); setShowScoreboard(true); }
     }
     function onUp(e: KeyboardEvent) {
@@ -263,6 +317,7 @@ function RadarCanvas() {
       const mx = e.clientX - rect.left, my = e.clientY - rect.top;
       panRef.current.x = mx - (mx - panRef.current.x) * (zoomRef.current / old);
       panRef.current.y = my - (my - panRef.current.y) * (zoomRef.current / old);
+      setZoomDisplay(Math.round(zoomRef.current * 100));
     }
 
     function onDown(e: MouseEvent) {
@@ -278,7 +333,7 @@ function RadarCanvas() {
       }
     }
     function onUp() { dragRef.current.active = false; }
-    function onDbl() { zoomRef.current = 1.0; panRef.current = { x: 0, y: 0 }; }
+    function onDbl() { zoomRef.current = 1.0; panRef.current = { x: 0, y: 0 }; setZoomDisplay(100); }
 
     function touchDist(t: TouchList) {
       const dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
@@ -308,6 +363,7 @@ function RadarCanvas() {
         const scale = newDist / touchRef.current.dist;
         const old = zoomRef.current;
         zoomRef.current = Math.min(Math.max(old * scale, 0.4), 4.0);
+        setZoomDisplay(Math.round(zoomRef.current * 100));
         touchRef.current.dist = newDist;
         const rect = c!.getBoundingClientRect();
         const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
@@ -382,7 +438,8 @@ function RadarCanvas() {
       ctx: CanvasRenderingContext2D,
       pos: { x: number; y: number },
       isLocal: boolean, isEnemy: boolean, isDormant: boolean,
-      isAlive: boolean, health: number, name: string, yaw?: number
+      isAlive: boolean, health: number, name: string, yaw?: number,
+      weapon?: string, scoped?: boolean, defusing?: boolean, armor?: number
     ) {
       const color = isLocal ? "#8e6ff7" : isEnemy ? "#e0656a" : "#4a9eff";
       const nameColor = isLocal ? "#a086ff" : isEnemy ? "#e0656a" : "#dcdcdc";
@@ -419,6 +476,22 @@ function RadarCanvas() {
         ctx.strokeStyle = `rgba(142,111,247,${(pulse * 0.25).toFixed(2)})`;
         ctx.lineWidth = 1.5; ctx.stroke();
       }
+
+      // Scoped ring indicator
+      if (scoped) {
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, r + 6, 0, Math.PI * 2);
+        ctx.strokeStyle = isEnemy ? "rgba(224,101,106,0.5)" : "rgba(74,158,255,0.5)";
+        ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+      }
+
+      // Defusing pulse
+      if (defusing) {
+        const dp = 0.5 + 0.5 * Math.sin(performance.now() / 200);
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, r + 8, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(95,201,138,${(dp * 0.6).toFixed(2)})`;
+        ctx.lineWidth = 2; ctx.stroke();
+      }
+
       ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
       ctx.fillStyle = color; ctx.fill();
       ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1; ctx.stroke();
@@ -426,16 +499,62 @@ function RadarCanvas() {
       const hpColor = health > 60 ? "#5fc98a" : health > 25 ? "#e0b04b" : "#e0656a";
       drawHealthArc(ctx, pos.x, pos.y, r + 3, health || 100, hpColor);
 
+      // Armor arc (inner, blue)
+      if (armor && armor > 0) {
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, r + 1, -Math.PI / 2, -Math.PI / 2 + (armor / 100) * Math.PI * 2);
+        ctx.strokeStyle = "rgba(74,158,255,0.3)"; ctx.lineWidth = 1.5; ctx.stroke();
+      }
+
+      let textY = pos.y + 3;
       if (name) {
         ctx.font = "10px Tahoma, Verdana, sans-serif";
         ctx.fillStyle = nameColor;
-        ctx.fillText(name, pos.x + r + 5, pos.y + 3);
+        ctx.fillText(name, pos.x + r + 5, textY);
+        textY += 10;
+      }
+      if (weapon) {
+        const wc = weaponColor(weapon);
+        ctx.font = "8px Tahoma, sans-serif";
+        ctx.fillStyle = wc;
+        ctx.fillText(weaponDisplayName(weapon), pos.x + r + 5, textY);
+        textY += 9;
       }
       if (health > 0 && health < 50) {
         ctx.font = "bold 8px Tahoma, sans-serif";
         ctx.fillStyle = hpColor;
-        ctx.fillText(`${health}`, pos.x + r + 5, pos.y + 13);
+        ctx.fillText(`${health}hp`, pos.x + r + 5, textY);
       }
+    }
+
+    function drawBomb(
+      ctx: CanvasRenderingContext2D,
+      pos: { x: number; y: number },
+      planted: boolean
+    ) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / (planted ? 300 : 1000));
+      const r = planted ? 7 : 5;
+
+      if (planted) {
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, r + 6, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(224,60,60,${(pulse * 0.4).toFixed(2)})`;
+        ctx.lineWidth = 2; ctx.stroke();
+      }
+
+      // Diamond shape
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y - r);
+      ctx.lineTo(pos.x + r, pos.y);
+      ctx.lineTo(pos.x, pos.y + r);
+      ctx.lineTo(pos.x - r, pos.y);
+      ctx.closePath();
+      ctx.fillStyle = planted ? `rgba(224,60,60,${(0.6 + pulse * 0.4).toFixed(2)})` : "#e0b04b";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 1; ctx.stroke();
+
+      ctx.font = "bold 8px Tahoma, sans-serif";
+      ctx.fillStyle = planted ? "#e03c3c" : "#e0b04b";
+      ctx.fillText(planted ? "BOMB" : "C4", pos.x + r + 4, pos.y + 3);
     }
 
     function render() {
@@ -472,18 +591,19 @@ function RadarCanvas() {
       drawGrid(ctx, 0, 0, radarSize);
 
       // Draw radar image background
+      const isNuke = mapName === "de_nuke";
+      const nukeLower = showLowerRef.current;
       if (mapName && mapInfo) {
-        const imgPath = MAP_IMAGES[mapName];
+        const imgPath = isNuke && nukeLower ? NUKE_LOWER_IMAGE : MAP_IMAGES[mapName];
         if (imgPath) {
-          // Load image if map changed
-          if (mapImgNameRef.current !== mapName) {
-            mapImgNameRef.current = mapName;
+          const cacheKey = isNuke ? `${mapName}_${nukeLower ? "lower" : "upper"}` : mapName;
+          if (mapImgNameRef.current !== cacheKey) {
+            mapImgNameRef.current = cacheKey;
             const img = new Image();
             img.src = imgPath;
             img.onload = () => { mapImgRef.current = img; };
             img.onerror = () => { mapImgRef.current = null; };
           }
-          // Draw loaded image
           if (mapImgRef.current) {
             ctx.globalAlpha = 0.7;
             ctx.drawImage(mapImgRef.current, 0, 0, radarSize, radarSize);
@@ -501,10 +621,30 @@ function RadarCanvas() {
       }
 
       if (data?.connected && mapInfo) {
+        const nukeLevel = isNuke ? (nukeLower ? "lower" : "upper") : null;
+
+        // Draw bomb first (behind players)
+        if (data.bomb) {
+          const bpos = worldToCanvas(data.bomb.x, data.bomb.y, mapInfo, radarSize, 0, 0);
+          if (nukeLevel) {
+            const bombOnLower = data.bomb.z < NUKE_Z_SPLIT;
+            ctx.globalAlpha = (nukeLevel === "lower") === bombOnLower ? 1.0 : 0.25;
+          }
+          drawBomb(ctx, bpos, data.bomb.planted);
+          ctx.globalAlpha = 1;
+        }
+
         if (data.localPlayer) {
           const lp = getInterpolated("__local", data.localPlayer);
           const pos = worldToCanvas(lp.x, lp.y, mapInfo, radarSize, 0, 0);
-          drawPlayer(ctx, pos, true, false, false, true, lp.health, lp.name, lp.yaw ?? data.localPlayer.yaw);
+          if (nukeLevel) {
+            const onLower = lp.z < NUKE_Z_SPLIT;
+            ctx.globalAlpha = (nukeLevel === "lower") === onLower ? 1.0 : 0.3;
+          }
+          drawPlayer(ctx, pos, true, false, false, true, lp.health, lp.name,
+            lp.yaw ?? data.localPlayer.yaw, data.localPlayer.weapon,
+            data.localPlayer.scoped, data.localPlayer.defusing, data.localPlayer.armor);
+          ctx.globalAlpha = 1;
         }
 
         if (data.players) {
@@ -513,7 +653,13 @@ function RadarCanvas() {
             const key = p.name || `p${i}`;
             const ip = getInterpolated(key, p);
             const pos = worldToCanvas(ip.x, ip.y, mapInfo, radarSize, 0, 0);
-            drawPlayer(ctx, pos, false, ip.enemy, ip.dormant, ip.alive, ip.health, ip.name, ip.yaw ?? p.yaw);
+            if (nukeLevel) {
+              const onLower = ip.z < NUKE_Z_SPLIT;
+              ctx.globalAlpha = (nukeLevel === "lower") === onLower ? 1.0 : 0.3;
+            }
+            drawPlayer(ctx, pos, false, ip.enemy, ip.dormant, ip.alive, ip.health, ip.name,
+              ip.yaw ?? p.yaw, p.weapon, p.scoped, p.defusing, p.armor);
+            ctx.globalAlpha = 1;
           }
         }
       }
@@ -554,6 +700,7 @@ function RadarCanvas() {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "#0a0e14", cursor: "crosshair" }}>
+      <style>{`@keyframes bombPulse { from { opacity: 0.7; } to { opacity: 1; } }`}</style>
       {/* Top bar */}
       <div style={{
         position: "absolute", top: 0, left: 0, right: 0, height: 36, zIndex: 10,
@@ -568,8 +715,17 @@ function RadarCanvas() {
           </span>
           <span style={{ color: "#555555", fontSize: 11 }}>|</span>
           <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 1, color: "#dcdcdc", fontFamily: "Tahoma, sans-serif" }}>
-            {hud.status === "live" ? hud.map : "---"}
+            {hud.status === "live" ? hud.mapDisplay : "---"}
           </span>
+          {hud.bomb?.planted && (
+            <span style={{
+              fontSize: 11, fontWeight: "bold", color: "#e03c3c", letterSpacing: 2,
+              fontFamily: "Consolas, monospace",
+              animation: "bombPulse 0.5s ease-in-out infinite alternate",
+            }}>
+              BOMB PLANTED
+            </span>
+          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -669,6 +825,11 @@ function RadarCanvas() {
               sdk: {Object.entries(hud.debug).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(" ")}
             </div>
           )}
+          {hud.bomb && (
+            <div style={{ color: hud.bomb.planted ? "#e03c3c" : "#e0b04b" }}>
+              bomb: ({Math.round(hud.bomb.x)}, {Math.round(hud.bomb.y)}, {Math.round(hud.bomb.z)}) {hud.bomb.planted ? "PLANTED" : "carried"}
+            </div>
+          )}
           {hud.entDebug && hud.entDebug.length > 0 && (
             <div style={{ maxWidth: 400, wordBreak: "break-all", marginTop: 2, color: "#555" }}>
               ents: {hud.entDebug.map(e => `[${e.i}:ct${e.ct} pt${e.pt} h1=${e.h1} h2=${e.h2} pawn=${e.pawn}]`).join(" ")}
@@ -685,24 +846,43 @@ function RadarCanvas() {
         }}>
           {hud.players.filter(p => p.alive).map((p, i) => (
             <div key={i} style={{
-              display: "flex", alignItems: "center", gap: 6, marginBottom: 2,
+              display: "flex", alignItems: "center", gap: 6, marginBottom: 3,
               opacity: 0.8,
             }}>
               <span style={{
                 width: 3, height: 3, borderRadius: "50%",
                 background: p.enemy ? "#e0656a" : "#4a9eff",
-                display: "inline-block",
+                display: "inline-block", flexShrink: 0,
               }} />
-              <span style={{ fontSize: 9, color: p.enemy ? "#e0656a99" : "#4a9eff99", minWidth: 60 }}>
-                {p.name?.length > 10 ? p.name.slice(0, 10) + ".." : p.name}
-              </span>
-              <div style={{
-                width: 30, height: 3, background: "#1a1a1a", borderRadius: 1, overflow: "hidden",
-              }}>
+              <div style={{ minWidth: 60 }}>
+                <div style={{ fontSize: 9, color: p.enemy ? "#e0656a99" : "#4a9eff99" }}>
+                  {p.name?.length > 10 ? p.name.slice(0, 10) + ".." : p.name}
+                </div>
+                {p.weapon && (
+                  <div style={{ fontSize: 7, color: weaponColor(p.weapon), marginTop: -1 }}>
+                    {weaponDisplayName(p.weapon)}{p.scoped ? " [S]" : ""}{p.defusing ? " [DEF]" : ""}
+                  </div>
+                )}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 <div style={{
-                  width: `${p.health}%`, height: "100%",
-                  background: p.health > 50 ? "#5fc98a" : p.health > 25 ? "#e0b04b" : "#e0656a",
-                }} />
+                  width: 30, height: 3, background: "#1a1a1a", borderRadius: 1, overflow: "hidden",
+                }}>
+                  <div style={{
+                    width: `${p.health}%`, height: "100%",
+                    background: p.health > 50 ? "#5fc98a" : p.health > 25 ? "#e0b04b" : "#e0656a",
+                  }} />
+                </div>
+                {(p.armor ?? 0) > 0 && (
+                  <div style={{
+                    width: 30, height: 2, background: "#1a1a1a", borderRadius: 1, overflow: "hidden",
+                  }}>
+                    <div style={{
+                      width: `${p.armor}%`, height: "100%",
+                      background: "#4a9eff55",
+                    }} />
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -737,7 +917,9 @@ function RadarCanvas() {
               <div style={{ fontSize: 9, color: "#4a9eff88", letterSpacing: 1, marginBottom: 4 }}>COUNTER-TERRORISTS</div>
               {[...(hud.localPlayer?.team === 3 ? [{
                 name: "You", health: hud.localPlayer.health, alive: true, team: 3, enemy: false,
-              }] : []),
+                armor: (hud.localPlayer as Player)?.armor, weapon: (hud.localPlayer as Player)?.weapon,
+                helmet: (hud.localPlayer as Player)?.helmet, defuser: (hud.localPlayer as Player)?.defuser,
+              } as Player] : []),
               ...(hud.players?.filter(p => p.team === 3) ?? [])].map((p, i) => (
                 <div key={`ct-${i}`} style={{
                   display: "flex", alignItems: "center", gap: 8, padding: "3px 0",
@@ -748,10 +930,26 @@ function RadarCanvas() {
                     background: p.alive ? "#4a9eff" : "#333",
                     display: "inline-block", flexShrink: 0,
                   }} />
-                  <span style={{ fontSize: 11, color: "#dcdcdc", flex: 1 }}>{p.name}</span>
-                  <span style={{ fontSize: 10, color: p.alive ? "#4a9eff" : "#555", fontFamily: "Consolas, monospace", width: 36, textAlign: "right" }}>
-                    {p.alive ? `${p.health}hp` : "DEAD"}
-                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: "#dcdcdc", display: "flex", gap: 4, alignItems: "center" }}>
+                      {p.name}
+                      {p.helmet && <span style={{ fontSize: 7, color: "#4a9eff55" }}>H</span>}
+                      {p.defuser && <span style={{ fontSize: 7, color: "#5fc98a55" }}>D</span>}
+                    </div>
+                    {p.alive && p.weapon && (
+                      <div style={{ fontSize: 8, color: "#777", marginTop: -1 }}>{weaponDisplayName(p.weapon)}</div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 10, color: p.alive ? "#4a9eff" : "#555", fontFamily: "Consolas, monospace" }}>
+                      {p.alive ? `${p.health}hp` : "DEAD"}
+                    </div>
+                    {p.alive && (p.armor ?? 0) > 0 && (
+                      <div style={{ fontSize: 8, color: "#4a9eff55", fontFamily: "Consolas, monospace" }}>
+                        {p.armor}ap
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -760,7 +958,9 @@ function RadarCanvas() {
               <div style={{ fontSize: 9, color: "#e0b04b88", letterSpacing: 1, marginBottom: 4 }}>TERRORISTS</div>
               {[...(hud.localPlayer?.team === 2 ? [{
                 name: "You", health: hud.localPlayer.health, alive: true, team: 2, enemy: false,
-              }] : []),
+                armor: (hud.localPlayer as Player)?.armor, weapon: (hud.localPlayer as Player)?.weapon,
+                helmet: (hud.localPlayer as Player)?.helmet,
+              } as Player] : []),
               ...(hud.players?.filter(p => p.team === 2) ?? [])].map((p, i) => (
                 <div key={`t-${i}`} style={{
                   display: "flex", alignItems: "center", gap: 8, padding: "3px 0",
@@ -771,10 +971,25 @@ function RadarCanvas() {
                     background: p.alive ? "#e0b04b" : "#333",
                     display: "inline-block", flexShrink: 0,
                   }} />
-                  <span style={{ fontSize: 11, color: "#dcdcdc", flex: 1 }}>{p.name}</span>
-                  <span style={{ fontSize: 10, color: p.alive ? "#e0b04b" : "#555", fontFamily: "Consolas, monospace", width: 36, textAlign: "right" }}>
-                    {p.alive ? `${p.health}hp` : "DEAD"}
-                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: "#dcdcdc", display: "flex", gap: 4, alignItems: "center" }}>
+                      {p.name}
+                      {p.helmet && <span style={{ fontSize: 7, color: "#e0b04b55" }}>H</span>}
+                    </div>
+                    {p.alive && p.weapon && (
+                      <div style={{ fontSize: 8, color: "#777", marginTop: -1 }}>{weaponDisplayName(p.weapon)}</div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 10, color: p.alive ? "#e0b04b" : "#555", fontFamily: "Consolas, monospace" }}>
+                      {p.alive ? `${p.health}hp` : "DEAD"}
+                    </div>
+                    {p.alive && (p.armor ?? 0) > 0 && (
+                      <div style={{ fontSize: 8, color: "#e0b04b55", fontFamily: "Consolas, monospace" }}>
+                        {p.armor}ap
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -785,6 +1000,30 @@ function RadarCanvas() {
         </div>
       )}
 
+      {/* Bomb planted banner */}
+      {hud.status === "live" && hud.bomb?.planted && (
+        <div style={{
+          position: "absolute", top: 40, left: "50%", transform: "translateX(-50%)", zIndex: 15,
+          padding: "4px 20px", pointerEvents: "none",
+          background: "rgba(224,60,60,0.15)", border: "1px solid rgba(224,60,60,0.3)",
+          borderRadius: 2, fontFamily: "Tahoma, sans-serif",
+          animation: "bombPulse 1s ease-in-out infinite alternate",
+        }}>
+          <span style={{ fontSize: 11, fontWeight: "bold", color: "#e03c3c", letterSpacing: 2 }}>
+            BOMB PLANTED
+          </span>
+        </div>
+      )}
+
+      {/* Zoom indicator (bottom-right) */}
+      <div style={{
+        position: "absolute", bottom: 28, right: 12, zIndex: 10,
+        pointerEvents: "none", fontFamily: "Consolas, monospace",
+        fontSize: 10, color: "#ffffff22",
+      }}>
+        {zoomDisplay}%
+      </div>
+
       {/* Bottom bar */}
       <div style={{
         position: "absolute", bottom: 8, left: 0, right: 0,
@@ -792,7 +1031,14 @@ function RadarCanvas() {
         color: "#ffffff15", fontSize: 10, letterSpacing: 2,
         fontFamily: "Tahoma, sans-serif",
       }}>
-        gamesense.cloud web radar {!showDebug && <span style={{ color: "#ffffff0a", marginLeft: 12 }}>[D] debug</span>}
+        gamesense.cloud
+        {hud.map === "DE_NUKE" && (
+          <span style={{ color: showLower ? "#e0b04b44" : "#4a9eff44", marginLeft: 12, cursor: "pointer", pointerEvents: "auto" }}
+            onClick={() => setShowLower(v => !v)}>
+            [N] {showLower ? "LOWER" : "UPPER"}
+          </span>
+        )}
+        {!showDebug && <span style={{ color: "#ffffff0a", marginLeft: 12 }}>[D] debug &middot; scroll zoom &middot; drag pan &middot; dbl-click reset</span>}
       </div>
 
       <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
