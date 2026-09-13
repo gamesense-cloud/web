@@ -60,6 +60,12 @@ interface GrenadeInfo {
   type: "smoke" | "flash" | "he" | "molotov" | "decoy";
 }
 
+interface DeathMarker {
+  x: number; y: number; z: number;
+  team: number; name: string;
+  time: number;
+}
+
 interface ApiResponse {
   status: "live" | "waiting" | "stale" | "no_session" | "error";
   connected: boolean;
@@ -160,6 +166,7 @@ function RadarCanvas() {
   const killFeedRef = useRef<{ name: string; team: number; time: number }[]>([]);
   const [killFeed, setKillFeed] = useState<{ name: string; team: number; time: number }[]>([]);
   const prevAliveRef = useRef<Record<string, boolean>>({});
+  const deathsRef = useRef<DeathMarker[]>([]);
   const trailsRef = useRef<Record<string, { x: number; y: number; t: number }[]>>({});
   const mouseRef = useRef<{ x: number; y: number }>({ x: -1, y: -1 });
   const renderedPlayersRef = useRef<{ sx: number; sy: number; player: Player; isLocal: boolean }[]>([]);
@@ -276,6 +283,7 @@ function RadarCanvas() {
               const wasAlive = prevAliveRef.current[key];
               if (wasAlive === true && !p.alive) {
                 newDeaths.push({ name: key, team: p.team, time: now });
+                deathsRef.current.push({ x: p.x, y: p.y, z: p.z, team: p.team, name: key, time: now });
               }
               prevAliveRef.current[key] = p.alive;
             }
@@ -284,12 +292,14 @@ function RadarCanvas() {
               killFeedRef.current = feed;
               setKillFeed([...feed]);
             }
-            // Expire old entries (older than 8 seconds)
+            // Expire old kill feed entries (8s) and death markers (12s)
             const cutoff = now - 8000;
             if (killFeedRef.current.length > 0 && killFeedRef.current[0].time < cutoff) {
               killFeedRef.current = killFeedRef.current.filter(k => k.time >= cutoff);
               setKillFeed([...killFeedRef.current]);
             }
+            const deathCutoff = now - 12000;
+            deathsRef.current = deathsRef.current.filter(d => d.time >= deathCutoff);
           }
 
           // Auto level detection for multi-level maps (Nuke/Vertigo)
@@ -656,20 +666,45 @@ function RadarCanvas() {
     function drawGrenade(
       ctx: CanvasRenderingContext2D,
       pos: { x: number; y: number },
-      type: string
+      type: string,
+      pxPerUnit?: number
     ) {
       const gc = GRENADE_COLORS[type] || GRENADE_COLORS.he;
       const r = 4;
+      const t = performance.now();
 
-      // Outer glow for active grenades
-      if (type === "smoke" || type === "molotov") {
-        const pulse = 0.4 + 0.3 * Math.sin(performance.now() / 500);
+      if (type === "smoke" && pxPerUnit) {
+        const smokeR = 144 * pxPerUnit;
+        const pulse = 0.4 + 0.3 * Math.sin(t / 800);
+        const grad = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, smokeR);
+        grad.addColorStop(0, `rgba(200,200,200,${(pulse * 0.18).toFixed(3)})`);
+        grad.addColorStop(0.5, `rgba(180,180,180,${(pulse * 0.12).toFixed(3)})`);
+        grad.addColorStop(0.85, `rgba(160,160,160,${(pulse * 0.06).toFixed(3)})`);
+        grad.addColorStop(1, "rgba(140,140,140,0)");
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, type === "smoke" ? 14 : 10, 0, Math.PI * 2);
-        ctx.fillStyle = type === "smoke"
-          ? `rgba(180,180,180,${(pulse * 0.12).toFixed(2)})`
-          : `rgba(255,140,40,${(pulse * 0.15).toFixed(2)})`;
+        ctx.arc(pos.x, pos.y, smokeR, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
         ctx.fill();
+        ctx.strokeStyle = `rgba(180,180,180,${(pulse * 0.15).toFixed(3)})`;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (type === "molotov" && pxPerUnit) {
+        const fireR = 120 * pxPerUnit;
+        const flicker = 0.5 + 0.3 * Math.sin(t / 200) + 0.2 * Math.sin(t / 137);
+        const grad = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, fireR);
+        grad.addColorStop(0, `rgba(255,100,20,${(flicker * 0.2).toFixed(3)})`);
+        grad.addColorStop(0.4, `rgba(255,140,40,${(flicker * 0.14).toFixed(3)})`);
+        grad.addColorStop(0.8, `rgba(255,80,20,${(flicker * 0.06).toFixed(3)})`);
+        grad.addColorStop(1, "rgba(200,60,10,0)");
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, fireR, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255,120,30,${(flicker * 0.2).toFixed(3)})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
 
       ctx.beginPath();
@@ -809,7 +844,8 @@ function RadarCanvas() {
           ctx.globalAlpha = 1;
         }
 
-        // Draw grenades
+        // Draw grenades with proper area-of-effect radii
+        const pxPerUnit = radarSize / (mapInfo.scale * 1024);
         if (data.grenades) {
           for (const g of data.grenades) {
             const gpos = worldToCanvas(g.x, g.y, mapInfo, radarSize, 0, 0);
@@ -817,13 +853,41 @@ function RadarCanvas() {
               const onLower = g.z < zSplit;
               ctx.globalAlpha = (nukeLevel === "lower") === onLower ? 1.0 : 0.25;
             }
-            drawGrenade(ctx, gpos, g.type);
+            drawGrenade(ctx, gpos, g.type, pxPerUnit);
             ctx.globalAlpha = 1;
           }
         }
 
-        // Draw player trails
+        // Draw fading death markers
         const now = performance.now();
+        const nowMs = Date.now();
+        for (const d of deathsRef.current) {
+          const age = nowMs - d.time;
+          if (age > 12000) continue;
+          const fade = age < 2000 ? 1.0 : Math.max(0, 1 - (age - 2000) / 10000);
+          const dpos = worldToCanvas(d.x, d.y, mapInfo, radarSize, 0, 0);
+          if (nukeLevel) {
+            const onLower = d.z < zSplit;
+            ctx.globalAlpha = ((nukeLevel === "lower") === onLower ? fade : fade * 0.2);
+          } else {
+            ctx.globalAlpha = fade;
+          }
+          const dColor = d.team === 3 ? "#4a9eff" : d.team === 2 ? "#e0b04b" : "#888";
+          ctx.strokeStyle = dColor;
+          ctx.lineWidth = 1.5;
+          const sz = 5;
+          ctx.beginPath(); ctx.moveTo(dpos.x - sz, dpos.y - sz); ctx.lineTo(dpos.x + sz, dpos.y + sz); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(dpos.x + sz, dpos.y - sz); ctx.lineTo(dpos.x - sz, dpos.y + sz); ctx.stroke();
+          if (fade > 0.3) {
+            ctx.font = "7px Tahoma, sans-serif";
+            ctx.fillStyle = dColor;
+            ctx.globalAlpha = fade * 0.6;
+            ctx.fillText(d.name.length > 8 ? d.name.slice(0, 8) + ".." : d.name, dpos.x + sz + 3, dpos.y + 2);
+          }
+          ctx.globalAlpha = 1;
+        }
+
+        // Draw player trails
         const trails = trailsRef.current;
         for (const [key, pts] of Object.entries(trails)) {
           if (pts.length < 2) continue;
@@ -1437,13 +1501,41 @@ function RadarCanvas() {
         );
       })()}
 
-      {/* Zoom indicator (bottom-right) */}
+      {/* Zoom controls (bottom-right) */}
       <div style={{
         position: "absolute", bottom: 28, right: 12, zIndex: 10,
-        pointerEvents: "none", fontFamily: "Consolas, monospace",
-        fontSize: 10, color: "#ffffff22",
+        fontFamily: "Consolas, monospace", fontSize: 10,
+        display: "flex", alignItems: "center", gap: 6,
       }}>
-        {zoomDisplay}%
+        <button
+          onClick={() => {
+            zoomRef.current = Math.max(zoomRef.current / 1.3, 0.4);
+            setZoomDisplay(Math.round(zoomRef.current * 100));
+          }}
+          style={{
+            background: "none", border: "1px solid #ffffff15", borderRadius: 2,
+            color: "#ffffff33", fontSize: 14, width: 22, height: 22, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+          }}
+        >
+          -
+        </button>
+        <span style={{ color: "#ffffff22", minWidth: 32, textAlign: "center", pointerEvents: "none" }}>
+          {zoomDisplay}%
+        </span>
+        <button
+          onClick={() => {
+            zoomRef.current = Math.min(zoomRef.current * 1.3, 4.0);
+            setZoomDisplay(Math.round(zoomRef.current * 100));
+          }}
+          style={{
+            background: "none", border: "1px solid #ffffff15", borderRadius: 2,
+            color: "#ffffff33", fontSize: 14, width: 22, height: 22, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+          }}
+        >
+          +
+        </button>
       </div>
 
       {/* Bottom bar */}
