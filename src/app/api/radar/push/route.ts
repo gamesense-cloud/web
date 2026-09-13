@@ -11,10 +11,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "invalid session_id" }, { status: 400 });
     }
 
-    console.log(
-      `[radar/push] session=${session_id.slice(0, 8)}… connected=${gameData.connected} map=${gameData.map ?? "none"} players=${gameData.players?.length ?? 0}`
-    );
-
     const db = supabaseAdmin();
     const { error } = await db.from("radar_data").upsert(
       {

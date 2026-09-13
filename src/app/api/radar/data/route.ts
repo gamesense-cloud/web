@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 
+const NO_CACHE = { "Cache-Control": "no-store, no-cache, must-revalidate" };
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const session = searchParams.get("session");
 
   if (!session) {
-    return NextResponse.json({ status: "error", error: "missing session" }, { status: 400 });
+    return NextResponse.json({ status: "error", error: "missing session" }, { status: 400, headers: NO_CACHE });
   }
 
   try {
@@ -18,24 +20,22 @@ export async function GET(req: Request) {
       .single();
 
     if (error || !data) {
-      console.log(`[radar/data] session=${session.slice(0, 8)}… NOT FOUND`);
       return NextResponse.json({
         status: "no_session",
         connected: false,
         reason: "session_not_found",
-      });
+      }, { headers: NO_CACHE });
     }
 
     const age = Date.now() - new Date(data.updated_at).getTime();
 
     if (age > 10000) {
-      console.log(`[radar/data] session=${session.slice(0, 8)}… STALE (${Math.round(age / 1000)}s old)`);
       return NextResponse.json({
         status: "stale",
         connected: false,
         reason: "stale",
         age_ms: age,
-      });
+      }, { headers: NO_CACHE });
     }
 
     const gd = data.game_data as Record<string, unknown>;
@@ -45,13 +45,9 @@ export async function GET(req: Request) {
       age_ms: age,
     };
 
-    console.log(
-      `[radar/data] session=${session.slice(0, 8)}… status=${result.status} age=${Math.round(age)}ms map=${gd.map ?? "none"}`
-    );
-
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: NO_CACHE });
   } catch (e) {
     console.error("[radar/data] exception:", e);
-    return NextResponse.json({ status: "error", connected: false }, { status: 500 });
+    return NextResponse.json({ status: "error", connected: false }, { status: 500, headers: NO_CACHE });
   }
 }
