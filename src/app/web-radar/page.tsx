@@ -48,7 +48,7 @@ interface ApiResponse {
   localPlayer?: Player & { yaw: number };
   players?: Player[];
   debug?: Record<string, unknown>;
-  entityScan?: { total: number; null: number; noPawn: number; noTeam: number; added: number };
+  entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
   entDebug?: EntDebug[];
 }
 
@@ -96,7 +96,7 @@ function RadarCanvas() {
     status: RadarStatus; map: string; ct: number; t: number;
     reason?: string; age?: number; pollCount: number;
     debug?: Record<string, unknown>;
-    entityScan?: { total: number; null: number; noPawn: number; noTeam: number; added: number };
+    entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
     entDebug?: EntDebug[];
     players?: Player[];
     localPlayer?: { x: number; y: number; z: number; health: number; team: number };
@@ -292,16 +292,16 @@ function RadarCanvas() {
       }
     }
 
-    function drawViewCone(ctx: CanvasRenderingContext2D, cx: number, cy: number, yaw: number) {
+    function drawViewCone(ctx: CanvasRenderingContext2D, cx: number, cy: number, yaw: number, color: string, isLocal: boolean) {
       const angle = -yaw * Math.PI / 180;
-      const half = 30 * Math.PI / 180;
-      const len = 35;
+      const half = (isLocal ? 30 : 25) * Math.PI / 180;
+      const len = isLocal ? 35 : 25;
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + Math.cos(angle - half) * len, cy + Math.sin(angle - half) * len);
       ctx.arc(cx, cy, len, angle - half, angle + half);
       ctx.closePath();
-      ctx.fillStyle = "rgba(142,111,247,0.15)";
+      ctx.fillStyle = color;
       ctx.fill();
     }
 
@@ -341,7 +341,12 @@ function RadarCanvas() {
         return;
       }
 
-      if (isLocal && yaw != null) drawViewCone(ctx, pos.x, pos.y, yaw);
+      if (yaw != null) {
+        const coneColor = isLocal ? "rgba(142,111,247,0.15)"
+          : isEnemy ? "rgba(224,101,106,0.12)"
+          : "rgba(74,158,255,0.10)";
+        drawViewCone(ctx, pos.x, pos.y, yaw, coneColor, isLocal);
+      }
 
       const r = isLocal ? 7 : 5;
       ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
@@ -432,7 +437,7 @@ function RadarCanvas() {
             const key = p.name || `p${i}`;
             const ip = getInterpolated(key, p);
             const pos = worldToCanvas(ip.x, ip.y, mapInfo, radarSize, 0, 0);
-            drawPlayer(ctx, pos, false, ip.enemy, ip.dormant, ip.alive, ip.health, ip.name);
+            drawPlayer(ctx, pos, false, ip.enemy, ip.dormant, ip.alive, ip.health, ip.name, ip.yaw ?? p.yaw);
           }
         }
       }
@@ -563,7 +568,7 @@ function RadarCanvas() {
         )}
         {hud.entityScan && (
           <div>
-            entities: {hud.entityScan.added} found | {hud.entityScan.null} null | {hud.entityScan.noPawn} noPawn | {hud.entityScan.noTeam} noTeam
+            entities: {hud.entityScan.added} found | {hud.entityScan.null} null | {hud.entityScan.noPawn} noPawn | {hud.entityScan.badPos ?? hud.entityScan.noTeam ?? 0} badPos
           </div>
         )}
         {hud.players && hud.players.length > 0 && (
