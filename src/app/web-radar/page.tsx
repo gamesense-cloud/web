@@ -39,6 +39,7 @@ interface Player {
   team: number; alive: boolean; health: number;
   name: string; dormant: boolean; enemy: boolean;
   yaw?: number;
+  vx?: number; vy?: number;
   armor?: number; weapon?: string;
   scoped?: boolean; helmet?: boolean; defuser?: boolean; defusing?: boolean;
   flashAlpha?: number; money?: number;
@@ -69,6 +70,16 @@ interface DeathMarker {
   time: number;
 }
 
+interface RoundPhase {
+  freeze: boolean;
+  warmup: boolean;
+  bombPlanted: boolean;
+  gamePhase: number;
+  roundsPlayed: number;
+  roundStartTime?: number;
+  roundTime?: number;
+}
+
 interface ApiResponse {
   status: "live" | "waiting" | "stale" | "no_session" | "error";
   connected: boolean;
@@ -83,6 +94,7 @@ interface ApiResponse {
   tickCount?: number;
   tScore?: number;
   ctScore?: number;
+  roundPhase?: RoundPhase;
   debug?: Record<string, unknown>;
   entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
   entDebug?: EntDebug[];
@@ -184,6 +196,7 @@ function RadarCanvas() {
     ctAlive: number; tAlive: number;
     reason?: string; age?: number; pollCount: number;
     curtime?: number; tickCount?: number;
+    roundPhase?: RoundPhase;
     debug?: Record<string, unknown>;
     entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
     entDebug?: EntDebug[];
