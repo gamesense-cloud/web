@@ -253,7 +253,7 @@ export default function Docs() {
             Current money via <code className="text-text-faint">m_pInGameMoneyServices</code>.
           </Fn>
           <Fn name="entity.GetColor" args="ent" ret="integer">
-            Competitive teammate color index (0–4), or -1 if unavailable.
+            Competitive teammate color index: 0=blue, 1=green, 2=yellow, 3=orange, 4=purple. Returns -1 if unavailable.
           </Fn>
         </Section>
 
