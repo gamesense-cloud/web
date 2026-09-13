@@ -26,7 +26,7 @@ const FEATURES = [
   },
   {
     title: "Lua Scripting",
-    desc: "22-module API. Engine, entity, drawing, events, HTTP, FFI and more.",
+    desc: "23-module API. Engine, entity, drawing, events, HTTP, FFI and more.",
     href: "/docs",
     color: "var(--ok)",
   },

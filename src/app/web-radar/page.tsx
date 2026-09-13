@@ -156,6 +156,7 @@ function RadarCanvas() {
   const touchRef = useRef<{ id1: number; id2: number; dist: number; cx: number; cy: number }>({ id1: -1, id2: -1, dist: 0, cx: 0, cy: 0 });
   const [showDebug, setShowDebug] = useState(false);
   const [showScoreboard, setShowScoreboard] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [showLower, setShowLower] = useState(false);
   const showLowerRef = useRef(false);
   const nukeLowerImgRef = useRef<HTMLImageElement | null>(null);
@@ -401,6 +402,7 @@ function RadarCanvas() {
       if (e.key === "d" || e.key === "D") setShowDebug(v => !v);
       if (e.key === "n" || e.key === "N") setShowLower(v => !v);
       if (e.key === "f" || e.key === "F") setFollowMode(v => !v);
+      if (e.key === "?" || e.key === "h" || e.key === "H") setShowHelp(v => !v);
       if (e.key === "Tab") { e.preventDefault(); setShowScoreboard(true); }
     }
     function onUp(e: KeyboardEvent) {
@@ -1552,7 +1554,7 @@ function RadarCanvas() {
             [N] {showLower ? "LOWER" : "UPPER"}
           </span>
         )}
-        {!showDebug && <span style={{ color: "#ffffff0a", marginLeft: 12 }}>[D] debug &middot; [F] follow &middot; scroll zoom &middot; drag pan &middot; dbl-click reset</span>}
+        {!showDebug && <span style={{ color: "#ffffff0a", marginLeft: 12 }}>[D] debug &middot; [F] follow &middot; [?] help</span>}
       </div>
 
       {/* Flash overlay when local player is flashed */}
@@ -1585,6 +1587,67 @@ function RadarCanvas() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Help overlay */}
+      {showHelp && (
+        <div
+          onClick={() => setShowHelp(false)}
+          style={{
+            position: "absolute", inset: 0, zIndex: 30,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(10,14,20,0.9)", cursor: "pointer",
+          }}
+        >
+          <div style={{
+            background: "#111418", border: "1px solid #1e1e1e", borderRadius: 4,
+            padding: "20px 28px", fontFamily: "Tahoma, Verdana, sans-serif",
+            minWidth: 260, maxWidth: 340,
+          }}>
+            <div style={{ fontSize: 13, color: "#8e6ff7", fontWeight: "bold", marginBottom: 14, letterSpacing: 1 }}>
+              KEYBOARD SHORTCUTS
+            </div>
+            {[
+              { key: "Tab", desc: "Scoreboard" },
+              { key: "D", desc: "Debug overlay" },
+              { key: "N", desc: "Toggle level (Nuke/Vertigo)" },
+              { key: "F", desc: "Follow local player" },
+              { key: "H / ?", desc: "This help" },
+            ].map(s => (
+              <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+                <span style={{
+                  fontSize: 10, color: "#dcdcdc", fontFamily: "Consolas, monospace",
+                  background: "#1a1a1a", border: "1px solid #333", borderRadius: 3,
+                  padding: "2px 8px", minWidth: 50, textAlign: "center",
+                }}>
+                  {s.key}
+                </span>
+                <span style={{ fontSize: 11, color: "#888" }}>{s.desc}</span>
+              </div>
+            ))}
+            <div style={{ marginTop: 12, borderTop: "1px solid #1e1e1e", paddingTop: 10 }}>
+              {[
+                { key: "Scroll", desc: "Zoom in/out" },
+                { key: "Drag", desc: "Pan the map" },
+                { key: "Dbl-click", desc: "Reset view" },
+                { key: "Hover", desc: "Player tooltip" },
+              ].map(s => (
+                <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+                  <span style={{
+                    fontSize: 9, color: "#999", fontFamily: "Consolas, monospace",
+                    minWidth: 60,
+                  }}>
+                    {s.key}
+                  </span>
+                  <span style={{ fontSize: 10, color: "#555" }}>{s.desc}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ textAlign: "center", marginTop: 12, fontSize: 9, color: "#333" }}>
+              Click or press H to close
+            </div>
+          </div>
         </div>
       )}
 
