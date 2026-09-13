@@ -6,7 +6,7 @@ export async function GET(req: Request) {
   const session = searchParams.get("session");
 
   if (!session) {
-    return NextResponse.json({ error: "missing session" }, { status: 400 });
+    return NextResponse.json({ status: "error", error: "missing session" }, { status: 400 });
   }
 
   try {
@@ -18,16 +18,40 @@ export async function GET(req: Request) {
       .single();
 
     if (error || !data) {
-      return NextResponse.json({ connected: false, error: "session not found" });
+      console.log(`[radar/data] session=${session.slice(0, 8)}… NOT FOUND`);
+      return NextResponse.json({
+        status: "no_session",
+        connected: false,
+        reason: "session_not_found",
+      });
     }
 
     const age = Date.now() - new Date(data.updated_at).getTime();
+
     if (age > 10000) {
-      return NextResponse.json({ connected: false, stale: true });
+      console.log(`[radar/data] session=${session.slice(0, 8)}… STALE (${Math.round(age / 1000)}s old)`);
+      return NextResponse.json({
+        status: "stale",
+        connected: false,
+        reason: "stale",
+        age_ms: age,
+      });
     }
 
-    return NextResponse.json(data.game_data);
-  } catch {
-    return NextResponse.json({ connected: false }, { status: 500 });
+    const gd = data.game_data as Record<string, unknown>;
+    const result = {
+      ...gd,
+      status: gd.connected ? "live" : "waiting",
+      age_ms: age,
+    };
+
+    console.log(
+      `[radar/data] session=${session.slice(0, 8)}… status=${result.status} age=${Math.round(age)}ms map=${gd.map ?? "none"}`
+    );
+
+    return NextResponse.json(result);
+  } catch (e) {
+    console.error("[radar/data] exception:", e);
+    return NextResponse.json({ status: "error", connected: false }, { status: 500 });
   }
 }

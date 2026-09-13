@@ -23,12 +23,27 @@ interface Player {
   yaw?: number;
 }
 
-interface GameData {
+interface ApiResponse {
+  status: "live" | "waiting" | "stale" | "no_session" | "error";
   connected: boolean;
+  reason?: string;
+  age_ms?: number;
   map?: string;
   localPlayer?: Player & { yaw: number };
   players?: Player[];
+  debug?: Record<string, unknown>;
 }
+
+type RadarStatus = "connecting" | "no_session" | "stale" | "waiting" | "live" | "error";
+
+const STATUS_CONFIG: Record<RadarStatus, { label: string; color: string }> = {
+  connecting: { label: "CONNECTING", color: "#808080" },
+  no_session: { label: "NO SESSION", color: "#e0656a" },
+  stale:      { label: "STALE",      color: "#e0b04b" },
+  waiting:    { label: "WAITING",    color: "#e0b04b" },
+  live:       { label: "LIVE",       color: "#5fc98a" },
+  error:      { label: "ERROR",      color: "#e0656a" },
+};
 
 function worldToCanvas(
   wx: number, wy: number,
@@ -48,17 +63,21 @@ function RadarCanvas() {
   const session = params.get("session");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const gameDataRef = useRef<GameData | null>(null);
+  const gameDataRef = useRef<ApiResponse | null>(null);
   const prevPosRef = useRef<Record<string, Player>>({});
   const currPosRef = useRef<Record<string, Player>>({});
   const lastUpdateRef = useRef(0);
-  const connectedRef = useRef(false);
   const zoomRef = useRef(1.0);
   const panRef = useRef({ x: 0, y: 0 });
   const dragRef = useRef({ active: false, startX: 0, startY: 0, panX: 0, panY: 0 });
   const mapImgRef = useRef<Record<string, HTMLImageElement | null>>({});
-  const [status, setStatus] = useState<{ connected: boolean; map: string; ct: number; t: number }>({
-    connected: false, map: "---", ct: 0, t: 0,
+  const pollCountRef = useRef(0);
+
+  const [hud, setHud] = useState<{
+    status: RadarStatus; map: string; ct: number; t: number;
+    reason?: string; age?: number; pollCount: number;
+  }>({
+    status: "connecting", map: "---", ct: 0, t: 0, pollCount: 0,
   });
 
   const getInterpolated = useCallback((key: string, current: Player): Player => {
@@ -80,27 +99,61 @@ function RadarCanvas() {
 
     async function poll() {
       while (alive) {
+        pollCountRef.current++;
+        const n = pollCountRef.current;
+
         try {
           const res = await fetch(`/api/radar/data?session=${session}`);
-          if (!res.ok) throw new Error();
-          const data: GameData = await res.json();
+          const raw = await res.json();
+          const data = raw as ApiResponse;
 
-          prevPosRef.current = currPosRef.current;
-          const next: Record<string, Player> = {};
-          if (data.localPlayer) next["__local"] = data.localPlayer;
-          if (data.players) {
-            for (let i = 0; i < data.players.length; i++) {
-              next[data.players[i].name || `p${i}`] = data.players[i];
-            }
+          // Debug log every response (throttled after first 10)
+          if (n <= 10 || n % 25 === 0) {
+            console.log(
+              `[radar] poll #${n} status=${data.status} connected=${data.connected} map=${data.map ?? "none"} players=${data.players?.length ?? 0} age=${data.age_ms ?? "?"}ms`,
+              data.reason ? `reason=${data.reason}` : "",
+              data.debug ? `debug=${JSON.stringify(data.debug)}` : ""
+            );
           }
-          currPosRef.current = next;
-          gameDataRef.current = data;
-          lastUpdateRef.current = performance.now();
-          connectedRef.current = !!data.connected;
 
-          // Update status for the HUD
+          // Determine radar status from API response
+          let radarStatus: RadarStatus;
+          if (!res.ok) {
+            radarStatus = "error";
+          } else if (data.status === "no_session") {
+            radarStatus = "no_session";
+          } else if (data.status === "stale") {
+            radarStatus = "stale";
+          } else if (data.status === "waiting" || (data.connected === false && data.status !== "no_session")) {
+            radarStatus = "waiting";
+          } else if (data.connected) {
+            radarStatus = "live";
+          } else {
+            radarStatus = "waiting";
+          }
+
+          // Only store game data for rendering when actually live
+          if (radarStatus === "live") {
+            prevPosRef.current = currPosRef.current;
+            const next: Record<string, Player> = {};
+            if (data.localPlayer) next["__local"] = data.localPlayer;
+            if (data.players) {
+              for (let i = 0; i < data.players.length; i++) {
+                next[data.players[i].name || `p${i}`] = data.players[i];
+              }
+            }
+            currPosRef.current = next;
+            gameDataRef.current = data;
+            lastUpdateRef.current = performance.now();
+          } else {
+            gameDataRef.current = null;
+            currPosRef.current = {};
+            prevPosRef.current = {};
+          }
+
+          // Count alive players
           let ct = 0, t = 0;
-          if (data.connected) {
+          if (radarStatus === "live") {
             if (data.localPlayer?.alive !== false) {
               if (data.localPlayer?.team === 3) ct++;
               else if (data.localPlayer?.team === 2) t++;
@@ -112,21 +165,28 @@ function RadarCanvas() {
               }
             });
           }
-          setStatus({
-            connected: !!data.connected,
+
+          setHud({
+            status: radarStatus,
             map: data.map?.toUpperCase() || "---",
             ct, t,
+            reason: data.reason,
+            age: data.age_ms,
+            pollCount: n,
           });
-        } catch {
-          connectedRef.current = false;
-          setStatus(s => ({ ...s, connected: false }));
+        } catch (e) {
+          console.error(`[radar] poll #${n} FETCH ERROR:`, e);
+          gameDataRef.current = null;
+          setHud(s => ({ ...s, status: "error", pollCount: n }));
         }
+
         await new Promise(r => setTimeout(r, 200));
       }
     }
 
+    console.log(`[radar] starting poll loop for session=${session}`);
     poll();
-    return () => { alive = false; };
+    return () => { alive = false; console.log("[radar] poll loop stopped"); };
   }, [session]);
 
   // Canvas resize
@@ -355,33 +415,28 @@ function RadarCanvas() {
     return (
       <div style={{
         position: "fixed", inset: 0, zIndex: 100,
-        background: "var(--shell)", display: "flex", flexDirection: "column",
+        background: "#0a0e14", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", gap: 16,
-        fontFamily: "var(--ui)",
+        fontFamily: "Tahoma, Verdana, sans-serif",
       }}>
-        <div style={{ color: "var(--accent)", fontSize: 20, fontWeight: "bold" }}>
-          gamesense<span style={{ color: "var(--dim)" }}>.cloud</span>
+        <div style={{ color: "#8e6ff7", fontSize: 20, fontWeight: "bold" }}>
+          gamesense<span style={{ color: "#808080" }}>.cloud</span>
         </div>
-        <div style={{ color: "var(--text)", fontSize: 14 }}>Web Radar</div>
+        <div style={{ color: "#dcdcdc", fontSize: 14 }}>Web Radar</div>
         <div style={{
           marginTop: 24, padding: "16px 24px",
-          background: "var(--surface)", border: "1px solid var(--border)",
-          maxWidth: 400, textAlign: "center",
+          background: "#131313", border: "1px solid #1e1e1e",
+          maxWidth: 400, textAlign: "center", borderRadius: 2,
         }}>
-          <p style={{ color: "var(--dim)", fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+          <p style={{ color: "#808080", fontSize: 12, lineHeight: 1.6, margin: 0 }}>
             No session ID provided. Enable the web radar from the cheat to get a shareable link.
           </p>
-          <pre style={{
-            marginTop: 12, padding: "8px 12px",
-            background: "var(--field)", border: "1px solid var(--border)",
-            color: "var(--faint)", fontSize: 11, fontFamily: "var(--mono)",
-          }}>
-            radar.start()
-          </pre>
         </div>
       </div>
     );
   }
+
+  const sc = STATUS_CONFIG[hud.status];
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "#0a0e14", cursor: "crosshair" }}>
@@ -399,7 +454,7 @@ function RadarCanvas() {
           </span>
           <span style={{ color: "#555555", fontSize: 11 }}>|</span>
           <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 1, color: "#dcdcdc", fontFamily: "Tahoma, sans-serif" }}>
-            {status.map}
+            {hud.status === "live" ? hud.map : "---"}
           </span>
         </div>
 
@@ -407,20 +462,66 @@ function RadarCanvas() {
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{
               display: "inline-block", width: 6, height: 6, borderRadius: "50%",
-              background: status.connected ? "#5fc98a" : "#e0656a",
-              boxShadow: `0 0 4px ${status.connected ? "#5fc98a44" : "#e0656a44"}`,
+              background: sc.color,
+              boxShadow: `0 0 4px ${sc.color}44`,
+              animation: hud.status === "live" ? undefined : "none",
             }} />
-            <span style={{ fontSize: 11, color: status.connected ? "#5fc98a" : "#e0656a", fontFamily: "Tahoma, sans-serif" }}>
-              {status.connected ? "LIVE" : "OFFLINE"}
+            <span style={{ fontSize: 11, color: sc.color, fontFamily: "Tahoma, sans-serif" }}>
+              {sc.label}
             </span>
           </div>
-          <span style={{ fontSize: 12, color: "#4a9eff", fontFamily: "Consolas, monospace" }}>
-            CT {status.ct}
-          </span>
-          <span style={{ fontSize: 12, color: "#e0b04b", fontFamily: "Consolas, monospace" }}>
-            T {status.t}
-          </span>
+          {hud.status === "live" && (
+            <>
+              <span style={{ fontSize: 12, color: "#4a9eff", fontFamily: "Consolas, monospace" }}>
+                CT {hud.ct}
+              </span>
+              <span style={{ fontSize: 12, color: "#e0b04b", fontFamily: "Consolas, monospace" }}>
+                T {hud.t}
+              </span>
+            </>
+          )}
         </div>
+      </div>
+
+      {/* Center status message when not live */}
+      {hud.status !== "live" && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 5,
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          pointerEvents: "none",
+        }}>
+          <div style={{
+            padding: "20px 32px", background: "rgba(19,19,19,0.9)",
+            border: "1px solid #1e1e1e", borderRadius: 2, textAlign: "center",
+          }}>
+            <div style={{ fontSize: 14, color: sc.color, fontFamily: "Tahoma, sans-serif", fontWeight: "bold" }}>
+              {sc.label}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 11, color: "#555", fontFamily: "Tahoma, sans-serif" }}>
+              {hud.status === "no_session" && "No active DLL session found for this link."}
+              {hud.status === "stale" && "DLL stopped sending data. Session may have ended."}
+              {hud.status === "waiting" && (hud.reason === "sdk_not_initialized"
+                ? "DLL connected — waiting for SDK to initialize..."
+                : "DLL connected — waiting for game to start...")}
+              {hud.status === "connecting" && "Connecting to session..."}
+              {hud.status === "error" && "Failed to reach the server."}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Debug overlay (bottom-left) */}
+      <div style={{
+        position: "absolute", bottom: 28, left: 8, zIndex: 10,
+        fontSize: 9, color: "#333", fontFamily: "Consolas, monospace",
+        pointerEvents: "none", lineHeight: 1.5,
+      }}>
+        <div>polls: {hud.pollCount}</div>
+        <div>status: {hud.status}</div>
+        {hud.reason && <div>reason: {hud.reason}</div>}
+        {hud.age != null && <div>age: {Math.round(hud.age)}ms</div>}
+        <div>session: {session?.slice(0, 8)}…</div>
       </div>
 
       {/* Bottom bar */}
