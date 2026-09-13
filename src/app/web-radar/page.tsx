@@ -101,6 +101,7 @@ interface ApiResponse {
   debug?: Record<string, unknown>;
   entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
   entDebug?: EntDebug[];
+  kills?: { killer: string; victim: string; weapon: string; hs: boolean; t: number }[];
 }
 
 type RadarStatus = "connecting" | "no_session" | "stale" | "waiting" | "live" | "error";
@@ -188,8 +189,8 @@ function RadarCanvas() {
   const [followMode, setFollowMode] = useState(false);
   const followRef = useRef(false);
   const [flashOverlay, setFlashOverlay] = useState(0);
-  const killFeedRef = useRef<{ name: string; team: number; time: number }[]>([]);
-  const [killFeed, setKillFeed] = useState<{ name: string; team: number; time: number }[]>([]);
+  const killFeedRef = useRef<{ killer: string; victim: string; weapon: string; headshot: boolean; killerTeam: number; victimTeam: number; time: number }[]>([]);
+  const [killFeed, setKillFeed] = useState<{ killer: string; victim: string; weapon: string; headshot: boolean; killerTeam: number; victimTeam: number; time: number }[]>([]);
   const prevAliveRef = useRef<Record<string, boolean>>({});
   const deathsRef = useRef<DeathMarker[]>([]);
   const trailsRef = useRef<Record<string, { x: number; y: number; t: number }[]>>({});
@@ -326,24 +327,44 @@ function RadarCanvas() {
           const ctScore = data.ctScore as number | undefined;
           const tScore = data.tScore as number | undefined;
 
-          // Track kills (alive → dead transitions)
+          // Track kills — prefer DLL kill feed (killer→victim pairs), fallback to alive→dead transitions
           if (radarStatus === "live" && data.players) {
             const now = Date.now();
-            const newDeaths: { name: string; team: number; time: number }[] = [];
+
+            // Build name→team map from current player data
+            const teamByName: Record<string, number> = {};
+            if (data.localPlayer) teamByName[data.localPlayer.name || "local"] = data.localPlayer.team;
+            for (const p of data.players) if (p.name) teamByName[p.name] = p.team;
+
+            // Use DLL kill feed if present
+            if (data.kills && Array.isArray(data.kills) && data.kills.length > 0) {
+              type KillEntry = { killer: string; victim: string; weapon: string; hs: boolean; t: number };
+              const dllKills = data.kills as KillEntry[];
+              const existing = new Set(killFeedRef.current.map(k => `${k.killer}-${k.victim}-${k.weapon}`));
+              const newEntries = dllKills
+                .filter(k => !existing.has(`${k.killer}-${k.victim}-${k.weapon}`))
+                .map(k => ({
+                  killer: k.killer, victim: k.victim, weapon: k.weapon, headshot: k.hs,
+                  killerTeam: teamByName[k.killer] ?? 0, victimTeam: teamByName[k.victim] ?? 0,
+                  time: now,
+                }));
+              if (newEntries.length > 0) {
+                const feed = [...killFeedRef.current, ...newEntries].slice(-8);
+                killFeedRef.current = feed;
+                setKillFeed([...feed]);
+              }
+            }
+
+            // Track death markers from alive→dead transitions
             for (const p of data.players) {
               const key = p.name || "?";
               const wasAlive = prevAliveRef.current[key];
               if (wasAlive === true && !p.alive) {
-                newDeaths.push({ name: key, team: p.team, time: now });
                 deathsRef.current.push({ x: p.x, y: p.y, z: p.z, team: p.team, name: key, time: now });
               }
               prevAliveRef.current[key] = p.alive;
             }
-            if (newDeaths.length > 0) {
-              const feed = [...killFeedRef.current, ...newDeaths].slice(-6);
-              killFeedRef.current = feed;
-              setKillFeed([...feed]);
-            }
+
             // Expire old kill feed entries (8s) and death markers (12s)
             const cutoff = now - 8000;
             if (killFeedRef.current.length > 0 && killFeedRef.current[0].time < cutoff) {
@@ -1862,7 +1883,7 @@ function RadarCanvas() {
         }} />
       )}
 
-      {/* Kill feed (top-right, below player list) */}
+      {/* Kill feed (top-left, below HUD bar) */}
       {killFeed.length > 0 && hud.status === "live" && !showScoreboard && (
         <div style={{
           position: "absolute", top: 44, left: 8, zIndex: 12,
@@ -1871,14 +1892,20 @@ function RadarCanvas() {
           {killFeed.map((k, i) => {
             const age = Date.now() - k.time;
             const opacity = age > 6000 ? Math.max(0, 1 - (age - 6000) / 2000) : 1;
+            const killerColor = k.killerTeam === 3 ? "#4a9eff" : k.killerTeam === 2 ? "#e0b04b" : "#aaa";
+            const victimColor = k.victimTeam === 3 ? "#4a9eff" : k.victimTeam === 2 ? "#e0b04b" : "#aaa";
+            const weaponClean = k.weapon.replace("weapon_", "");
             return (
-              <div key={`${k.name}-${k.time}`} style={{
+              <div key={`${k.killer}-${k.victim}-${k.time}-${i}`} style={{
                 fontSize: 10, marginBottom: 2, opacity,
-                color: k.team === 3 ? "#4a9eff" : k.team === 2 ? "#e0b04b" : "#888",
-                display: "flex", alignItems: "center", gap: 4,
+                display: "flex", alignItems: "center", gap: 3,
+                background: "rgba(10,14,20,0.6)", padding: "1px 6px", borderRadius: 3,
               }}>
-                <span style={{ color: "#e0656a", fontSize: 8 }}>&#x2620;</span>
-                {k.name}
+                <span style={{ color: killerColor, fontWeight: 600 }}>{k.killer}</span>
+                <span style={{ color: "#666", fontSize: 8 }}>{weaponClean}</span>
+                {k.headshot && <span style={{ color: "#e0656a", fontSize: 8 }} title="Headshot">HS</span>}
+                <span style={{ color: "#e0656a", fontSize: 9 }}>&#x2192;</span>
+                <span style={{ color: victimColor, fontWeight: 600 }}>{k.victim}</span>
               </div>
             );
           })}
