@@ -91,6 +91,7 @@ function RadarCanvas() {
   const pollCountRef = useRef(0);
   const mapImgRef = useRef<HTMLImageElement | null>(null);
   const mapImgNameRef = useRef<string>("");
+  const touchRef = useRef<{ id1: number; id2: number; dist: number; cx: number; cy: number }>({ id1: -1, id2: -1, dist: 0, cx: 0, cy: 0 });
   const [showDebug, setShowDebug] = useState(false);
   const [showScoreboard, setShowScoreboard] = useState(false);
 
@@ -279,17 +280,64 @@ function RadarCanvas() {
     function onUp() { dragRef.current.active = false; }
     function onDbl() { zoomRef.current = 1.0; panRef.current = { x: 0, y: 0 }; }
 
+    function touchDist(t: TouchList) {
+      const dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 1) {
+        e.preventDefault();
+        dragRef.current = { active: true, startX: e.touches[0].clientX, startY: e.touches[0].clientY, panX: panRef.current.x, panY: panRef.current.y };
+      } else if (e.touches.length === 2) {
+        e.preventDefault();
+        touchRef.current = {
+          id1: e.touches[0].identifier, id2: e.touches[1].identifier,
+          dist: touchDist(e.touches),
+          cx: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+          cy: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        };
+      }
+    }
+    function onTouchMove(e: TouchEvent) {
+      if (e.touches.length === 1 && dragRef.current.active) {
+        panRef.current.x = dragRef.current.panX + (e.touches[0].clientX - dragRef.current.startX);
+        panRef.current.y = dragRef.current.panY + (e.touches[0].clientY - dragRef.current.startY);
+      } else if (e.touches.length === 2 && touchRef.current.id1 >= 0) {
+        e.preventDefault();
+        const newDist = touchDist(e.touches);
+        const scale = newDist / touchRef.current.dist;
+        const old = zoomRef.current;
+        zoomRef.current = Math.min(Math.max(old * scale, 0.4), 4.0);
+        touchRef.current.dist = newDist;
+        const rect = c!.getBoundingClientRect();
+        const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        panRef.current.x = mx - (mx - panRef.current.x) * (zoomRef.current / old);
+        panRef.current.y = my - (my - panRef.current.y) * (zoomRef.current / old);
+      }
+    }
+    function onTouchEnd() {
+      dragRef.current.active = false;
+      touchRef.current.id1 = -1;
+    }
+
     c.addEventListener("wheel", onWheel, { passive: false });
     c.addEventListener("mousedown", onDown);
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     c.addEventListener("dblclick", onDbl);
+    c.addEventListener("touchstart", onTouchStart, { passive: false });
+    c.addEventListener("touchmove", onTouchMove, { passive: false });
+    c.addEventListener("touchend", onTouchEnd);
     return () => {
       c.removeEventListener("wheel", onWheel);
       c.removeEventListener("mousedown", onDown);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
       c.removeEventListener("dblclick", onDbl);
+      c.removeEventListener("touchstart", onTouchStart);
+      c.removeEventListener("touchmove", onTouchMove);
+      c.removeEventListener("touchend", onTouchEnd);
     };
   }, []);
 
@@ -532,6 +580,16 @@ function RadarCanvas() {
               <span style={{ fontSize: 12, color: "#e0b04b", fontFamily: "Consolas, monospace" }}>
                 T {hud.t}
               </span>
+              <button
+                onClick={() => setShowScoreboard(v => !v)}
+                style={{
+                  background: "none", border: "1px solid #333", borderRadius: 3,
+                  color: "#666", fontSize: 10, padding: "2px 8px", cursor: "pointer",
+                  pointerEvents: "auto",
+                }}
+              >
+                TAB
+              </button>
             </>
           )}
         </div>
@@ -641,11 +699,14 @@ function RadarCanvas() {
 
       {/* Scoreboard overlay (hold Tab) */}
       {showScoreboard && hud.status === "live" && (
-        <div style={{
-          position: "absolute", inset: 0, zIndex: 20,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(10,14,20,0.85)", pointerEvents: "none",
-        }}>
+        <div
+          onClick={() => setShowScoreboard(false)}
+          style={{
+            position: "absolute", inset: 0, zIndex: 20,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(10,14,20,0.85)", cursor: "pointer",
+          }}
+        >
           <div style={{
             background: "#111418", border: "1px solid #1e1e1e", borderRadius: 4,
             minWidth: 340, maxWidth: 500, padding: "16px 0",
@@ -706,7 +767,7 @@ function RadarCanvas() {
               ))}
             </div>
             <div style={{ textAlign: "center", marginTop: 12, fontSize: 9, color: "#333" }}>
-              release Tab to close
+              Tab or tap to close
             </div>
           </div>
         </div>
