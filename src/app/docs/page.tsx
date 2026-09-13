@@ -559,8 +559,13 @@ end)`}</Example>
           </div>
           <div className="mt-4">
             <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-2">Event Reference</h4>
+            <p className="text-xs text-text-faint mb-3">
+              Platform and engine events pass <strong className="text-text-muted">individual arguments</strong> to callbacks.
+              CS2 game events pass a <strong className="text-text-muted">single table</strong> with the listed fields
+              — e.g. <code className="text-accent">function(e) print(e.userid) end</code>.
+            </p>
             {[
-              { group: "Platform", events: [
+              { group: "Platform", note: "individual args", events: [
                 { name: "frame", args: "dt: number" },
                 { name: "paint", args: "(none — draw here)" },
                 { name: "key", args: "key: number, down: boolean" },
@@ -568,7 +573,7 @@ end)`}</Example>
                 { name: "focus", args: "focused: boolean" },
                 { name: "unload", args: "(none)" },
               ]},
-              { group: "Engine", events: [
+              { group: "Engine", note: "individual args", events: [
                 { name: "createmove", args: "cmd: CUserCmd" },
                 { name: "movement", args: "cmd: CUserCmd" },
                 { name: "frame_stage", args: "stage: number" },
@@ -577,41 +582,44 @@ end)`}</Example>
                 { name: "jumpbug", args: "(none)" },
                 { name: "pixelsurf", args: "(none)" },
               ]},
-              { group: "Round", events: [
-                { name: "round_start", args: "timelimit: number" },
-                { name: "round_end", args: "winner, reason, message" },
+              { group: "Round", note: "table fields", events: [
+                { name: "round_start", args: "e.timelimit: number" },
+                { name: "round_end", args: "e.winner, e.reason, e.message" },
                 { name: "round_freeze_end", args: "(none)" },
-                { name: "round_mvp", args: "userid, reason" },
+                { name: "round_mvp", args: "e.userid, e.reason" },
                 { name: "begin_new_match", args: "(none)" },
                 { name: "announce_phase_end", args: "(none)" },
               ]},
-              { group: "Player", events: [
-                { name: "player_death", args: "userid, attacker, headshot, distance, weapon" },
-                { name: "player_hurt", args: "userid, attacker, health, armor, dmg_health, dmg_armor, hitgroup, weapon" },
-                { name: "player_spawn", args: "userid, team" },
-                { name: "player_disconnect", args: "userid, reason" },
-                { name: "item_purchase", args: "userid, team, weapon" },
+              { group: "Player", note: "table fields", events: [
+                { name: "player_death", args: "e.userid, e.attacker, e.headshot, e.distance, e.weapon" },
+                { name: "player_hurt", args: "e.userid, e.attacker, e.health, e.armor, e.dmg_health, e.dmg_armor, e.hitgroup, e.weapon" },
+                { name: "player_spawn", args: "e.userid, e.team" },
+                { name: "player_disconnect", args: "e.userid, e.reason" },
+                { name: "item_purchase", args: "e.userid, e.team, e.weapon" },
               ]},
-              { group: "Weapon", events: [
-                { name: "weapon_fire", args: "userid, weapon" },
-                { name: "bullet_impact", args: "userid, x, y, z" },
+              { group: "Weapon", note: "table fields", events: [
+                { name: "weapon_fire", args: "e.userid, e.weapon" },
+                { name: "bullet_impact", args: "e.userid, e.x, e.y, e.z" },
               ]},
-              { group: "Bomb", events: [
-                { name: "bomb_planted", args: "userid" },
-                { name: "bomb_defused", args: "userid" },
+              { group: "Bomb", note: "table fields", events: [
+                { name: "bomb_planted", args: "e.userid" },
+                { name: "bomb_defused", args: "e.userid" },
                 { name: "bomb_exploded", args: "(none)" },
               ]},
-              { group: "Grenades", events: [
-                { name: "flashbang_detonate", args: "userid, entityid, x, y, z" },
-                { name: "smokegrenade_detonate", args: "userid, entityid, x, y, z" },
-                { name: "hegrenade_detonate", args: "userid, x, y, z" },
-                { name: "inferno_startburn", args: "entityid, x, y, z" },
-                { name: "inferno_expire", args: "entityid, x, y, z" },
-                { name: "decoy_started", args: "userid, entityid, x, y, z" },
+              { group: "Grenades", note: "table fields", events: [
+                { name: "flashbang_detonate", args: "e.userid, e.entityid, e.x, e.y, e.z" },
+                { name: "smokegrenade_detonate", args: "e.userid, e.entityid, e.x, e.y, e.z" },
+                { name: "hegrenade_detonate", args: "e.userid, e.x, e.y, e.z" },
+                { name: "inferno_startburn", args: "e.entityid, e.x, e.y, e.z" },
+                { name: "inferno_expire", args: "e.entityid, e.x, e.y, e.z" },
+                { name: "decoy_started", args: "e.userid, e.entityid, e.x, e.y, e.z" },
               ]},
             ].map(g => (
               <div key={g.group} className="mb-3">
-                <div className="text-[10px] font-bold text-text-faint uppercase tracking-wider mb-1 mt-2">{g.group}</div>
+                <div className="text-[10px] font-bold text-text-faint uppercase tracking-wider mb-1 mt-2">
+                  {g.group}
+                  {g.note && <span className="ml-2 text-[9px] font-normal normal-case text-text-faint/60">({g.note})</span>}
+                </div>
                 <div className="space-y-1 text-xs">
                   {g.events.map(e => (
                     <div key={e.name} className="flex gap-2">
@@ -625,17 +633,25 @@ end)`}</Example>
           </div>
           <Example title="Example — track kills">{`local myKills = 0
 
-events.On("player_death", function(victim, attacker)
+-- CS2 game events pass a single table with named fields
+events.On("player_death", function(e)
   local me = entity.GetLocalPlayer()
-  if me and attacker == entity.GetIndex(me) then
+  if me and e.attacker == entity.GetIndex(me) then
     myKills = myKills + 1
-    cheat.Notify("Kill #" .. myKills .. "!")
+    cheat.Notify("Kill #" .. myKills .. " with " .. e.weapon .. "!")
     system.PlaySound("scripts/ding.wav")
   end
 end)
 
-events.On("round_start", function()
+events.On("round_start", function(e)
   myKills = 0
+end)
+
+-- Platform events pass individual arguments
+events.On("key", function(key, down)
+  if key == input.KEY_H and down then
+    cheat.Notify("Kills this round: " .. myKills)
+  end
 end)`}</Example>
         </Section>
 
@@ -657,9 +673,13 @@ end)`}</Example>
               {[
                 "CreateMove", "Movement", "FrameStageNotify", "Paint / Draw",
                 "Frame", "Key", "Resize", "Focus", "Unload",
-                "RoundStart", "RoundEnd", "PlayerDeath", "PlayerHurt",
-                "ItemPurchase", "BombPlanted", "BombDefused", "BombExploded",
-                "WeaponFire", "BulletImpact", "FreezeTimeEnd",
+                "RoundStart", "RoundEnd", "FreezeTimeEnd", "RoundMVP",
+                "BeginNewMatch", "AnnouncePhaseEnd",
+                "PlayerDeath", "PlayerHurt", "PlayerSpawn", "PlayerDisconnect",
+                "ItemPurchase", "WeaponFire", "BulletImpact",
+                "BombPlanted", "BombDefused", "BombExploded",
+                "FlashbangDetonate", "SmokegrenadeDetonate", "HEGrenadeDetonate",
+                "InfernoStartBurn", "InfernoExpire", "DecoyStarted",
                 "VoteSetup", "EdgeBug", "JumpBug", "PixelSurf",
               ].map((h) => (
                 <code key={h} className="text-text-faint">{h}</code>
@@ -1145,14 +1165,14 @@ local showClock = g:Checkbox("Show Clock", true)
 
 local kills = 0
 
-events.On("player_death", function(victim, attacker)
+events.On("player_death", function(e)
   local me = entity.GetLocalPlayer()
-  if me and attacker == entity.GetIndex(me) then
+  if me and e.attacker == entity.GetIndex(me) then
     kills = kills + 1
   end
 end)
 
-events.On("round_start", function()
+events.On("round_start", function(e)
   kills = 0
 end)
 
