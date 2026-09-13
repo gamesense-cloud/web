@@ -384,6 +384,7 @@ function RadarCanvas() {
             pollCount: n,
             curtime: data.curtime,
             tickCount: data.tickCount,
+            roundPhase: data.roundPhase,
             debug: data.debug,
             entityScan: data.entityScan,
             entDebug: data.entDebug,
@@ -586,7 +587,8 @@ function RadarCanvas() {
       isLocal: boolean, isEnemy: boolean, isDormant: boolean,
       isAlive: boolean, health: number, name: string, yaw?: number,
       weapon?: string, scoped?: boolean, defusing?: boolean, armor?: number,
-      flashAlpha?: number, money?: number, compColor?: number
+      flashAlpha?: number, money?: number, compColor?: number,
+      vx?: number, vy?: number, pxPerUnit?: number
     ) {
       const teamColor = (compColor != null && compColor >= 0 && compColor < COMP_COLORS.length)
         ? COMP_COLORS[compColor]
@@ -655,6 +657,31 @@ function RadarCanvas() {
 
       const hpColor = health > 60 ? "#5fc98a" : health > 25 ? "#e0b04b" : "#e0656a";
       drawHealthArc(ctx, pos.x, pos.y, r + 3, health || 100, hpColor);
+
+      // Velocity arrow — shows movement direction
+      if (vx != null && vy != null && pxPerUnit) {
+        const speed = Math.sqrt(vx * vx + vy * vy);
+        if (speed > 15) {
+          const velLen = Math.min(speed * pxPerUnit * 0.06, 20);
+          const angle = Math.atan2(-vy, vx);
+          const endX = pos.x + Math.cos(angle) * (r + velLen);
+          const endY = pos.y + Math.sin(angle) * (r + velLen);
+          ctx.beginPath();
+          ctx.moveTo(pos.x + Math.cos(angle) * (r + 2), pos.y + Math.sin(angle) * (r + 2));
+          ctx.lineTo(endX, endY);
+          ctx.strokeStyle = color + "88";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          const arrowSize = 3;
+          ctx.beginPath();
+          ctx.moveTo(endX, endY);
+          ctx.lineTo(endX - arrowSize * Math.cos(angle - 0.5), endY - arrowSize * Math.sin(angle - 0.5));
+          ctx.lineTo(endX - arrowSize * Math.cos(angle + 0.5), endY - arrowSize * Math.sin(angle + 0.5));
+          ctx.closePath();
+          ctx.fillStyle = color + "88";
+          ctx.fill();
+        }
+      }
 
       // Armor arc (inner, blue)
       if (armor && armor > 0) {
@@ -947,7 +974,8 @@ function RadarCanvas() {
             lp.health, lp.name,
             lp.yaw ?? data.localPlayer.yaw, data.localPlayer.weapon,
             data.localPlayer.scoped, data.localPlayer.defusing, data.localPlayer.armor,
-            data.localPlayer.flashAlpha, data.localPlayer.money, data.localPlayer.color);
+            data.localPlayer.flashAlpha, data.localPlayer.money, data.localPlayer.color,
+            data.localPlayer.vx, data.localPlayer.vy, pxPerUnit);
           ctx.globalAlpha = 1;
           const sx = baseOx + panRef.current.x + pos.x * zoomRef.current;
           const sy = baseOy + panRef.current.y + pos.y * zoomRef.current;
@@ -966,7 +994,8 @@ function RadarCanvas() {
             }
             drawPlayer(ctx, pos, false, ip.enemy, ip.dormant, ip.alive, ip.health, ip.name,
               ip.yaw ?? p.yaw, p.weapon, p.scoped, p.defusing, p.armor,
-              p.flashAlpha, p.money, p.color);
+              p.flashAlpha, p.money, p.color,
+              p.vx, p.vy, pxPerUnit);
             ctx.globalAlpha = 1;
             if (p.alive) {
               const psx = baseOx + panRef.current.x + pos.x * zoomRef.current;
@@ -1129,6 +1158,17 @@ function RadarCanvas() {
           <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 1, color: "#dcdcdc", fontFamily: "Tahoma, sans-serif" }}>
             {hud.status === "live" ? hud.mapDisplay : "---"}
           </span>
+          {hud.status === "live" && hud.roundPhase && (hud.roundPhase.freeze || hud.roundPhase.warmup) && (
+            <span style={{
+              fontSize: 9, padding: "1px 6px", borderRadius: 2, letterSpacing: 1,
+              fontFamily: "Consolas, monospace", fontWeight: "bold",
+              background: hud.roundPhase.warmup ? "#e0b04b15" : "#4a9eff15",
+              border: `1px solid ${hud.roundPhase.warmup ? "#e0b04b33" : "#4a9eff33"}`,
+              color: hud.roundPhase.warmup ? "#e0b04b" : "#4a9eff",
+            }}>
+              {hud.roundPhase.warmup ? "WARMUP" : "FREEZE"}
+            </span>
+          )}
           {hud.bomb?.planted && (() => {
             const remaining = hud.bomb.blowTime && hud.curtime
               ? Math.max(0, hud.bomb.blowTime - hud.curtime)
@@ -1208,9 +1248,42 @@ function RadarCanvas() {
           </div>
           {hud.status === "live" && (
             <>
-              {hud.curtime != null && hud.curtime > 0 && (
-                <span style={{ fontSize: 10, color: "#ffffff22", fontFamily: "Consolas, monospace" }}>
-                  {Math.floor(hud.curtime / 60)}:{String(Math.floor(hud.curtime % 60)).padStart(2, "0")}
+              {hud.roundPhase && (() => {
+                if (hud.roundPhase.warmup) {
+                  return (
+                    <span style={{ fontSize: 11, fontWeight: "bold", color: "#808080", fontFamily: "Consolas, monospace", letterSpacing: 1 }}>
+                      WARMUP
+                    </span>
+                  );
+                }
+                if (hud.roundPhase.freeze) {
+                  return (
+                    <span style={{ fontSize: 11, fontWeight: "bold", color: "#5fc98a", fontFamily: "Consolas, monospace", letterSpacing: 1 }}>
+                      FREEZE
+                    </span>
+                  );
+                }
+                if (hud.roundPhase.roundStartTime && hud.roundPhase.roundTime && hud.curtime) {
+                  const elapsed = hud.curtime - hud.roundPhase.roundStartTime;
+                  const remaining = Math.max(0, hud.roundPhase.roundTime - elapsed);
+                  const mins = Math.floor(remaining / 60);
+                  const secs = Math.floor(remaining % 60);
+                  const urgent = remaining < 30;
+                  return (
+                    <span style={{
+                      fontSize: 13, fontWeight: "bold", fontFamily: "Consolas, monospace",
+                      color: urgent ? "#e03c3c" : "#dcdcdc",
+                      letterSpacing: 1,
+                    }}>
+                      {mins}:{String(secs).padStart(2, "0")}
+                    </span>
+                  );
+                }
+                return null;
+              })()}
+              {hud.roundPhase && hud.roundPhase.roundsPlayed > 0 && (
+                <span style={{ fontSize: 9, color: "#ffffff22", fontFamily: "Consolas, monospace" }}>
+                  R{hud.roundPhase.roundsPlayed + 1}
                 </span>
               )}
               <span style={{ fontSize: 12, color: "#4a9eff", fontFamily: "Consolas, monospace" }}>
