@@ -171,20 +171,13 @@ export async function register(input: {
   const email = String(input.email).toLowerCase();
   const db = supabaseAdmin();
 
-  const { data: clash } = await db
-    .from("users")
-    .select("username, email")
-    .or(`username.eq.${username},email.eq.${email}`)
-    .maybeSingle();
+  const [{ data: byName }, { data: byEmail }] = await Promise.all([
+    db.from("users").select("username").eq("username", username).maybeSingle(),
+    db.from("users").select("email").eq("email", email).maybeSingle(),
+  ]);
 
-  if (clash) {
-    throw new AuthError(
-      clash.username === username
-        ? "that username is taken"
-        : "an account already uses that email address",
-      409
-    );
-  }
+  if (byName) throw new AuthError("that username is taken", 409);
+  if (byEmail) throw new AuthError("an account already uses that email address", 409);
 
   const { data, error } = await db
     .from("users")
@@ -213,11 +206,16 @@ export async function login(identifier?: string, password?: string) {
   const key = String(identifier ?? "").toLowerCase();
   const db = supabaseAdmin();
 
-  const { data: row } = await db
+  const { data: byName } = await db
     .from("users")
     .select(`${PUBLIC_COLUMNS}, password_hash`)
-    .or(`username.eq.${key},email.eq.${key}`)
+    .eq("username", key)
     .maybeSingle();
+  const row = byName ?? (await db
+    .from("users")
+    .select(`${PUBLIC_COLUMNS}, password_hash`)
+    .eq("email", key)
+    .maybeSingle()).data;
 
   const ok = await bcrypt.compare(
     String(password ?? ""),
