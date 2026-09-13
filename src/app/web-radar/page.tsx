@@ -413,16 +413,28 @@ function RadarCanvas() {
       }
 
       const r = isLocal ? 7 : 5;
+      if (isLocal) {
+        const pulse = 0.3 + 0.7 * Math.abs(Math.sin(performance.now() / 600));
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, r + 4, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(142,111,247,${(pulse * 0.25).toFixed(2)})`;
+        ctx.lineWidth = 1.5; ctx.stroke();
+      }
       ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
       ctx.fillStyle = color; ctx.fill();
       ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1; ctx.stroke();
 
-      drawHealthArc(ctx, pos.x, pos.y, r + 3, health || 100, color);
+      const hpColor = health > 60 ? "#5fc98a" : health > 25 ? "#e0b04b" : "#e0656a";
+      drawHealthArc(ctx, pos.x, pos.y, r + 3, health || 100, hpColor);
 
       if (name) {
         ctx.font = "10px Tahoma, Verdana, sans-serif";
         ctx.fillStyle = nameColor;
         ctx.fillText(name, pos.x + r + 5, pos.y + 3);
+      }
+      if (health > 0 && health < 50) {
+        ctx.font = "bold 8px Tahoma, sans-serif";
+        ctx.fillStyle = hpColor;
+        ctx.fillText(`${health}`, pos.x + r + 5, pos.y + 13);
       }
     }
 
