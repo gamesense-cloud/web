@@ -801,7 +801,8 @@ function RadarCanvas() {
             const onLower = lp.z < NUKE_Z_SPLIT;
             ctx.globalAlpha = (nukeLevel === "lower") === onLower ? 1.0 : 0.3;
           }
-          drawPlayer(ctx, pos, true, false, false, true, lp.health, lp.name,
+          drawPlayer(ctx, pos, true, false, false, data.localPlayer.alive !== false,
+            lp.health, lp.name,
             lp.yaw ?? data.localPlayer.yaw, data.localPlayer.weapon,
             data.localPlayer.scoped, data.localPlayer.defusing, data.localPlayer.armor,
             data.localPlayer.flashAlpha, data.localPlayer.money);
@@ -824,6 +825,31 @@ function RadarCanvas() {
             ctx.globalAlpha = 1;
           }
         }
+      }
+
+      // Mini compass (top-left of radar area)
+      if (mapInfo) {
+        const cx = 24, cy = 24, cr = 10;
+        ctx.font = "bold 8px Tahoma, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffffff15";
+        ctx.fillText("N", cx, cy - cr - 2);
+        ctx.fillText("S", cx, cy + cr + 8);
+        ctx.fillText("W", cx - cr - 6, cy + 3);
+        ctx.fillText("E", cx + cr + 6, cy + 3);
+        ctx.beginPath();
+        ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+        ctx.strokeStyle = "#ffffff10";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - cr + 2);
+        ctx.lineTo(cx - 2, cy - cr + 6);
+        ctx.lineTo(cx + 2, cy - cr + 6);
+        ctx.closePath();
+        ctx.fillStyle = "#e0656a33";
+        ctx.fill();
+        ctx.textAlign = "left";
       }
 
       ctx.restore();
@@ -1125,7 +1151,7 @@ function RadarCanvas() {
               <span style={{ fontSize: 18, fontWeight: "bold", color: "#e0b04b" }}>T {hud.t}</span>
             </div>
             {(() => {
-              const allPlayers = [...(hud.localPlayer ? [{ ...hud.localPlayer, alive: true } as Player] : []), ...(hud.players ?? [])];
+              const allPlayers = [...(hud.localPlayer ? [{ ...hud.localPlayer } as Player] : []), ...(hud.players ?? [])];
               const ctMoney = allPlayers.filter(p => p.team === 3 && p.alive).reduce((s, p) => s + (p.money ?? 0), 0);
               const tMoney = allPlayers.filter(p => p.team === 2 && p.alive).reduce((s, p) => s + (p.money ?? 0), 0);
               return (ctMoney > 0 || tMoney > 0) ? (
@@ -1140,7 +1166,7 @@ function RadarCanvas() {
             <div style={{ padding: "0 16px", marginBottom: 8 }}>
               <div style={{ fontSize: 9, color: "#4a9eff88", letterSpacing: 1, marginBottom: 4 }}>COUNTER-TERRORISTS</div>
               {[...(hud.localPlayer?.team === 3 ? [{
-                ...hud.localPlayer, name: "You", alive: true, enemy: false,
+                ...hud.localPlayer, name: "You", enemy: false,
               } as Player] : []),
               ...(hud.players?.filter(p => p.team === 3) ?? [])].map((p, i) => (
                 <div key={`ct-${i}`} style={{
@@ -1184,7 +1210,7 @@ function RadarCanvas() {
             <div style={{ padding: "0 16px" }}>
               <div style={{ fontSize: 9, color: "#e0b04b88", letterSpacing: 1, marginBottom: 4 }}>TERRORISTS</div>
               {[...(hud.localPlayer?.team === 2 ? [{
-                ...hud.localPlayer, name: "You", alive: true, enemy: false,
+                ...hud.localPlayer, name: "You", enemy: false,
               } as Player] : []),
               ...(hud.players?.filter(p => p.team === 2) ?? [])].map((p, i) => (
                 <div key={`t-${i}`} style={{
