@@ -67,6 +67,17 @@ function Fn({
   );
 }
 
+function Example({ title, children }: { title: string; children: string }) {
+  return (
+    <div className="mt-4 mb-2">
+      <h4 className="text-xs font-bold text-accent uppercase tracking-wider mb-2">{title}</h4>
+      <pre className="text-xs font-mono bg-surface-2 rounded border border-border p-3 overflow-x-auto leading-relaxed whitespace-pre">
+        {children}
+      </pre>
+    </div>
+  );
+}
+
 /* ── nav data ──────────────────────────────────────────────────────── */
 
 const NAV = [
@@ -293,6 +304,21 @@ export default function Docs() {
           <Fn name="entity.GetEntityFromHandle" args="handle: integer" ret="entity | nil">
             Resolve an entity handle (e.g. from GetPropInt on m_hActiveWeapon or m_hOwnerEntity) to an entity pointer. Returns nil if the handle is invalid.
           </Fn>
+          <Example title="Example — iterate enemies">{`local players = entity.GetPlayers()
+for _, ply in ipairs(players) do
+  if entity.IsEnemy(ply) and entity.IsAlive(ply) then
+    local name = entity.GetName(ply)
+    local hp   = entity.GetHealth(ply)
+    local x, y, z = entity.GetPosition(ply)
+    print(name .. " has " .. hp .. "hp at " .. x .. ", " .. y)
+  end
+end`}</Example>
+          <Example title="Example — read custom netvar">{`local ent = entity.GetByIndex(1)
+if ent then
+  local kills = entity.GetPropInt(ent, "CCSPlayerController", "m_iKills")
+  local ping  = entity.GetPropInt(ent, "CCSPlayerController", "m_iPing")
+  print("Kills: " .. kills .. "  Ping: " .. ping)
+end`}</Example>
         </Section>
 
         {/* ───────────── renderer ───────────── */}
@@ -373,6 +399,23 @@ export default function Docs() {
           <Fn name="renderer.WorldToScreen" args="x, y, z" ret="sx, sy | nil">
             Project world position to screen. Returns two numbers or nil if behind camera.
           </Fn>
+          <Example title="Example — draw crosshair + info">{`events.On("paint", function()
+  local w, h = renderer.ScreenSize()
+  local cx, cy = w / 2, h / 2
+
+  -- crosshair
+  renderer.Line(cx - 8, cy, cx + 8, cy, Color(0, 255, 0, 200))
+  renderer.Line(cx, cy - 8, cx, cy + 8, Color(0, 255, 0, 200))
+
+  -- velocity display
+  local me = entity.GetLocalPlayer()
+  if me then
+    local vx, vy, vz = entity.GetVelocity(me)
+    local speed = math.floor(math.sqrt(vx*vx + vy*vy))
+    renderer.Text(cx, cy + 20, speed .. " u/s",
+      Color(255, 255, 255, 180), 14, "mono")
+  end
+end)`}</Example>
         </Section>
 
         {/* ───────────── input ───────────── */}
@@ -471,6 +514,27 @@ export default function Docs() {
               <code className="text-text-faint">.label</code>
             </p>
           </div>
+          <Example title="Example — full UI setup">{`local tab = ui.Tab("Aim Helper")
+local g = tab:Group("Settings")
+
+local enabled = g:Checkbox("Enabled", true)
+local fov     = g:SliderFloat("FOV", 1.0, 30.0, 5.0)
+local style   = g:Combo("Style", {"Circle", "Cross", "Dot"}, 1)
+local hotkey  = g:Keybind("Toggle Key", input.KEY_X)
+local color   = g:ColorPicker("Color", {1, 0, 0, 1})
+
+g:Separator("Info")
+local status = g:Label("Status: idle")
+
+enabled:OnChange(function(val)
+  status:Set(val and "Status: active" or "Status: idle")
+end)
+
+g:Button("Reset Defaults", function()
+  fov:Set(5.0)
+  style:Set(1)
+  color:Set({1, 0, 0, 1})
+end)`}</Example>
         </Section>
 
         {/* ───────────── events ───────────── */}
@@ -529,6 +593,20 @@ export default function Docs() {
               ))}
             </div>
           </div>
+          <Example title="Example — track kills">{`local myKills = 0
+
+events.On("player_death", function(victim, attacker)
+  local me = entity.GetLocalPlayer()
+  if me and attacker == entity.GetIndex(me) then
+    myKills = myKills + 1
+    cheat.Notify("Kill #" .. myKills .. "!")
+    system.PlaySound("scripts/ding.wav")
+  end
+end)
+
+events.On("round_start", function()
+  myKills = 0
+end)`}</Example>
         </Section>
 
         {/* ───────────── hooks ───────────── */}
@@ -558,6 +636,19 @@ export default function Docs() {
               ))}
             </div>
           </div>
+          <Example title="Example — hooks.Add vs events.On">{`-- hooks.Add uses named IDs (can replace/remove by name)
+hooks.Add("Paint", "my_watermark", function()
+  renderer.Text(10, 10, "gamesense.cloud", Color(100, 200, 255), 16)
+end)
+
+-- remove later by name
+hooks.Remove("Paint", "my_watermark")
+
+-- events.On uses numeric handles
+local h = events.On("paint", function()
+  renderer.Text(10, 10, "hello", Color(255,255,255))
+end)
+events.Off(h)  -- remove by handle`}</Example>
         </Section>
 
         {/* ───────────── esp ───────────── */}
@@ -599,6 +690,23 @@ export default function Docs() {
           <Fn name="http.Request" args="{url, method, body, content_type}" ret="{status, body, ok, error}">
             Full-featured request. Returns a result table with status code, body, ok boolean, and optional error.
           </Fn>
+          <Example title="Example — fetch & post JSON">{`-- simple GET
+local body, err = http.Get("https://api.example.com/data")
+if body then
+  local data = json.Decode(body)
+  print("Got " .. #data .. " items")
+end
+
+-- POST JSON (non-blocking via timer)
+timer.After(0, function()
+  local payload = json.Encode({ name = cheat.GetUsername() })
+  local res = http.Request({
+    url = "https://api.example.com/submit",
+    method = "POST",
+    body = payload,
+  })
+  if res.ok then print("Submitted!") end
+end)`}</Example>
         </Section>
 
         {/* ───────────── cheat ───────────── */}
@@ -703,6 +811,21 @@ export default function Docs() {
           <Fn name="store.clear" args="">Delete all keys for this script.</Fn>
           <Fn name="store.keys" args="" ret="table">Return all stored keys as a sequential table.</Fn>
           <Fn name="store.save" args="">Force an immediate write to disk.</Fn>
+          <Example title="Example — persistent settings">{`-- load saved config or use defaults
+local config = store.get("config") or {
+  enabled = true,
+  color = {255, 0, 0, 255},
+  key = input.KEY_H,
+}
+
+-- update and save on change
+events.On("key", function(key, down)
+  if key == input.F2 and down then
+    config.enabled = not config.enabled
+    store.set("config", config)
+    cheat.Notify("Toggled: " .. tostring(config.enabled))
+  end
+end)`}</Example>
         </Section>
 
         {/* ───────────── file ───────────── */}
@@ -738,6 +861,21 @@ export default function Docs() {
           </Fn>
           <Fn name="timer.Cancel" args="handle: integer" ret="boolean">Cancel a timer by handle.</Fn>
           <Fn name="timer.Count" args="" ret="integer">Number of active timers for this script.</Fn>
+          <Example title="Example — periodic & one-shot">{`-- auto-save config every 30 seconds
+timer.Every(30, function()
+  store.save()
+  return true  -- keep running (return false to stop)
+end)
+
+-- delayed notification
+timer.After(3, function()
+  cheat.Notify("Script loaded!")
+end)
+
+-- do something next frame (avoids blocking paint)
+timer.NextFrame(function()
+  http.Get("https://example.com/check")
+end)`}</Example>
         </Section>
 
         {/* ───────────── log ───────────── */}
@@ -823,6 +961,18 @@ export default function Docs() {
               and <code className="text-text-faint">tostring()</code>.
             </p>
           </div>
+          <Example title="Example — Windows API via ffi">{`-- allocate a buffer and call GetModuleFileNameA
+local buf = ffi.new("char[260]")
+ffi.C.GetModuleFileNameA(0, buf, 260)
+print("Exe: " .. ffi.string(buf))
+
+-- load a DLL and call an export
+local ntdll = ffi.load("ntdll")
+local ticks = ntdll.NtGetTickCount()
+print("Ticks: " .. ticks)
+
+-- MessageBox popup
+ffi.C.MessageBoxA(0, "Hello from Lua!", "gscloud", 0)`}</Example>
         </Section>
 
         {/* ───────────── cvar ───────────── */}
@@ -922,9 +1072,14 @@ export default function Docs() {
         </Section>
 
         {/* ───────────── quick start ───────────── */}
-        <section id="quickstart" className="scroll-mt-20 mt-16 mb-8 border border-border rounded-lg p-5 bg-surface">
-          <h2 className="text-base font-bold mb-3">Quick Start Example</h2>
-          <pre className="text-xs font-mono bg-surface-2 rounded border border-border p-4 overflow-x-auto leading-relaxed">
+        <section id="quickstart" className="scroll-mt-20 mt-16 mb-8 space-y-6">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <span className="text-accent">Quick Start</span> Examples
+          </h2>
+
+          <div className="border border-border rounded-lg p-5 bg-surface">
+            <h3 className="text-sm font-bold mb-3">ESP Script</h3>
+            <pre className="text-xs font-mono bg-surface-2 rounded border border-border p-4 overflow-x-auto leading-relaxed">
 {`-- Create a UI tab with controls
 local tab = ui.Tab("My Script")
 local grp = tab:Group("Settings")
@@ -947,7 +1102,62 @@ hooks.Add("Paint", "my_esp", function()
     end
   end
 end)`}
-          </pre>
+            </pre>
+          </div>
+
+          <div className="border border-border rounded-lg p-5 bg-surface">
+            <h3 className="text-sm font-bold mb-3">HUD Overlay with Stats</h3>
+            <pre className="text-xs font-mono bg-surface-2 rounded border border-border p-4 overflow-x-auto leading-relaxed">
+{`local tab = ui.Tab("HUD")
+local g   = tab:Group("Display")
+local showSpeed = g:Checkbox("Show Speed", true)
+local showClock = g:Checkbox("Show Clock", true)
+
+local kills = 0
+
+events.On("player_death", function(victim, attacker)
+  local me = entity.GetLocalPlayer()
+  if me and attacker == entity.GetIndex(me) then
+    kills = kills + 1
+  end
+end)
+
+events.On("round_start", function()
+  kills = 0
+end)
+
+events.On("paint", function()
+  local w, h = renderer.ScreenSize()
+  local y = 60
+
+  -- kill counter
+  renderer.RectFilled(w - 140, y, 130, 28, Color(0, 0, 0, 150), 4)
+  renderer.Text(w - 130, y + 6, "Kills: " .. kills,
+    Color(255, 80, 80), 14, "strong")
+  y = y + 34
+
+  -- speedometer
+  if showSpeed:Get() then
+    local me = entity.GetLocalPlayer()
+    if me then
+      local vx, vy = entity.GetVelocity(me)
+      local speed = math.floor(math.sqrt(vx*vx + vy*vy))
+      renderer.RectFilled(w - 140, y, 130, 28, Color(0, 0, 0, 150), 4)
+      renderer.Text(w - 130, y + 6, speed .. " u/s",
+        Color(200, 220, 255), 14, "mono")
+      y = y + 34
+    end
+  end
+
+  -- clock
+  if showClock:Get() then
+    renderer.RectFilled(w - 140, y, 130, 28, Color(0, 0, 0, 150), 4)
+    renderer.Text(w - 130, y + 6, cheat.GetTimestamp(),
+      Color(180, 180, 180), 11, "mono")
+  end
+end)`}
+            </pre>
+          </div>
         </section>
 
       </div>
