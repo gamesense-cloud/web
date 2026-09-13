@@ -1,9 +1,8 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------- theme --
-   Straight out of the loader's `col` namespace, so the site, the dashboard
-   and the loader all agree. accent is the only decorative hue; ok / warn /
-   bad are semantic and carry build status, plan status and role. */
+   Matches the loader's `col` namespace. accent is the only decorative hue;
+   ok / warn / bad are semantic. */
 @theme {
   --color-bg: #0d0d0d;
   --color-surface: #131313;
