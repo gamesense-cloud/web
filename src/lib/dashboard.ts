@@ -845,7 +845,10 @@ export async function listUsers(query = "") {
   let q = db
     .from("users")
     .select("id, username, email, role, region, last_seen_at, banned_at, created_at");
-  if (query) q = q.ilike("username", `%${query}%`);
+  if (query) {
+    const escaped = query.replace(/[%_\\]/g, (c) => `\\${c}`);
+    q = q.ilike("username", `%${escaped}%`);
+  }
 
   const { data } = await q.order("created_at");
   const rows = data ?? [];
@@ -883,7 +886,7 @@ export async function findUserByUsername(username: string) {
   const { data } = await db
     .from("users")
     .select("id, username, email, role, display_name, region, last_seen_at, banned_at, created_at")
-    .ilike("username", username)
+    .eq("username", username.toLowerCase())
     .maybeSingle();
   return data;
 }
