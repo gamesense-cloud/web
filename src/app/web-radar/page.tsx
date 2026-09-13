@@ -124,12 +124,10 @@ function RadarCanvas() {
             radarStatus = "no_session";
           } else if (data.status === "stale") {
             radarStatus = "stale";
-          } else if (data.status === "waiting" || (data.connected === false && data.status !== "no_session")) {
+          } else if (data.status === "waiting" || !data.connected) {
             radarStatus = "waiting";
-          } else if (data.connected) {
-            radarStatus = "live";
           } else {
-            radarStatus = "waiting";
+            radarStatus = "live";
           }
 
           // Only store game data for rendering when actually live
