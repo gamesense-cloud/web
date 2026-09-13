@@ -182,6 +182,10 @@ export default function Docs() {
           <Fn name="engine.GetFrameTime" args="" ret="number">Frame delta time.</Fn>
           <Fn name="engine.GetTickRate" args="" ret="number">Server tick rate (e.g. 64.0).</Fn>
           <Fn name="engine.GetTickCount" args="" ret="integer">Current tick count.</Fn>
+          <Fn name="engine.GetRoundPhase" args="" ret="string">
+            Current round phase: <code className="text-accent">&quot;live&quot;</code>, <code className="text-accent">&quot;freezetime&quot;</code>, or <code className="text-accent">&quot;over&quot;</code>.
+            Updated automatically from game events (round_start, round_freeze_end, round_end).
+          </Fn>
         </Section>
 
         {/* ───────────── entity ───────────── */}
