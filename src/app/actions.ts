@@ -335,6 +335,9 @@ export async function replyToTicketAction(_: ActionState, form: FormData): Promi
 export async function setTicketStatusAction(id: string, status: string): Promise<ActionState> {
   try {
     const user = await requireUser();
+    if (!["open", "answered", "closed"].includes(status)) {
+      return { error: "status is open, answered or closed" };
+    }
     const ticket = await db.getTicket(id, user.role === "admin" ? null : user.id);
     if (!ticket) return { error: "no such ticket" };
     if (user.role !== "admin" && status !== "closed") {
