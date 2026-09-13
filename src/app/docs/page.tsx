@@ -219,7 +219,7 @@ export default function Docs() {
             True when <code className="text-text-faint">m_lifeState == 0</code>.
           </Fn>
           <Fn name="entity.IsDormant" args="ent" ret="boolean">
-            True if the entity pointer is null (dormant entities aren&apos;t in the client entity list).
+            True if the entity is dormant (not being networked). Reads CGameSceneNode::m_bDormant. Also returns true for nil entities.
           </Fn>
           <Fn name="entity.GetBoundingBox" args="ent" ret="x, y, w, h, alpha | nil">
             Screen-space bounding box. Accounts for crouching. Returns nil if off-screen.
@@ -275,6 +275,9 @@ export default function Docs() {
           </Fn>
           <Fn name="entity.GetPropVec3" args="ent, class: string, field: string" ret="x, y, z">
             Read any Vector schema field. Returns three floats.
+          </Fn>
+          <Fn name="entity.GetPropString" args="ent, class: string, field: string" ret="string">
+            Read any string (pointer-to-char) schema field. Returns empty string on failure.
           </Fn>
         </Section>
 
