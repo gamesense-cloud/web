@@ -468,6 +468,7 @@ function RadarCanvas() {
       if (e.key === "p" || e.key === "P") setShowNames(v => { showNamesRef.current = !v; return !v; });
       if (e.key === "b" || e.key === "B") setShowHealth(v => { showHealthRef.current = !v; return !v; });
       if (e.key === "v" || e.key === "V") setShowVelocity(v => { showVelocityRef.current = !v; return !v; });
+      if (e.key === "r" || e.key === "R") { zoomRef.current = 1.0; panRef.current = { x: 0, y: 0 }; setZoomDisplay(100); }
       if (e.key === "Tab") { e.preventDefault(); setShowScoreboard(true); }
     }
     function onUp(e: KeyboardEvent) {
@@ -1621,7 +1622,9 @@ function RadarCanvas() {
               {[...(hud.localPlayer?.team === 3 ? [{
                 ...hud.localPlayer, name: "You", enemy: false,
               } as Player] : []),
-              ...(hud.players?.filter(p => p.team === 3) ?? [])].map((p, i) => {
+              ...(hud.players?.filter(p => p.team === 3) ?? [])]
+              .sort((a, b) => (a.alive === b.alive ? (b.health ?? 0) - (a.health ?? 0) : a.alive ? -1 : 1))
+              .map((p, i) => {
                 const dotColor = (p.color != null && p.color >= 0 && p.color < COMP_COLORS.length)
                   ? COMP_COLORS[p.color] : "#4a9eff";
                 return (
@@ -1669,7 +1672,9 @@ function RadarCanvas() {
               {[...(hud.localPlayer?.team === 2 ? [{
                 ...hud.localPlayer, name: "You", enemy: false,
               } as Player] : []),
-              ...(hud.players?.filter(p => p.team === 2) ?? [])].map((p, i) => {
+              ...(hud.players?.filter(p => p.team === 2) ?? [])]
+              .sort((a, b) => (a.alive === b.alive ? (b.health ?? 0) - (a.health ?? 0) : a.alive ? -1 : 1))
+              .map((p, i) => {
                 const dotColor = (p.color != null && p.color >= 0 && p.color < COMP_COLORS.length)
                   ? COMP_COLORS[p.color] : "#e0b04b";
                 return (
@@ -1898,6 +1903,7 @@ function RadarCanvas() {
               { key: "P", desc: "Toggle player names" },
               { key: "B", desc: "Toggle health arcs" },
               { key: "V", desc: "Toggle velocity arrows" },
+              { key: "R", desc: "Reset zoom & pan" },
               { key: "H / ?", desc: "This help" },
             ].map(s => (
               <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
