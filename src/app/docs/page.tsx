@@ -554,6 +554,16 @@ export default function Docs() {
           <Fn name="cheat.FindExport" args="module: string, export: string" ret="userdata | nil">
             Find a DLL export by module and name. Returns a lightuserdata pointer.
           </Fn>
+          <Fn name="cheat.IsRadarActive" args="" ret="boolean">
+            Whether the web radar is currently streaming data.
+          </Fn>
+          <Fn name="cheat.GetRadarURL" args="" ret="string | nil">
+            The active web radar URL, or nil if radar is not running.
+          </Fn>
+          <Fn name="cheat.GetRadarStats" args="" ret="table">
+            Returns <code className="text-text-faint">{'{ active, pushCount, failCount, avgLatency, playerCount, uptime }'}</code> with
+            live radar statistics. Works whether radar is active or not.
+          </Fn>
         </Section>
 
         {/* ───────────── system ───────────── */}
