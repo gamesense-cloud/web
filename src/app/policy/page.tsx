@@ -27,10 +27,9 @@ export default function Policy() {
         <h2 className="text-lg font-semibold text-text">Privacy</h2>
         <p>We collect minimal data to operate the service:</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Account credentials (username, email, hashed password) for authentication.</li>
-          <li>Hardware ID (HWID) bound on first login for license enforcement.</li>
-          <li>Session heartbeats to track online count.</li>
+          <li>Session heartbeats (anonymous session ID) to track online count.</li>
           <li>Web radar data is ephemeral — pushed in real time, not stored long-term.</li>
+          <li>No accounts, no passwords, no personal information collected.</li>
           <li>No analytics, tracking pixels, or third-party telemetry.</li>
           <li>We do not sell or share your data with anyone.</li>
         </ul>
