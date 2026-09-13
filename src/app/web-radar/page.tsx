@@ -36,7 +36,7 @@ interface Player {
 }
 
 interface EntDebug {
-  i: number; t: number; h1: string; h2: string; p1: boolean; p2: boolean;
+  i: number; ct: number; pt: number; h1: string; h2: string; pawn: boolean;
 }
 
 interface ApiResponse {
@@ -578,7 +578,7 @@ function RadarCanvas() {
         )}
         {hud.entDebug && hud.entDebug.length > 0 && (
           <div style={{ maxWidth: 400, wordBreak: "break-all", marginTop: 2, color: "#555" }}>
-            ents: {hud.entDebug.map(e => `[${e.i}:t${e.t} h1=${e.h1} p1=${e.p1} h2=${e.h2} p2=${e.p2}]`).join(" ")}
+            ents: {hud.entDebug.map(e => `[${e.i}:ct${e.ct} pt${e.pt} h1=${e.h1} h2=${e.h2} pawn=${e.pawn}]`).join(" ")}
           </div>
         )}
       </div>
