@@ -155,8 +155,8 @@ export default async function Home() {
       <div className="mt-16 w-full max-w-2xl grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
         {[
           { val: "23", label: "API modules" },
-          { val: "100+", label: "Lua functions" },
-          { val: "34", label: "hook events" },
+          { val: "190+", label: "Lua functions" },
+          { val: "35", label: "hook events" },
           { val: "15+", label: "draw primitives" },
         ].map((s) => (
           <div key={s.label} className="gb p-3">

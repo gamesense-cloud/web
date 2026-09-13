@@ -585,9 +585,20 @@ end)`}</Example>
                 { name: "bomb_planted", args: "userid" },
                 { name: "bomb_defused", args: "userid" },
                 { name: "bomb_exploded", args: "(none)" },
+                { name: "flashbang_detonate", args: "userid, entityid, x, y, z" },
+                { name: "smokegrenade_detonate", args: "userid, entityid, x, y, z" },
+                { name: "hegrenade_detonate", args: "userid, x, y, z" },
+                { name: "inferno_startburn", args: "entityid, x, y, z" },
+                { name: "inferno_expire", args: "entityid, x, y, z" },
+                { name: "decoy_started", args: "userid, entityid, x, y, z" },
+                { name: "round_mvp", args: "userid, reason" },
+                { name: "player_spawn", args: "userid, team" },
+                { name: "player_disconnect", args: "userid, reason" },
+                { name: "begin_new_match", args: "(none)" },
+                { name: "announce_phase_end", args: "(none)" },
               ].map(e => (
                 <div key={e.name} className="flex gap-2">
-                  <code className="text-accent min-w-[120px]">{e.name}</code>
+                  <code className="text-accent min-w-[160px]">{e.name}</code>
                   <span className="text-text-faint">{e.args}</span>
                 </div>
               ))}
