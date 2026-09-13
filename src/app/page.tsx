@@ -1,17 +1,28 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getLatestRelease } from "@/lib/github";
 
-async function getActiveUsers(): Promise<number> {
+async function getStats(): Promise<{ users: number; radars: number }> {
   try {
     const db = supabaseAdmin();
     const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const { count } = await db
-      .from("sessions")
-      .select("*", { count: "exact", head: true })
-      .gte("last_ping", fiveMinAgo);
-    return count ?? 0;
+    const tenSecAgo = new Date(Date.now() - 10 * 1000).toISOString();
+    const [users, radars] = await Promise.all([
+      db.from("sessions").select("*", { count: "exact", head: true }).gte("last_ping", fiveMinAgo),
+      db.from("radar_data").select("*", { count: "exact", head: true }).gte("updated_at", tenSecAgo),
+    ]);
+    return { users: users.count ?? 0, radars: radars.count ?? 0 };
   } catch {
-    return 0;
+    return { users: 0, radars: 0 };
+  }
+}
+
+async function getVersion(): Promise<string | null> {
+  try {
+    const release = await getLatestRelease("launcher");
+    return release?.tag_name ?? null;
+  } catch {
+    return null;
   }
 }
 
@@ -69,7 +80,7 @@ const STEPS = [
 ] as const;
 
 export default async function Home() {
-  const userCount = await getActiveUsers();
+  const [stats, version] = await Promise.all([getStats(), getVersion()]);
 
   return (
     <div className="flex-1 flex flex-col items-center px-6 pt-20 pb-12">
@@ -81,22 +92,43 @@ export default async function Home() {
         CS2 enhancement suite with live web radar, Lua scripting API, and in-game overlay
       </p>
 
-      <p className="mt-4 text-text-muted text-sm flex items-center gap-2">
-        <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-        {userCount.toLocaleString()} online
-      </p>
+      <div className="mt-4 flex items-center gap-4 text-text-muted text-sm">
+        <span className="flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          {stats.users.toLocaleString()} online
+        </span>
+        {stats.radars > 0 && (
+          <>
+            <span className="text-border">·</span>
+            <span className="flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+              {stats.radars.toLocaleString()} radar{stats.radars !== 1 ? "s" : ""} live
+            </span>
+          </>
+        )}
+      </div>
 
-      <a
-        href="/api/download"
-        className="mt-8 inline-flex items-center gap-2 bg-accent hover:bg-accent-hi text-on-accent font-semibold px-8 py-3 rounded transition-colors text-sm"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-        Download
-      </a>
+      <div className="mt-8 flex items-center gap-3">
+        <a
+          href="/api/download"
+          className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hi text-on-accent font-semibold px-8 py-3 rounded transition-colors text-sm"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Download
+        </a>
+        {version && (
+          <Link
+            href="/changelog"
+            className="text-text-faint text-xs hover:text-text-muted transition-colors font-mono"
+          >
+            {version}
+          </Link>
+        )}
+      </div>
 
       {/* Feature cards */}
       <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl w-full">
@@ -116,6 +148,21 @@ export default async function Home() {
               {f.desc}
             </div>
           </Link>
+        ))}
+      </div>
+
+      {/* Stats row */}
+      <div className="mt-16 w-full max-w-2xl grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+        {[
+          { val: "23", label: "API modules" },
+          { val: "100+", label: "Lua functions" },
+          { val: "34", label: "hook events" },
+          { val: "15+", label: "draw primitives" },
+        ].map((s) => (
+          <div key={s.label} className="gb p-3">
+            <div className="text-xl font-bold text-accent">{s.val}</div>
+            <div className="text-text-faint text-xs mt-1">{s.label}</div>
+          </div>
         ))}
       </div>
 
