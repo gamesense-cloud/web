@@ -465,7 +465,8 @@ end)`}</Example>
               <code className="text-text-faint">HOME</code>,{" "}
               <code className="text-text-faint">END</code>,{" "}
               <code className="text-text-faint">PAGE_UP</code>,{" "}
-              <code className="text-text-faint">PAGE_DOWN</code>
+              <code className="text-text-faint">PAGE_DOWN</code>,{" "}
+              <code className="text-text-faint">CAPS_LOCK</code>
             </p>
           </div>
         </Section>
@@ -591,7 +592,7 @@ end)`}</Example>
                 { name: "announce_phase_end", args: "(none)" },
               ]},
               { group: "Player", note: "table fields", events: [
-                { name: "player_death", args: "e.userid, e.attacker, e.headshot, e.distance, e.weapon" },
+                { name: "player_death", args: "e.userid, e.attacker, e.headshot, e.distance, e.weapon, e.assistedflash, e.noscope, e.thrusmoke, e.penetrated, e.dominated, e.revenge, e.assister" },
                 { name: "player_hurt", args: "e.userid, e.attacker, e.health, e.armor, e.dmg_health, e.dmg_armor, e.hitgroup, e.weapon" },
                 { name: "player_spawn", args: "e.userid, e.team" },
                 { name: "player_disconnect", args: "e.userid, e.reason" },
@@ -1105,6 +1106,7 @@ ffi.C.MessageBoxA(0, "Hello from Lua!", "gscloud", 0)`}</Example>
             <p className="text-xs mb-2">Euler angle triplet.</p>
             <div className="text-xs space-y-0.5">
               <p>Methods: <code className="text-text-faint">:pitch()</code>, <code className="text-text-faint">:yaw()</code>, <code className="text-text-faint">:roll()</code></p>
+              <p>Supports <code className="text-text-faint">tostring()</code>.</p>
             </div>
           </div>
 
