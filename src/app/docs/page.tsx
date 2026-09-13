@@ -490,6 +490,16 @@ export default function Docs() {
                 { name: "frame", args: "dt: number" },
                 { name: "paint", args: "(none — draw here)" },
                 { name: "key", args: "key: number, down: boolean" },
+                { name: "resize", args: "width: number, height: number" },
+                { name: "focus", args: "focused: boolean" },
+                { name: "unload", args: "(none)" },
+                { name: "createmove", args: "cmd: CUserCmd" },
+                { name: "movement", args: "cmd: CUserCmd" },
+                { name: "frame_stage", args: "stage: number" },
+                { name: "vote_setup", args: "(none)" },
+                { name: "edgebug", args: "(none)" },
+                { name: "jumpbug", args: "(none)" },
+                { name: "pixelsurf", args: "(none)" },
                 { name: "round_start", args: "timelimit: number" },
                 { name: "round_end", args: "winner, reason, message" },
                 { name: "round_freeze_end", args: "(none)" },
@@ -770,6 +780,13 @@ export default function Docs() {
           </Fn>
           <Fn name="ffi.load" args="library: string" ret="table">
             Load a DLL and return a table whose fields resolve to exports on access.
+          </Fn>
+          <Fn name="ffi.typeof" args="cdata" ret="string">
+            Returns the C type name of a cdata object as a string.
+          </Fn>
+          <Fn name="ffi.gc" args="cdata, finalizer" ret="cdata">
+            Associates a finalizer function with a cdata object. The finalizer is called when the cdata
+            is garbage-collected. Pass <code className="text-text-faint">nil</code> to remove the finalizer.
           </Fn>
           <Fn name="ffi.abi" args="param: string" ret="boolean">
             Query ABI info. Returns true for <code className="text-text-faint">&quot;win&quot;</code>,{" "}
