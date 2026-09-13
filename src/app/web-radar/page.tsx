@@ -178,6 +178,10 @@ function RadarCanvas() {
   const [showScoreboard, setShowScoreboard] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showLower, setShowLower] = useState(false);
+  const [showNames, setShowNames] = useState(true);
+  const showNamesRef = useRef(true);
+  const [showHealth, setShowHealth] = useState(true);
+  const showHealthRef = useRef(true);
   const showLowerRef = useRef(false);
   const nukeLowerImgRef = useRef<HTMLImageElement | null>(null);
   const [zoomDisplay, setZoomDisplay] = useState(100);
@@ -439,6 +443,8 @@ function RadarCanvas() {
       if (e.key === "n" || e.key === "N") setShowLower(v => !v);
       if (e.key === "f" || e.key === "F") setFollowMode(v => !v);
       if (e.key === "?" || e.key === "h" || e.key === "H") setShowHelp(v => !v);
+      if (e.key === "p" || e.key === "P") setShowNames(v => { showNamesRef.current = !v; return !v; });
+      if (e.key === "b" || e.key === "B") setShowHealth(v => { showHealthRef.current = !v; return !v; });
       if (e.key === "Tab") { e.preventDefault(); setShowScoreboard(true); }
     }
     function onUp(e: KeyboardEvent) {
@@ -667,7 +673,9 @@ function RadarCanvas() {
       }
 
       const hpColor = health > 60 ? "#5fc98a" : health > 25 ? "#e0b04b" : "#e0656a";
-      drawHealthArc(ctx, pos.x, pos.y, r + 3, health || 100, hpColor);
+      if (showHealthRef.current) {
+        drawHealthArc(ctx, pos.x, pos.y, r + 3, health || 100, hpColor);
+      }
 
       // Velocity arrow — shows movement direction
       if (vx != null && vy != null && pxPerUnit) {
@@ -701,24 +709,26 @@ function RadarCanvas() {
         ctx.strokeStyle = "rgba(74,158,255,0.3)"; ctx.lineWidth = 1.5; ctx.stroke();
       }
 
-      let textY = pos.y + 3;
-      if (name) {
-        ctx.font = "10px Tahoma, Verdana, sans-serif";
-        ctx.fillStyle = nameColor;
-        ctx.fillText(name, pos.x + r + 5, textY);
-        textY += 10;
-      }
-      if (weapon) {
-        const wc = weaponColor(weapon);
-        ctx.font = "8px Tahoma, sans-serif";
-        ctx.fillStyle = wc;
-        ctx.fillText(weaponDisplayName(weapon), pos.x + r + 5, textY);
-        textY += 9;
-      }
-      if (health > 0 && health < 50) {
-        ctx.font = "bold 8px Tahoma, sans-serif";
-        ctx.fillStyle = hpColor;
-        ctx.fillText(`${health}hp`, pos.x + r + 5, textY);
+      if (showNamesRef.current) {
+        let textY = pos.y + 3;
+        if (name) {
+          ctx.font = "10px Tahoma, Verdana, sans-serif";
+          ctx.fillStyle = nameColor;
+          ctx.fillText(name, pos.x + r + 5, textY);
+          textY += 10;
+        }
+        if (weapon) {
+          const wc = weaponColor(weapon);
+          ctx.font = "8px Tahoma, sans-serif";
+          ctx.fillStyle = wc;
+          ctx.fillText(weaponDisplayName(weapon), pos.x + r + 5, textY);
+          textY += 9;
+        }
+        if (health > 0 && health < 50) {
+          ctx.font = "bold 8px Tahoma, sans-serif";
+          ctx.fillStyle = hpColor;
+          ctx.fillText(`${health}hp`, pos.x + r + 5, textY);
+        }
       }
     }
 
@@ -1812,6 +1822,8 @@ function RadarCanvas() {
               { key: "D", desc: "Debug overlay" },
               { key: "N", desc: "Toggle level (Nuke/Vertigo)" },
               { key: "F", desc: "Follow local player" },
+              { key: "P", desc: "Toggle player names" },
+              { key: "B", desc: "Toggle health arcs" },
               { key: "H / ?", desc: "This help" },
             ].map(s => (
               <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
@@ -1850,14 +1862,17 @@ function RadarCanvas() {
         </div>
       )}
 
-      {/* Follow mode indicator */}
-      {followMode && hud.status === "live" && (
+      {/* Mode indicators */}
+      {hud.status === "live" && (
         <div style={{
           position: "absolute", bottom: 44, right: 12, zIndex: 10,
           pointerEvents: "none", fontFamily: "Consolas, monospace",
-          fontSize: 9, color: "#8e6ff744", letterSpacing: 1,
+          fontSize: 9, letterSpacing: 1,
+          display: "flex", gap: 8,
         }}>
-          FOLLOW
+          {followMode && <span style={{ color: "#8e6ff744" }}>FOLLOW</span>}
+          {!showNames && <span style={{ color: "#e0656a44" }}>NAMES OFF</span>}
+          {!showHealth && <span style={{ color: "#e0656a44" }}>HP OFF</span>}
         </div>
       )}
 

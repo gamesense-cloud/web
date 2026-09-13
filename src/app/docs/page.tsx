@@ -255,6 +255,15 @@ export default function Docs() {
           <Fn name="entity.GetColor" args="ent" ret="integer">
             Competitive teammate color index: 0=blue, 1=green, 2=yellow, 3=orange, 4=purple. Returns -1 if unavailable.
           </Fn>
+          <Fn name="entity.GetVelocity" args="ent" ret="x, y, z">
+            Current velocity vector (<code className="text-text-faint">m_vecVelocity</code>).
+          </Fn>
+          <Fn name="entity.GetSteamID" args="ent" ret="integer">
+            64-bit Steam ID from the controller. Returns 0 if unavailable.
+          </Fn>
+          <Fn name="entity.GetIndex" args="ent: userdata" ret="integer">
+            Entity slot index (1–64). Returns 0 if not found.
+          </Fn>
         </Section>
 
         {/* ───────────── renderer ───────────── */}
