@@ -98,6 +98,7 @@ function RadarCanvas() {
     debug?: Record<string, unknown>;
     entityScan?: { total: number; null: number; noPawn: number; noTeam: number; added: number };
     entDebug?: EntDebug[];
+    players?: Player[];
     localPlayer?: { x: number; y: number; z: number; health: number; team: number };
   }>({
     status: "connecting", map: "---", ct: 0, t: 0, pollCount: 0,
@@ -197,6 +198,7 @@ function RadarCanvas() {
             debug: data.debug,
             entityScan: data.entityScan,
             entDebug: data.entDebug,
+            players: data.players,
             localPlayer: data.localPlayer ? {
               x: data.localPlayer.x, y: data.localPlayer.y, z: data.localPlayer.z,
               health: data.localPlayer.health, team: data.localPlayer.team,
@@ -562,6 +564,11 @@ function RadarCanvas() {
         {hud.entityScan && (
           <div>
             entities: {hud.entityScan.added} found | {hud.entityScan.null} null | {hud.entityScan.noPawn} noPawn | {hud.entityScan.noTeam} noTeam
+          </div>
+        )}
+        {hud.players && hud.players.length > 0 && (
+          <div style={{ color: "#4a9eff" }}>
+            players({hud.players.length}): {hud.players.map((p, i) => `[${p.name}:t${p.team} (${Math.round(p.x)},${Math.round(p.y)}) hp${p.health}]`).join(" ")}
           </div>
         )}
         {hud.debug && (
