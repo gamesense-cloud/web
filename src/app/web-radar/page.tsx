@@ -196,6 +196,10 @@ function RadarCanvas() {
   const mouseRef = useRef<{ x: number; y: number }>({ x: -1, y: -1 });
   const renderedPlayersRef = useRef<{ sx: number; sy: number; player: Player; isLocal: boolean }[]>([]);
   const [hoveredPlayer, setHoveredPlayer] = useState<{ player: Player; isLocal: boolean; sx: number; sy: number } | null>(null);
+  const lastReceiveRef = useRef(0);
+  const dataAgeRef = useRef(0);
+  const latencyEmaRef = useRef(0);
+  const prevRoundsRef = useRef(-1);
 
   const [hud, setHud] = useState<{
     status: RadarStatus; map: string; mapDisplay: string; ct: number; t: number;
@@ -281,6 +285,22 @@ function RadarCanvas() {
             currPosRef.current = next;
             gameDataRef.current = data;
             lastUpdateRef.current = performance.now();
+            lastReceiveRef.current = performance.now();
+            if (data.age_ms != null) {
+              const alpha = latencyEmaRef.current === 0 ? 1.0 : 0.3;
+              latencyEmaRef.current = latencyEmaRef.current * (1 - alpha) + data.age_ms * alpha;
+            }
+
+            // Round reset: clear death markers and kill feed on new round
+            const rp = data.roundsPlayed ?? -1;
+            if (prevRoundsRef.current >= 0 && rp !== prevRoundsRef.current) {
+              deathsRef.current = [];
+              killFeedRef.current = [];
+              setKillFeed([]);
+              trailsRef.current = {};
+              prevAliveRef.current = {};
+            }
+            prevRoundsRef.current = rp;
           } else {
             gameDataRef.current = null;
             currPosRef.current = {};
@@ -1283,6 +1303,17 @@ function RadarCanvas() {
             <span style={{ fontSize: 11, color: sc.color, fontFamily: "Tahoma, sans-serif" }}>
               {sc.label}
             </span>
+            {hud.status === "live" && hud.age != null && (() => {
+              const age = hud.age;
+              const ageColor = age < 500 ? "#5fc98a55" : age < 2000 ? "#e0b04b66" : "#e0656a88";
+              return (
+                <span style={{
+                  fontSize: 9, color: ageColor, fontFamily: "Consolas, monospace", marginLeft: 4,
+                }}>
+                  {age < 1000 ? `${Math.round(age)}ms` : `${(age / 1000).toFixed(1)}s`}
+                </span>
+              );
+            })()}
           </div>
           {hud.status === "live" && (
             <>
