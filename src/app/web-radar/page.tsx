@@ -164,6 +164,13 @@ function weaponColor(raw: string): string {
   return "#88888899";
 }
 
+function loadPref(key: string, fallback: boolean): boolean {
+  try { const v = localStorage.getItem(`radar:${key}`); return v === null ? fallback : v === "1"; } catch { return fallback; }
+}
+function savePref(key: string, val: boolean) {
+  try { localStorage.setItem(`radar:${key}`, val ? "1" : "0"); } catch { /* noop */ }
+}
+
 function RadarCanvas() {
   const params = useSearchParams();
   const session = params.get("session");
@@ -185,10 +192,10 @@ function RadarCanvas() {
   const [showScoreboard, setShowScoreboard] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showLower, setShowLower] = useState(false);
-  const [showNames, setShowNames] = useState(true);
-  const showNamesRef = useRef(true);
-  const [showHealth, setShowHealth] = useState(true);
-  const showHealthRef = useRef(true);
+  const [showNames, setShowNames] = useState(() => loadPref("names", true));
+  const showNamesRef = useRef(loadPref("names", true));
+  const [showHealth, setShowHealth] = useState(() => loadPref("health", true));
+  const showHealthRef = useRef(loadPref("health", true));
   const showLowerRef = useRef(false);
   const nukeLowerImgRef = useRef<HTMLImageElement | null>(null);
   const [zoomDisplay, setZoomDisplay] = useState(100);
@@ -207,8 +214,8 @@ function RadarCanvas() {
   const dataAgeRef = useRef(0);
   const latencyEmaRef = useRef(0);
   const prevRoundsRef = useRef(-1);
-  const [showVelocity, setShowVelocity] = useState(true);
-  const showVelocityRef = useRef(true);
+  const [showVelocity, setShowVelocity] = useState(() => loadPref("velocity", true));
+  const showVelocityRef = useRef(loadPref("velocity", true));
 
   const [hud, setHud] = useState<{
     status: RadarStatus; map: string; mapDisplay: string; ct: number; t: number;
@@ -494,9 +501,9 @@ function RadarCanvas() {
       if (e.key === "n" || e.key === "N") setShowLower(v => !v);
       if (e.key === "f" || e.key === "F") setFollowMode(v => !v);
       if (e.key === "?" || e.key === "h" || e.key === "H") setShowHelp(v => !v);
-      if (e.key === "p" || e.key === "P") setShowNames(v => { showNamesRef.current = !v; return !v; });
-      if (e.key === "b" || e.key === "B") setShowHealth(v => { showHealthRef.current = !v; return !v; });
-      if (e.key === "v" || e.key === "V") setShowVelocity(v => { showVelocityRef.current = !v; return !v; });
+      if (e.key === "p" || e.key === "P") setShowNames(v => { const n = !v; showNamesRef.current = n; savePref("names", n); return n; });
+      if (e.key === "b" || e.key === "B") setShowHealth(v => { const n = !v; showHealthRef.current = n; savePref("health", n); return n; });
+      if (e.key === "v" || e.key === "V") setShowVelocity(v => { const n = !v; showVelocityRef.current = n; savePref("velocity", n); return n; });
       if (e.key === "r" || e.key === "R") { zoomRef.current = 1.0; panRef.current = { x: 0, y: 0 }; setZoomDisplay(100); }
       if (e.key === "Tab") { e.preventDefault(); setShowScoreboard(true); }
     }
