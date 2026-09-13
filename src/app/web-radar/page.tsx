@@ -200,6 +200,8 @@ function RadarCanvas() {
   const dataAgeRef = useRef(0);
   const latencyEmaRef = useRef(0);
   const prevRoundsRef = useRef(-1);
+  const [showVelocity, setShowVelocity] = useState(true);
+  const showVelocityRef = useRef(true);
 
   const [hud, setHud] = useState<{
     status: RadarStatus; map: string; mapDisplay: string; ct: number; t: number;
@@ -465,6 +467,7 @@ function RadarCanvas() {
       if (e.key === "?" || e.key === "h" || e.key === "H") setShowHelp(v => !v);
       if (e.key === "p" || e.key === "P") setShowNames(v => { showNamesRef.current = !v; return !v; });
       if (e.key === "b" || e.key === "B") setShowHealth(v => { showHealthRef.current = !v; return !v; });
+      if (e.key === "v" || e.key === "V") setShowVelocity(v => { showVelocityRef.current = !v; return !v; });
       if (e.key === "Tab") { e.preventDefault(); setShowScoreboard(true); }
     }
     function onUp(e: KeyboardEvent) {
@@ -698,7 +701,7 @@ function RadarCanvas() {
       }
 
       // Velocity arrow — shows movement direction
-      if (vx != null && vy != null && pxPerUnit) {
+      if (showVelocityRef.current && vx != null && vy != null && pxPerUnit) {
         const speed = Math.sqrt(vx * vx + vy * vy);
         if (speed > 15) {
           const velLen = Math.min(speed * pxPerUnit * 0.06, 20);
@@ -1091,6 +1094,45 @@ function RadarCanvas() {
       }
 
       ctx.restore();
+
+      // Minimap overview — shown when zoomed in past 1.5x
+      if (zoomRef.current > 1.5 && mapInfo && mapImgRef.current) {
+        const mmSize = 100;
+        const mmMargin = 8;
+        const mmX = w - mmSize - mmMargin;
+        const mmY = h - mmSize - mmMargin - 40;
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = "#0d1117";
+        ctx.fillRect(mmX, mmY, mmSize, mmSize);
+        ctx.drawImage(mapImgRef.current, mmX, mmY, mmSize, mmSize);
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = "#ffffff15";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(mmX, mmY, mmSize, mmSize);
+
+        // Viewport rectangle
+        const vl = (-panRef.current.x) / (zoomRef.current * radarSize);
+        const vt = (-panRef.current.y) / (zoomRef.current * radarSize);
+        const vw = w / (zoomRef.current * radarSize);
+        const vh = h / (zoomRef.current * radarSize);
+        ctx.strokeStyle = "#8e6ff766";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(
+          mmX + Math.max(0, vl) * mmSize,
+          mmY + Math.max(0, vt) * mmSize,
+          Math.min(vw, 1 - Math.max(0, vl)) * mmSize,
+          Math.min(vh, 1 - Math.max(0, vt)) * mmSize
+        );
+
+        // Local player dot on minimap
+        if (data?.localPlayer && data.localPlayer.alive !== false) {
+          const lmPos = worldToCanvas(data.localPlayer.x, data.localPlayer.y, mapInfo, mmSize, mmX, mmY);
+          ctx.beginPath();
+          ctx.arc(lmPos.x, lmPos.y, 2, 0, Math.PI * 2);
+          ctx.fillStyle = "#8e6ff7";
+          ctx.fill();
+        }
+      }
     }
 
     rafId = requestAnimationFrame(render);
@@ -1855,6 +1897,7 @@ function RadarCanvas() {
               { key: "F", desc: "Follow local player" },
               { key: "P", desc: "Toggle player names" },
               { key: "B", desc: "Toggle health arcs" },
+              { key: "V", desc: "Toggle velocity arrows" },
               { key: "H / ?", desc: "This help" },
             ].map(s => (
               <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
@@ -1904,6 +1947,7 @@ function RadarCanvas() {
           {followMode && <span style={{ color: "#8e6ff744" }}>FOLLOW</span>}
           {!showNames && <span style={{ color: "#e0656a44" }}>NAMES OFF</span>}
           {!showHealth && <span style={{ color: "#e0656a44" }}>HP OFF</span>}
+          {!showVelocity && <span style={{ color: "#e0656a44" }}>VEL OFF</span>}
         </div>
       )}
 
