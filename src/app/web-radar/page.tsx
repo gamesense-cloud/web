@@ -39,6 +39,7 @@ interface Player {
   yaw?: number;
   armor?: number; weapon?: string;
   scoped?: boolean; helmet?: boolean; defuser?: boolean; defusing?: boolean;
+  flashAlpha?: number; money?: number;
 }
 
 interface EntDebug {
@@ -436,7 +437,8 @@ function RadarCanvas() {
       pos: { x: number; y: number },
       isLocal: boolean, isEnemy: boolean, isDormant: boolean,
       isAlive: boolean, health: number, name: string, yaw?: number,
-      weapon?: string, scoped?: boolean, defusing?: boolean, armor?: number
+      weapon?: string, scoped?: boolean, defusing?: boolean, armor?: number,
+      flashAlpha?: number, money?: number
     ) {
       const color = isLocal ? "#8e6ff7" : isEnemy ? "#e0656a" : "#4a9eff";
       const nameColor = isLocal ? "#a086ff" : isEnemy ? "#e0656a" : "#dcdcdc";
@@ -492,6 +494,13 @@ function RadarCanvas() {
       ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
       ctx.fillStyle = color; ctx.fill();
       ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1; ctx.stroke();
+
+      if (flashAlpha && flashAlpha > 10) {
+        const fa = Math.min(flashAlpha / 255, 1.0);
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, r + 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${(fa * 0.6).toFixed(2)})`;
+        ctx.fill();
+      }
 
       const hpColor = health > 60 ? "#5fc98a" : health > 25 ? "#e0b04b" : "#e0656a";
       drawHealthArc(ctx, pos.x, pos.y, r + 3, health || 100, hpColor);
@@ -640,7 +649,8 @@ function RadarCanvas() {
           }
           drawPlayer(ctx, pos, true, false, false, true, lp.health, lp.name,
             lp.yaw ?? data.localPlayer.yaw, data.localPlayer.weapon,
-            data.localPlayer.scoped, data.localPlayer.defusing, data.localPlayer.armor);
+            data.localPlayer.scoped, data.localPlayer.defusing, data.localPlayer.armor,
+            data.localPlayer.flashAlpha, data.localPlayer.money);
           ctx.globalAlpha = 1;
         }
 
@@ -655,7 +665,8 @@ function RadarCanvas() {
               ctx.globalAlpha = (nukeLevel === "lower") === onLower ? 1.0 : 0.3;
             }
             drawPlayer(ctx, pos, false, ip.enemy, ip.dormant, ip.alive, ip.health, ip.name,
-              ip.yaw ?? p.yaw, p.weapon, p.scoped, p.defusing, p.armor);
+              ip.yaw ?? p.yaw, p.weapon, p.scoped, p.defusing, p.armor,
+              p.flashAlpha, p.money);
             ctx.globalAlpha = 1;
           }
         }
@@ -944,6 +955,11 @@ function RadarCanvas() {
                         {p.armor}ap
                       </div>
                     )}
+                    {p.alive && (p.money ?? 0) > 0 && (
+                      <div style={{ fontSize: 8, color: "#5fc98a44", fontFamily: "Consolas, monospace" }}>
+                        ${p.money}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -980,6 +996,11 @@ function RadarCanvas() {
                     {p.alive && (p.armor ?? 0) > 0 && (
                       <div style={{ fontSize: 8, color: "#e0b04b55", fontFamily: "Consolas, monospace" }}>
                         {p.armor}ap
+                      </div>
+                    )}
+                    {p.alive && (p.money ?? 0) > 0 && (
+                      <div style={{ fontSize: 8, color: "#5fc98a44", fontFamily: "Consolas, monospace" }}>
+                        ${p.money}
                       </div>
                     )}
                   </div>
