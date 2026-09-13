@@ -191,6 +191,16 @@ create table if not exists sessions (
 alter table sessions add column if not exists user_id uuid references users(id) on delete set null;
 create index if not exists sessions_last_ping_idx on sessions (last_ping desc);
 
+-- ---------------------------------------------------------- radar sessions --
+-- Stores live game data pushed from the DLL for the web radar viewer.
+-- Each row is a single radar session; game_data is overwritten on every push.
+create table if not exists radar_data (
+  session_id text primary key,
+  game_data  jsonb not null default '{}',
+  updated_at timestamptz not null default now()
+);
+create index if not exists radar_data_updated_idx on radar_data (updated_at desc);
+
 -- ------------------------------------------------------------------ rls --
 -- Everything is service-role only. The dashboard never queries Supabase from
 -- the browser, so there are deliberately no policies: with RLS on and no
@@ -208,6 +218,7 @@ alter table tickets         enable row level security;
 alter table ticket_messages enable row level security;
 alter table announcements   enable row level security;
 alter table sessions        enable row level security;
+alter table radar_data      enable row level security;
 
 -- --------------------------------------------------------------- counts --
 -- Daily event counts for the admin chart, so the whole 14-day series is one
