@@ -13,6 +13,6 @@ export async function GET() {
 
     return NextResponse.json({ active_users: count ?? 0 });
   } catch {
-    return NextResponse.json({ active_users: 0 });
+    return NextResponse.json({ error: "internal" }, { status: 500 });
   }
 }

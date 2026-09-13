@@ -138,7 +138,7 @@ export default async function Home() {
       </div>
 
       {/* Quick links */}
-      <div className="mt-12 flex items-center gap-6 text-xs text-text-faint">
+      <div className="mt-12 flex items-center justify-center gap-x-6 gap-y-2 text-xs text-text-faint flex-wrap">
         <Link href="/docs" className="hover:text-text-muted transition-colors">
           API Docs
         </Link>

@@ -16,23 +16,23 @@ export default function Contact() {
             <div className="flex items-center gap-2">
               <span className="text-text-muted w-20">DLL Repo</span>
               <a
-                href="https://github.com/elect-gamesense/gamesense-cloud"
+                href="https://github.com/gamesense-cloud/dll"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-accent hover:underline font-mono text-xs"
               >
-                elect-gamesense/gamesense-cloud
+                gamesense-cloud/dll
               </a>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-text-muted w-20">Web Repo</span>
               <a
-                href="https://github.com/elect-gamesense/gamesense-cloud-web"
+                href="https://github.com/gamesense-cloud/web"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-accent hover:underline font-mono text-xs"
               >
-                elect-gamesense/gamesense-cloud-web
+                gamesense-cloud/web
               </a>
             </div>
           </div>
