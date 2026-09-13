@@ -162,6 +162,7 @@ function weaponColor(raw: string): string {
 function RadarCanvas() {
   const params = useSearchParams();
   const session = params.get("session");
+  const [sessionInput, setSessionInput] = useState("");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameDataRef = useRef<ApiResponse | null>(null);
@@ -1229,6 +1230,50 @@ function RadarCanvas() {
             </div>
           </div>
         </div>
+        <div style={{
+          marginTop: 16, animation: "fadeIn 0.5s ease-out 0.25s both",
+        }}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const id = sessionInput.trim();
+              if (id.length >= 16) {
+                window.location.href = `/web-radar?session=${encodeURIComponent(id)}`;
+              }
+            }}
+            style={{ display: "flex", gap: 8, alignItems: "center" }}
+          >
+            <input
+              type="text"
+              placeholder="Paste session ID..."
+              value={sessionInput}
+              onChange={(e) => setSessionInput(e.target.value)}
+              style={{
+                background: "#111418", border: "1px solid #1e1e1e",
+                borderRadius: 4, padding: "8px 12px",
+                color: "#dcdcdc", fontSize: 12, fontFamily: "Consolas, monospace",
+                width: 220, outline: "none",
+              }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "#8e6ff744")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "#1e1e1e")}
+            />
+            <button
+              type="submit"
+              disabled={sessionInput.trim().length < 16}
+              style={{
+                background: sessionInput.trim().length >= 16 ? "#8e6ff722" : "#111418",
+                border: `1px solid ${sessionInput.trim().length >= 16 ? "#8e6ff744" : "#1e1e1e"}`,
+                borderRadius: 4, padding: "8px 16px",
+                color: sessionInput.trim().length >= 16 ? "#8e6ff7" : "#555",
+                fontSize: 11, fontWeight: "bold", cursor: sessionInput.trim().length >= 16 ? "pointer" : "default",
+                letterSpacing: 1,
+              }}
+            >
+              CONNECT
+            </button>
+          </form>
+        </div>
+
         <div style={{ color: "#ffffff0a", fontSize: 9, letterSpacing: 1, marginTop: 8, animation: "fadeIn 0.5s ease-out 0.3s both" }}>
           Scroll to zoom &middot; Drag to pan &middot; Tab for scoreboard &middot; F to follow
         </div>

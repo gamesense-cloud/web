@@ -7,8 +7,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const session = searchParams.get("session");
 
-  if (!session) {
-    return NextResponse.json({ status: "error", error: "missing session" }, { status: 400, headers: NO_CACHE });
+  if (!session || session.length < 16 || session.length > 64 || !/^[a-f0-9]+$/.test(session)) {
+    return NextResponse.json({ status: "error", error: "invalid session" }, { status: 400, headers: NO_CACHE });
   }
 
   try {

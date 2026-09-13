@@ -49,6 +49,12 @@ const FEATURES = [
     color: "#4a9eff",
   },
   {
+    title: "Kill Feed & Scoreboard",
+    desc: "Real-time kill feed with killer/victim pairs, weapon and headshot info. Full scoreboard with economy breakdown.",
+    href: "/web-radar",
+    color: "#e0656a",
+  },
+  {
     title: "In-Game GUI",
     desc: "Built-in ImGui overlay with script editor, console, settings, font management, and Lua UI controls.",
     href: "/docs",
@@ -147,6 +153,10 @@ export default async function Home() {
         <span className="text-border">|</span>
         <Link href="/login" className="hover:text-text-muted transition-colors">
           Dashboard
+        </Link>
+        <span className="text-border">|</span>
+        <Link href="/contact" className="hover:text-text-muted transition-colors">
+          Contact
         </Link>
       </div>
     </div>

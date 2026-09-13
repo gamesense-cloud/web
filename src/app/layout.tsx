@@ -25,6 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/changelog" className="hover:text-text-muted transition-colors">
               Changelog
             </Link>
+            <Link href="/contact" className="hover:text-text-muted transition-colors">
+              Contact
+            </Link>
             <Link href="/login" className="hover:text-text-muted transition-colors">
               Login
             </Link>
