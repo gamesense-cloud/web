@@ -1502,7 +1502,9 @@ function RadarCanvas() {
           position: "absolute", top: 44, right: 8, zIndex: 10,
           pointerEvents: "none", fontFamily: "Tahoma, sans-serif",
         }}>
-          {hud.players.filter(p => p.alive).map((p, i) => {
+          {hud.players.filter(p => p.alive)
+            .sort((a, b) => a.enemy === b.enemy ? (a.health ?? 0) - (b.health ?? 0) : a.enemy ? -1 : 1)
+            .map((p, i) => {
             const pColor = (!p.enemy && p.color != null && p.color >= 0 && p.color < COMP_COLORS.length)
               ? COMP_COLORS[p.color]
               : (p.enemy ? "#e0656a" : "#4a9eff");
