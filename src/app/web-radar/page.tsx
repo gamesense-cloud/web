@@ -61,6 +61,7 @@ interface BombInfo {
   site?: "A" | "B";
   blowTime?: number;
   defuseEnd?: number;
+  timerLength?: number;
 }
 
 interface GrenadeInfo {
@@ -983,8 +984,9 @@ function RadarCanvas() {
             const bombOnLower = data.bomb.z < zSplit;
             ctx.globalAlpha = (nukeLevel === "lower") === bombOnLower ? 1.0 : 0.25;
           }
+          const bombTimerTotal = data.bomb.timerLength && data.bomb.timerLength > 0 ? data.bomb.timerLength : 40;
           const bombTimerFrac = (data.bomb.planted && data.bomb.blowTime && data.curtime && data.bomb.blowTime > data.curtime)
-            ? Math.max(0, (data.bomb.blowTime - data.curtime) / 40) : undefined;
+            ? Math.max(0, (data.bomb.blowTime - data.curtime) / bombTimerTotal) : undefined;
           const bombDefusing = data.bomb.planted && data.bomb.defuseEnd != null && data.curtime != null && data.bomb.defuseEnd > data.curtime;
           drawBomb(ctx, bpos, data.bomb.planted, data.bomb.site, bombTimerFrac, bombDefusing);
           ctx.globalAlpha = 1;
@@ -1695,7 +1697,12 @@ function RadarCanvas() {
             })()}
             {/* CT players */}
             <div style={{ padding: "0 16px", marginBottom: 8 }}>
-              <div style={{ fontSize: 9, color: "#4a9eff88", letterSpacing: 1, marginBottom: 4 }}>COUNTER-TERRORISTS</div>
+              <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
+                <span style={{ fontSize: 9, color: "#4a9eff88", letterSpacing: 1, flex: 1 }}>COUNTER-TERRORISTS</span>
+                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 40, textAlign: "center" }}>K/D/A</span>
+                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 28, textAlign: "right" }}>PING</span>
+                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 42, textAlign: "right" }}>HP</span>
+              </div>
               {[...(hud.localPlayer?.team === 3 ? [{
                 ...hud.localPlayer, name: "You", enemy: false,
               } as Player] : []),
@@ -1755,7 +1762,12 @@ function RadarCanvas() {
             </div>
             {/* T players */}
             <div style={{ padding: "0 16px" }}>
-              <div style={{ fontSize: 9, color: "#e0b04b88", letterSpacing: 1, marginBottom: 4 }}>TERRORISTS</div>
+              <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
+                <span style={{ fontSize: 9, color: "#e0b04b88", letterSpacing: 1, flex: 1 }}>TERRORISTS</span>
+                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 40, textAlign: "center" }}>K/D/A</span>
+                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 28, textAlign: "right" }}>PING</span>
+                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 42, textAlign: "right" }}>HP</span>
+              </div>
               {[...(hud.localPlayer?.team === 2 ? [{
                 ...hud.localPlayer, name: "You", enemy: false,
               } as Player] : []),
@@ -1868,7 +1880,7 @@ function RadarCanvas() {
                 borderRadius: 1, overflow: "hidden", position: "relative",
               }}>
                 <div style={{
-                  width: `${Math.min(remaining / 40 * 100, 100)}%`, height: "100%",
+                  width: `${Math.min(remaining / (hud.bomb.timerLength && hud.bomb.timerLength > 0 ? hud.bomb.timerLength : 40) * 100, 100)}%`, height: "100%",
                   background: remaining < 10
                     ? "linear-gradient(90deg, #e03c3c, #ff4444)"
                     : "linear-gradient(90deg, #e0b04b, #e0656a)",
@@ -2121,6 +2133,30 @@ function RadarCanvas() {
               </div>
             )}
           </div>
+          {(hoveredPlayer.player.kills != null || hoveredPlayer.player.deaths != null) && (
+            <div style={{ display: "flex", gap: 12, fontSize: 10, marginTop: 4 }}>
+              <div>
+                <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>K</div>
+                <div style={{ color: "#dcdcdc", fontFamily: "Consolas, monospace" }}>{hoveredPlayer.player.kills ?? 0}</div>
+              </div>
+              <div>
+                <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>D</div>
+                <div style={{ color: "#dcdcdc", fontFamily: "Consolas, monospace" }}>{hoveredPlayer.player.deaths ?? 0}</div>
+              </div>
+              <div>
+                <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>A</div>
+                <div style={{ color: "#dcdcdc", fontFamily: "Consolas, monospace" }}>{hoveredPlayer.player.assists ?? 0}</div>
+              </div>
+              {hoveredPlayer.player.ping != null && hoveredPlayer.player.ping > 0 && (
+                <div>
+                  <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>PING</div>
+                  <div style={{ color: hoveredPlayer.player.ping < 80 ? "#5fc98a" : hoveredPlayer.player.ping < 150 ? "#e0b04b" : "#e0656a", fontFamily: "Consolas, monospace" }}>
+                    {hoveredPlayer.player.ping}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {hoveredPlayer.player.weapon && (
             <div style={{ marginTop: 4, fontSize: 9, color: weaponColor(hoveredPlayer.player.weapon) }}>
               {weaponDisplayName(hoveredPlayer.player.weapon)}
