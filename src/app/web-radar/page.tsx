@@ -50,6 +50,11 @@ interface BombInfo {
   x: number; y: number; z: number; planted: boolean;
 }
 
+interface GrenadeInfo {
+  x: number; y: number; z: number;
+  type: "smoke" | "flash" | "he" | "molotov" | "decoy";
+}
+
 interface ApiResponse {
   status: "live" | "waiting" | "stale" | "no_session" | "error";
   connected: boolean;
@@ -59,6 +64,7 @@ interface ApiResponse {
   localPlayer?: Player & { yaw: number };
   players?: Player[];
   bomb?: BombInfo;
+  grenades?: GrenadeInfo[];
   debug?: Record<string, unknown>;
   entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
   entDebug?: EntDebug[];
@@ -158,6 +164,7 @@ function RadarCanvas() {
     players?: Player[];
     localPlayer?: Player;
     bomb?: BombInfo;
+    grenades?: GrenadeInfo[];
   }>({
     status: "connecting", map: "---", mapDisplay: "---", ct: 0, t: 0, pollCount: 0,
   });
@@ -318,6 +325,7 @@ function RadarCanvas() {
             players: data.players,
             localPlayer: data.localPlayer ?? undefined,
             bomb: data.bomb,
+            grenades: data.grenades,
           });
         } catch (e) {
           console.error(`[radar] poll #${n} FETCH ERROR:`, e);
@@ -595,6 +603,46 @@ function RadarCanvas() {
       }
     }
 
+    const GRENADE_COLORS: Record<string, { fill: string; stroke: string; label: string }> = {
+      smoke: { fill: "rgba(180,180,180,0.6)", stroke: "#aaa", label: "S" },
+      flash: { fill: "rgba(255,255,200,0.7)", stroke: "#ff0", label: "F" },
+      he:    { fill: "rgba(224,101,106,0.7)", stroke: "#e06", label: "H" },
+      molotov: { fill: "rgba(255,140,40,0.7)", stroke: "#f80", label: "M" },
+      decoy: { fill: "rgba(100,160,100,0.5)", stroke: "#6a6", label: "D" },
+    };
+
+    function drawGrenade(
+      ctx: CanvasRenderingContext2D,
+      pos: { x: number; y: number },
+      type: string
+    ) {
+      const gc = GRENADE_COLORS[type] || GRENADE_COLORS.he;
+      const r = 4;
+
+      // Outer glow for active grenades
+      if (type === "smoke" || type === "molotov") {
+        const pulse = 0.4 + 0.3 * Math.sin(performance.now() / 500);
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, type === "smoke" ? 14 : 10, 0, Math.PI * 2);
+        ctx.fillStyle = type === "smoke"
+          ? `rgba(180,180,180,${(pulse * 0.12).toFixed(2)})`
+          : `rgba(255,140,40,${(pulse * 0.15).toFixed(2)})`;
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = gc.fill;
+      ctx.fill();
+      ctx.strokeStyle = gc.stroke;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.font = "bold 7px Tahoma, sans-serif";
+      ctx.fillStyle = gc.stroke;
+      ctx.fillText(gc.label, pos.x + r + 2, pos.y + 3);
+    }
+
     function drawBomb(
       ctx: CanvasRenderingContext2D,
       pos: { x: number; y: number },
@@ -710,6 +758,19 @@ function RadarCanvas() {
           }
           drawBomb(ctx, bpos, data.bomb.planted);
           ctx.globalAlpha = 1;
+        }
+
+        // Draw grenades
+        if (data.grenades) {
+          for (const g of data.grenades) {
+            const gpos = worldToCanvas(g.x, g.y, mapInfo, radarSize, 0, 0);
+            if (nukeLevel) {
+              const onLower = g.z < NUKE_Z_SPLIT;
+              ctx.globalAlpha = (nukeLevel === "lower") === onLower ? 1.0 : 0.25;
+            }
+            drawGrenade(ctx, gpos, g.type);
+            ctx.globalAlpha = 1;
+          }
         }
 
         // Draw player trails
