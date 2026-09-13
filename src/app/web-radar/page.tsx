@@ -1531,11 +1531,12 @@ function RadarCanvas() {
           position: "absolute", inset: 0, zIndex: 5,
           display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
-          pointerEvents: "none",
+          pointerEvents: hud.status === "no_session" ? "auto" : "none",
         }}>
           <div style={{
-            padding: "20px 32px", background: "rgba(19,19,19,0.9)",
+            padding: "20px 32px", background: "rgba(19,19,19,0.95)",
             border: "1px solid #1e1e1e", borderRadius: 2, textAlign: "center",
+            maxWidth: 400,
           }}>
             <div style={{ fontSize: 14, color: sc.color, fontFamily: "Tahoma, sans-serif", fontWeight: "bold" }}>
               {sc.label}
@@ -1549,6 +1550,55 @@ function RadarCanvas() {
               {hud.status === "connecting" && "Connecting to session..."}
               {hud.status === "error" && "Failed to reach the server."}
             </div>
+            {hud.status === "no_session" && (
+              <div style={{ marginTop: 12, textAlign: "left" }}>
+                <div style={{ fontSize: 10, color: "#444", fontFamily: "Consolas, monospace", marginBottom: 8 }}>
+                  Session: <span style={{ color: "#666" }}>{session}</span>
+                </div>
+                <div style={{ fontSize: 10, color: "#555", lineHeight: 1.8, fontFamily: "Tahoma, sans-serif" }}>
+                  This usually means the DLL was restarted and generated a new session ID. Copy the new URL from the DLL&apos;s Web Radar panel.
+                </div>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const val = sessionInput.trim();
+                    if (val.length >= 16 && /^[a-f0-9]+$/.test(val)) {
+                      window.location.href = `/web-radar?session=${encodeURIComponent(val)}`;
+                    } else if (val.includes("session=")) {
+                      const m = val.match(/session=([a-f0-9]{16,64})/);
+                      if (m) window.location.href = `/web-radar?session=${m[1]}`;
+                    }
+                  }}
+                  style={{ display: "flex", gap: 6, marginTop: 12, alignItems: "center" }}
+                >
+                  <input
+                    type="text"
+                    placeholder="Paste new session ID or URL..."
+                    value={sessionInput}
+                    onChange={(e) => setSessionInput(e.target.value)}
+                    style={{
+                      flex: 1, background: "#0d1117", border: "1px solid #1e1e1e",
+                      borderRadius: 3, padding: "6px 10px",
+                      color: "#dcdcdc", fontSize: 11, fontFamily: "Consolas, monospace",
+                      outline: "none",
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "#8e6ff744")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "#1e1e1e")}
+                  />
+                  <button
+                    type="submit"
+                    style={{
+                      background: "#8e6ff722", border: "1px solid #8e6ff744",
+                      borderRadius: 3, padding: "6px 14px",
+                      color: "#8e6ff7", fontSize: 10, fontWeight: "bold", cursor: "pointer",
+                      letterSpacing: 1,
+                    }}
+                  >
+                    GO
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       )}
