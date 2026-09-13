@@ -20,22 +20,46 @@ export const revalidate = 30;
 const FEATURES = [
   {
     title: "Web Radar",
-    desc: "Live CS2 radar in any browser. Share a link — no login needed.",
+    desc: "Live CS2 radar in any browser — player positions, grenades, bomb status. Share a link, no login needed.",
     href: "/web-radar",
     color: "var(--accent)",
   },
   {
     title: "Lua Scripting",
-    desc: "23-module API. Engine, entity, drawing, events, HTTP, FFI and more.",
+    desc: "23-module API covering engine, entity, drawing, events, HTTP, FFI, file I/O, UI controls and more.",
     href: "/docs",
     color: "var(--ok)",
   },
   {
-    title: "Live Grenades",
-    desc: "Smokes, flashes, mollies and HEs rendered on the radar in real-time.",
+    title: "Live Grenades & Bomb",
+    desc: "Smoke clouds, molotov fire zones, flash bangs and HEs rendered on the radar with real-time AOE indicators.",
     href: "/web-radar",
     color: "var(--warn)",
   },
+  {
+    title: "Round Timer & Scores",
+    desc: "Full scoreboard with team scores, round timer, freeze/warmup phase indicators, and alive player counts.",
+    href: "/web-radar",
+    color: "var(--bad)",
+  },
+  {
+    title: "Movement Tracking",
+    desc: "Player velocity arrows, movement trails, and interpolated positions for smooth real-time tracking.",
+    href: "/web-radar",
+    color: "#4a9eff",
+  },
+  {
+    title: "In-Game GUI",
+    desc: "Built-in ImGui overlay with script editor, console, settings, font management, and Lua UI controls.",
+    href: "/docs",
+    color: "#e0b04b",
+  },
+] as const;
+
+const STEPS = [
+  { num: "1", title: "Download", desc: "Grab the loader from gamesense.cloud" },
+  { num: "2", title: "Inject", desc: "Run the loader while CS2 is open" },
+  { num: "3", title: "Share", desc: "Click Start Radar — link is copied to clipboard" },
 ] as const;
 
 export default async function Home() {
@@ -47,8 +71,8 @@ export default async function Home() {
         gamesense<span className="text-accent">.cloud</span>
       </h1>
 
-      <p className="mt-2 text-text-faint text-sm max-w-xs text-center">
-        Game enhancement suite for CS2
+      <p className="mt-2 text-text-faint text-sm max-w-md text-center">
+        CS2 enhancement suite with live web radar, Lua scripting API, and in-game overlay
       </p>
 
       <p className="mt-4 text-text-muted text-sm flex items-center gap-2">
@@ -69,7 +93,7 @@ export default async function Home() {
       </a>
 
       {/* Feature cards */}
-      <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full">
+      <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl w-full">
         {FEATURES.map((f) => (
           <Link
             key={f.title}
@@ -89,14 +113,36 @@ export default async function Home() {
         ))}
       </div>
 
+      {/* How it works */}
+      <div className="mt-16 w-full max-w-2xl">
+        <h2 className="text-center text-text-muted text-xs font-bold tracking-widest uppercase mb-6">
+          How it works
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {STEPS.map((s) => (
+            <div key={s.num} className="text-center">
+              <div className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-accent-dim text-accent text-sm font-bold mb-2">
+                {s.num}
+              </div>
+              <div className="text-sm font-bold text-text mb-1">{s.title}</div>
+              <div className="text-text-faint text-xs">{s.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Quick links */}
-      <div className="mt-10 flex items-center gap-6 text-xs text-text-faint">
+      <div className="mt-12 flex items-center gap-6 text-xs text-text-faint">
         <Link href="/docs" className="hover:text-text-muted transition-colors">
           API Docs
         </Link>
         <span className="text-border">|</span>
         <Link href="/web-radar" className="hover:text-text-muted transition-colors">
           Web Radar
+        </Link>
+        <span className="text-border">|</span>
+        <Link href="/changelog" className="hover:text-text-muted transition-colors">
+          Changelog
         </Link>
         <span className="text-border">|</span>
         <Link href="/login" className="hover:text-text-muted transition-colors">

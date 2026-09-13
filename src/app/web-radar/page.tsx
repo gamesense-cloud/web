@@ -94,7 +94,10 @@ interface ApiResponse {
   tickCount?: number;
   tScore?: number;
   ctScore?: number;
-  roundPhase?: RoundPhase;
+  phase?: string;
+  roundTime?: number;
+  roundStartTime?: number;
+  roundsPlayed?: number;
   debug?: Record<string, unknown>;
   entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
   entDebug?: EntDebug[];
@@ -384,7 +387,15 @@ function RadarCanvas() {
             pollCount: n,
             curtime: data.curtime,
             tickCount: data.tickCount,
-            roundPhase: data.roundPhase,
+            roundPhase: data.phase ? {
+              freeze: data.phase === "freezetime",
+              warmup: data.phase === "warmup",
+              bombPlanted: data.bomb?.planted ?? false,
+              gamePhase: 0,
+              roundsPlayed: data.roundsPlayed ?? 0,
+              roundStartTime: data.roundStartTime,
+              roundTime: data.roundTime,
+            } : undefined,
             debug: data.debug,
             entityScan: data.entityScan,
             entDebug: data.entDebug,
