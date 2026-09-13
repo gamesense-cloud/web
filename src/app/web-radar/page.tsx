@@ -31,6 +31,8 @@ const MAP_IMAGES: Record<string, string> = {
 
 const NUKE_Z_SPLIT = -495;
 const NUKE_LOWER_IMAGE = "/maps/de_nuke_lower_radar.png";
+const VERTIGO_Z_SPLIT = 11700;
+const VERTIGO_LOWER_IMAGE = "/maps/de_vertigo_lower_radar.png";
 
 interface Player {
   x: number; y: number; z: number;
@@ -154,6 +156,9 @@ function RadarCanvas() {
   const [killFeed, setKillFeed] = useState<{ name: string; team: number; time: number }[]>([]);
   const prevAliveRef = useRef<Record<string, boolean>>({});
   const trailsRef = useRef<Record<string, { x: number; y: number; t: number }[]>>({});
+  const mouseRef = useRef<{ x: number; y: number }>({ x: -1, y: -1 });
+  const renderedPlayersRef = useRef<{ sx: number; sy: number; player: Player; isLocal: boolean }[]>([]);
+  const [hoveredPlayer, setHoveredPlayer] = useState<{ player: Player; isLocal: boolean; sx: number; sy: number } | null>(null);
 
   const [hud, setHud] = useState<{
     status: RadarStatus; map: string; mapDisplay: string; ct: number; t: number;
@@ -281,6 +286,17 @@ function RadarCanvas() {
             }
           }
 
+          // Auto level detection for multi-level maps (Nuke/Vertigo)
+          if (radarStatus === "live" && data.localPlayer) {
+            if (data.map === "de_nuke") {
+              const onLower = data.localPlayer.z < NUKE_Z_SPLIT;
+              if (onLower !== showLowerRef.current) setShowLower(onLower);
+            } else if (data.map === "de_vertigo") {
+              const onLower = data.localPlayer.z < VERTIGO_Z_SPLIT;
+              if (onLower !== showLowerRef.current) setShowLower(onLower);
+            }
+          }
+
           // Flash overlay for local player
           if (radarStatus === "live" && data.localPlayer?.flashAlpha && data.localPlayer.flashAlpha > 20) {
             setFlashOverlay(Math.min(data.localPlayer.flashAlpha / 255, 0.9));
@@ -288,12 +304,14 @@ function RadarCanvas() {
             setFlashOverlay(0);
           }
 
-          // Store player trails
+          // Store player trails and clean up dead/disconnected
           if (radarStatus === "live") {
             const now = performance.now();
             const trails = trailsRef.current;
-            if (data.localPlayer) {
+            const activeKeys = new Set<string>();
+            if (data.localPlayer && data.localPlayer.alive !== false) {
               const key = "__local";
+              activeKeys.add(key);
               if (!trails[key]) trails[key] = [];
               trails[key].push({ x: data.localPlayer.x, y: data.localPlayer.y, t: now });
               if (trails[key].length > 20) trails[key] = trails[key].slice(-20);
@@ -302,10 +320,14 @@ function RadarCanvas() {
               for (const p of data.players) {
                 if (!p.alive) continue;
                 const key = p.name || "?";
+                activeKeys.add(key);
                 if (!trails[key]) trails[key] = [];
                 trails[key].push({ x: p.x, y: p.y, t: now });
                 if (trails[key].length > 20) trails[key] = trails[key].slice(-20);
               }
+            }
+            for (const key of Object.keys(trails)) {
+              if (!activeKeys.has(key)) delete trails[key];
             }
           }
 
@@ -395,9 +417,21 @@ function RadarCanvas() {
       }
     }
     function onMove(e: MouseEvent) {
+      mouseRef.current = { x: e.clientX, y: e.clientY };
       if (dragRef.current.active) {
         panRef.current.x = dragRef.current.panX + (e.clientX - dragRef.current.startX);
         panRef.current.y = dragRef.current.panY + (e.clientY - dragRef.current.startY);
+      }
+      if (!dragRef.current.active) {
+        const rps = renderedPlayersRef.current;
+        let closest: typeof rps[0] | null = null;
+        let bestDist = 16;
+        for (const rp of rps) {
+          const dx = e.clientX - rp.sx, dy = e.clientY - rp.sy;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < bestDist) { bestDist = d; closest = rp; }
+        }
+        setHoveredPlayer(closest ? { player: closest.player, isLocal: closest.isLocal, sx: closest.sx, sy: closest.sy } : null);
       }
     }
     function onUp() { dragRef.current.active = false; }
@@ -708,11 +742,15 @@ function RadarCanvas() {
 
       // Draw radar image background
       const isNuke = mapName === "de_nuke";
+      const isVertigo = mapName === "de_vertigo";
+      const isMultiLevel = isNuke || isVertigo;
       const nukeLower = showLowerRef.current;
+      const zSplit = isNuke ? NUKE_Z_SPLIT : isVertigo ? VERTIGO_Z_SPLIT : 0;
       if (mapName && mapInfo) {
-        const imgPath = isNuke && nukeLower ? NUKE_LOWER_IMAGE : MAP_IMAGES[mapName];
+        const lowerImg = isNuke ? NUKE_LOWER_IMAGE : isVertigo ? VERTIGO_LOWER_IMAGE : null;
+        const imgPath = isMultiLevel && nukeLower && lowerImg ? lowerImg : MAP_IMAGES[mapName];
         if (imgPath) {
-          const cacheKey = isNuke ? `${mapName}_${nukeLower ? "lower" : "upper"}` : mapName;
+          const cacheKey = isMultiLevel ? `${mapName}_${nukeLower ? "lower" : "upper"}` : mapName;
           if (mapImgNameRef.current !== cacheKey) {
             mapImgNameRef.current = cacheKey;
             const img = new Image();
@@ -746,14 +784,15 @@ function RadarCanvas() {
         panRef.current.y = lerp(panRef.current.y, targetY, 0.12);
       }
 
+      const collectedPlayers: { sx: number; sy: number; player: Player; isLocal: boolean }[] = [];
       if (data?.connected && mapInfo) {
-        const nukeLevel = isNuke ? (nukeLower ? "lower" : "upper") : null;
+        const nukeLevel = isMultiLevel ? (nukeLower ? "lower" : "upper") : null;
 
         // Draw bomb first (behind players)
         if (data.bomb) {
           const bpos = worldToCanvas(data.bomb.x, data.bomb.y, mapInfo, radarSize, 0, 0);
           if (nukeLevel) {
-            const bombOnLower = data.bomb.z < NUKE_Z_SPLIT;
+            const bombOnLower = data.bomb.z < zSplit;
             ctx.globalAlpha = (nukeLevel === "lower") === bombOnLower ? 1.0 : 0.25;
           }
           drawBomb(ctx, bpos, data.bomb.planted);
@@ -765,7 +804,7 @@ function RadarCanvas() {
           for (const g of data.grenades) {
             const gpos = worldToCanvas(g.x, g.y, mapInfo, radarSize, 0, 0);
             if (nukeLevel) {
-              const onLower = g.z < NUKE_Z_SPLIT;
+              const onLower = g.z < zSplit;
               ctx.globalAlpha = (nukeLevel === "lower") === onLower ? 1.0 : 0.25;
             }
             drawGrenade(ctx, gpos, g.type);
@@ -798,7 +837,7 @@ function RadarCanvas() {
           const lp = getInterpolated("__local", data.localPlayer);
           const pos = worldToCanvas(lp.x, lp.y, mapInfo, radarSize, 0, 0);
           if (nukeLevel) {
-            const onLower = lp.z < NUKE_Z_SPLIT;
+            const onLower = lp.z < zSplit;
             ctx.globalAlpha = (nukeLevel === "lower") === onLower ? 1.0 : 0.3;
           }
           drawPlayer(ctx, pos, true, false, false, data.localPlayer.alive !== false,
@@ -807,6 +846,9 @@ function RadarCanvas() {
             data.localPlayer.scoped, data.localPlayer.defusing, data.localPlayer.armor,
             data.localPlayer.flashAlpha, data.localPlayer.money);
           ctx.globalAlpha = 1;
+          const sx = baseOx + panRef.current.x + pos.x * zoomRef.current;
+          const sy = baseOy + panRef.current.y + pos.y * zoomRef.current;
+          collectedPlayers.push({ sx, sy, player: data.localPlayer, isLocal: true });
         }
 
         if (data.players) {
@@ -816,16 +858,22 @@ function RadarCanvas() {
             const ip = getInterpolated(key, p);
             const pos = worldToCanvas(ip.x, ip.y, mapInfo, radarSize, 0, 0);
             if (nukeLevel) {
-              const onLower = ip.z < NUKE_Z_SPLIT;
+              const onLower = ip.z < zSplit;
               ctx.globalAlpha = (nukeLevel === "lower") === onLower ? 1.0 : 0.3;
             }
             drawPlayer(ctx, pos, false, ip.enemy, ip.dormant, ip.alive, ip.health, ip.name,
               ip.yaw ?? p.yaw, p.weapon, p.scoped, p.defusing, p.armor,
               p.flashAlpha, p.money);
             ctx.globalAlpha = 1;
+            if (p.alive) {
+              const psx = baseOx + panRef.current.x + pos.x * zoomRef.current;
+              const psy = baseOy + panRef.current.y + pos.y * zoomRef.current;
+              collectedPlayers.push({ sx: psx, sy: psy, player: p, isLocal: false });
+            }
           }
         }
       }
+      renderedPlayersRef.current = collectedPlayers;
 
       // Mini compass (top-left of radar area)
       if (mapInfo) {
@@ -964,6 +1012,29 @@ function RadarCanvas() {
               BOMB PLANTED
             </span>
           )}
+          {hud.status === "live" && hud.grenades && hud.grenades.length > 0 && (() => {
+            const counts: Record<string, number> = {};
+            for (const g of hud.grenades) counts[g.type] = (counts[g.type] || 0) + 1;
+            const badges: { type: string; count: number; color: string; label: string }[] = [];
+            if (counts.smoke) badges.push({ type: "smoke", count: counts.smoke, color: "#aaa", label: "S" });
+            if (counts.molotov) badges.push({ type: "molotov", count: counts.molotov, color: "#f80", label: "M" });
+            if (counts.flash) badges.push({ type: "flash", count: counts.flash, color: "#ff0", label: "F" });
+            if (counts.he) badges.push({ type: "he", count: counts.he, color: "#e06", label: "H" });
+            if (counts.decoy) badges.push({ type: "decoy", count: counts.decoy, color: "#6a6", label: "D" });
+            return (
+              <div style={{ display: "flex", gap: 4, marginLeft: 8 }}>
+                {badges.map(b => (
+                  <span key={b.type} style={{
+                    fontSize: 9, fontFamily: "Consolas, monospace", padding: "1px 4px",
+                    background: `${b.color}15`, border: `1px solid ${b.color}33`, borderRadius: 2,
+                    color: b.color,
+                  }}>
+                    {b.count}{b.label}
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -1288,7 +1359,7 @@ function RadarCanvas() {
         fontFamily: "Tahoma, sans-serif",
       }}>
         gamesense.cloud
-        {hud.map === "DE_NUKE" && (
+        {(hud.map === "DE_NUKE" || hud.map === "DE_VERTIGO") && (
           <span style={{ color: showLower ? "#e0b04b44" : "#4a9eff44", marginLeft: 12, cursor: "pointer", pointerEvents: "auto" }}
             onClick={() => setShowLower(v => !v)}>
             [N] {showLower ? "LOWER" : "UPPER"}
@@ -1338,6 +1409,66 @@ function RadarCanvas() {
           fontSize: 9, color: "#8e6ff744", letterSpacing: 1,
         }}>
           FOLLOW
+        </div>
+      )}
+
+      {/* Player hover tooltip */}
+      {hoveredPlayer && hoveredPlayer.player.alive && (
+        <div style={{
+          position: "absolute",
+          left: hoveredPlayer.sx + 16,
+          top: hoveredPlayer.sy - 8,
+          zIndex: 30,
+          pointerEvents: "none",
+          background: "rgba(17,20,24,0.95)",
+          border: "1px solid #2a2a2a",
+          borderRadius: 3,
+          padding: "8px 12px",
+          fontFamily: "Tahoma, Verdana, sans-serif",
+          minWidth: 120,
+          maxWidth: 200,
+        }}>
+          <div style={{
+            fontSize: 11, fontWeight: "bold", marginBottom: 4,
+            color: hoveredPlayer.isLocal ? "#a086ff" : hoveredPlayer.player.enemy ? "#e0656a" : "#4a9eff",
+          }}>
+            {hoveredPlayer.player.name || "Unknown"}
+            {hoveredPlayer.isLocal && <span style={{ color: "#666", fontWeight: "normal", marginLeft: 4, fontSize: 9 }}>YOU</span>}
+          </div>
+          <div style={{ display: "flex", gap: 12, fontSize: 10 }}>
+            <div>
+              <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>HP</div>
+              <div style={{
+                color: (hoveredPlayer.player.health ?? 0) > 60 ? "#5fc98a" : (hoveredPlayer.player.health ?? 0) > 25 ? "#e0b04b" : "#e0656a",
+                fontFamily: "Consolas, monospace",
+              }}>
+                {hoveredPlayer.player.health}
+              </div>
+            </div>
+            {(hoveredPlayer.player.armor ?? 0) > 0 && (
+              <div>
+                <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>AP</div>
+                <div style={{ color: "#4a9eff88", fontFamily: "Consolas, monospace" }}>{hoveredPlayer.player.armor}</div>
+              </div>
+            )}
+            {(hoveredPlayer.player.money ?? 0) > 0 && (
+              <div>
+                <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>$</div>
+                <div style={{ color: "#5fc98a88", fontFamily: "Consolas, monospace" }}>${hoveredPlayer.player.money}</div>
+              </div>
+            )}
+          </div>
+          {hoveredPlayer.player.weapon && (
+            <div style={{ marginTop: 4, fontSize: 9, color: weaponColor(hoveredPlayer.player.weapon) }}>
+              {weaponDisplayName(hoveredPlayer.player.weapon)}
+              {hoveredPlayer.player.scoped && <span style={{ color: "#e0656a88", marginLeft: 4 }}>SCOPED</span>}
+            </div>
+          )}
+          <div style={{ marginTop: 3, display: "flex", gap: 6, fontSize: 8, color: "#444" }}>
+            {hoveredPlayer.player.helmet && <span>Helmet</span>}
+            {hoveredPlayer.player.defuser && <span style={{ color: "#5fc98a55" }}>Defuser</span>}
+            {hoveredPlayer.player.defusing && <span style={{ color: "#5fc98a" }}>DEFUSING</span>}
+          </div>
         </div>
       )}
 
