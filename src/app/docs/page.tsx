@@ -428,6 +428,7 @@ export default function Docs() {
             <Fn name="group:Textbox" args="label [, default: string]" ret="control">Text input field.</Fn>
             <Fn name="group:Keybind" args="label [, default_key]" ret="control">Key binding selector.</Fn>
             <Fn name="group:Label" args="text" ret="control">Static text label.</Fn>
+            <Fn name="group:Separator" args="[text]" ret="control">Visual divider. Optional text becomes a section heading.</Fn>
           </div>
 
           <div className="mt-3">
