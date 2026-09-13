@@ -239,12 +239,17 @@ export async function grantSubscription(userId: string, plan: Plan) {
 export async function activeSubscriptionCount(): Promise<number> {
   const db = supabaseAdmin();
   const now = new Date().toISOString();
-  const { count } = await db
-    .from("subscriptions")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "active")
-    .or(`expires_at.is.null,expires_at.gt.${now}`);
-  return count ?? 0;
+  const [{ count: lifetime }, { count: timed }] = await Promise.all([
+    db.from("subscriptions")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "active")
+      .is("expires_at", null),
+    db.from("subscriptions")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "active")
+      .gt("expires_at", now),
+  ]);
+  return (lifetime ?? 0) + (timed ?? 0);
 }
 
 export async function expiringSoon(days = 14) {
@@ -509,13 +514,27 @@ export async function recordEvent(input: {
 /** A member's own feed: their rows, plus anything service-wide. */
 export async function eventsForUser(userId: string, limit = 20): Promise<ActivityEvent[]> {
   const db = supabaseAdmin();
-  const { data } = await db
-    .from("events")
-    .select("id, kind, message, scope, at")
-    .or(`user_id.eq.${userId},scope.eq.service`)
-    .order("at", { ascending: false })
-    .limit(limit);
-  return (data ?? []) as ActivityEvent[];
+  const [{ data: own }, { data: service }] = await Promise.all([
+    db.from("events")
+      .select("id, kind, message, scope, at")
+      .eq("user_id", userId)
+      .order("at", { ascending: false })
+      .limit(limit),
+    db.from("events")
+      .select("id, kind, message, scope, at")
+      .eq("scope", "service")
+      .order("at", { ascending: false })
+      .limit(limit),
+  ]);
+  const merged = [...(own ?? []), ...(service ?? [])]
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)))
+    .slice(0, limit);
+  const seen = new Set<string>();
+  return (merged.filter(e => {
+    if (seen.has(e.id)) return false;
+    seen.add(e.id);
+    return true;
+  })) as ActivityEvent[];
 }
 
 /** The admin feed: everything, with the account each row belongs to. */
