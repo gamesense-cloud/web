@@ -50,6 +50,9 @@ interface EntDebug {
 
 interface BombInfo {
   x: number; y: number; z: number; planted: boolean;
+  site?: "A" | "B";
+  blowTime?: number;
+  defuseEnd?: number;
 }
 
 interface GrenadeInfo {
@@ -67,6 +70,8 @@ interface ApiResponse {
   players?: Player[];
   bomb?: BombInfo;
   grenades?: GrenadeInfo[];
+  curtime?: number;
+  tickCount?: number;
   debug?: Record<string, unknown>;
   entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
   entDebug?: EntDebug[];
@@ -163,6 +168,7 @@ function RadarCanvas() {
   const [hud, setHud] = useState<{
     status: RadarStatus; map: string; mapDisplay: string; ct: number; t: number;
     reason?: string; age?: number; pollCount: number;
+    curtime?: number; tickCount?: number;
     debug?: Record<string, unknown>;
     entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
     entDebug?: EntDebug[];
@@ -341,6 +347,8 @@ function RadarCanvas() {
             reason: data.reason,
             age: data.age_ms,
             pollCount: n,
+            curtime: data.curtime,
+            tickCount: data.tickCount,
             debug: data.debug,
             entityScan: data.entityScan,
             entDebug: data.entDebug,
@@ -680,7 +688,8 @@ function RadarCanvas() {
     function drawBomb(
       ctx: CanvasRenderingContext2D,
       pos: { x: number; y: number },
-      planted: boolean
+      planted: boolean,
+      site?: string
     ) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() / (planted ? 300 : 1000));
       const r = planted ? 7 : 5;
@@ -704,7 +713,8 @@ function RadarCanvas() {
 
       ctx.font = "bold 8px Tahoma, sans-serif";
       ctx.fillStyle = planted ? "#e03c3c" : "#e0b04b";
-      ctx.fillText(planted ? "BOMB" : "C4", pos.x + r + 4, pos.y + 3);
+      const bombLabel = planted ? (site ? `BOMB ${site}` : "BOMB") : "C4";
+      ctx.fillText(bombLabel, pos.x + r + 4, pos.y + 3);
     }
 
     function render() {
@@ -795,7 +805,7 @@ function RadarCanvas() {
             const bombOnLower = data.bomb.z < zSplit;
             ctx.globalAlpha = (nukeLevel === "lower") === bombOnLower ? 1.0 : 0.25;
           }
-          drawBomb(ctx, bpos, data.bomb.planted);
+          drawBomb(ctx, bpos, data.bomb.planted, data.bomb.site);
           ctx.globalAlpha = 1;
         }
 
@@ -978,6 +988,17 @@ function RadarCanvas() {
         <div style={{ color: "#ffffff0a", fontSize: 9, letterSpacing: 1, marginTop: 8, animation: "fadeIn 0.5s ease-out 0.3s both" }}>
           Scroll to zoom &middot; Drag to pan &middot; Tab for scoreboard &middot; F to follow
         </div>
+        <a href="/docs" style={{
+          color: "#8e6ff744", fontSize: 10, marginTop: 16,
+          textDecoration: "none", letterSpacing: 1,
+          animation: "fadeIn 0.5s ease-out 0.4s both",
+          transition: "color 0.2s",
+        }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#8e6ff7")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#8e6ff744")}
+        >
+          Lua API Docs
+        </a>
       </div>
     );
   }
@@ -1003,15 +1024,46 @@ function RadarCanvas() {
           <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 1, color: "#dcdcdc", fontFamily: "Tahoma, sans-serif" }}>
             {hud.status === "live" ? hud.mapDisplay : "---"}
           </span>
-          {hud.bomb?.planted && (
-            <span style={{
-              fontSize: 11, fontWeight: "bold", color: "#e03c3c", letterSpacing: 2,
-              fontFamily: "Consolas, monospace",
-              animation: "bombPulse 0.5s ease-in-out infinite alternate",
-            }}>
-              BOMB PLANTED
-            </span>
-          )}
+          {hud.bomb?.planted && (() => {
+            const remaining = hud.bomb.blowTime && hud.curtime
+              ? Math.max(0, hud.bomb.blowTime - hud.curtime)
+              : null;
+            const defuseRemaining = hud.bomb.defuseEnd && hud.curtime && hud.bomb.defuseEnd > hud.curtime
+              ? Math.max(0, hud.bomb.defuseEnd - hud.curtime)
+              : null;
+            return (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: "bold", color: "#e03c3c", letterSpacing: 2,
+                  fontFamily: "Consolas, monospace",
+                  animation: "bombPulse 0.5s ease-in-out infinite alternate",
+                }}>
+                  BOMB PLANTED
+                </span>
+                {hud.bomb.site && (
+                  <span style={{ fontSize: 10, color: "#e03c3c88", fontFamily: "Consolas, monospace" }}>
+                    {hud.bomb.site}
+                  </span>
+                )}
+                {remaining != null && remaining > 0 && (
+                  <span style={{
+                    fontSize: 12, fontWeight: "bold", fontFamily: "Consolas, monospace",
+                    color: remaining < 10 ? "#e03c3c" : "#e0b04b",
+                  }}>
+                    {remaining.toFixed(1)}s
+                  </span>
+                )}
+                {defuseRemaining != null && (
+                  <span style={{
+                    fontSize: 10, fontFamily: "Consolas, monospace",
+                    color: "#5fc98a", letterSpacing: 1,
+                  }}>
+                    DEF {defuseRemaining.toFixed(1)}s
+                  </span>
+                )}
+              </div>
+            );
+          })()}
           {hud.status === "live" && hud.grenades && hud.grenades.length > 0 && (() => {
             const counts: Record<string, number> = {};
             for (const g of hud.grenades) counts[g.type] = (counts[g.type] || 0) + 1;
@@ -1051,6 +1103,11 @@ function RadarCanvas() {
           </div>
           {hud.status === "live" && (
             <>
+              {hud.curtime != null && hud.curtime > 0 && (
+                <span style={{ fontSize: 10, color: "#ffffff22", fontFamily: "Consolas, monospace" }}>
+                  {Math.floor(hud.curtime / 60)}:{String(Math.floor(hud.curtime % 60)).padStart(2, "0")}
+                </span>
+              )}
               <span style={{ fontSize: 12, color: "#4a9eff", fontFamily: "Consolas, monospace" }}>
                 CT {hud.ct}
               </span>
@@ -1327,20 +1384,46 @@ function RadarCanvas() {
         </div>
       )}
 
-      {/* Bomb planted banner */}
-      {hud.status === "live" && hud.bomb?.planted && (
-        <div style={{
-          position: "absolute", top: 40, left: "50%", transform: "translateX(-50%)", zIndex: 15,
-          padding: "4px 20px", pointerEvents: "none",
-          background: "rgba(224,60,60,0.15)", border: "1px solid rgba(224,60,60,0.3)",
-          borderRadius: 2, fontFamily: "Tahoma, sans-serif",
-          animation: "bombPulse 1s ease-in-out infinite alternate",
-        }}>
-          <span style={{ fontSize: 11, fontWeight: "bold", color: "#e03c3c", letterSpacing: 2 }}>
-            BOMB PLANTED
-          </span>
-        </div>
-      )}
+      {/* Bomb planted banner with timer */}
+      {hud.status === "live" && hud.bomb?.planted && (() => {
+        const remaining = hud.bomb.blowTime && hud.curtime
+          ? Math.max(0, hud.bomb.blowTime - hud.curtime)
+          : null;
+        const defuseRemaining = hud.bomb.defuseEnd && hud.curtime && hud.bomb.defuseEnd > hud.curtime
+          ? Math.max(0, hud.bomb.defuseEnd - hud.curtime)
+          : null;
+        return (
+          <div style={{
+            position: "absolute", top: 40, left: "50%", transform: "translateX(-50%)", zIndex: 15,
+            padding: "4px 20px", pointerEvents: "none",
+            background: "rgba(224,60,60,0.15)", border: "1px solid rgba(224,60,60,0.3)",
+            borderRadius: 2, fontFamily: "Tahoma, sans-serif",
+            animation: "bombPulse 1s ease-in-out infinite alternate",
+            display: "flex", alignItems: "center", gap: 12,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: "bold", color: "#e03c3c", letterSpacing: 2 }}>
+              BOMB PLANTED{hud.bomb.site ? ` ${hud.bomb.site}` : ""}
+            </span>
+            {remaining != null && remaining > 0 && (
+              <span style={{
+                fontSize: 14, fontWeight: "bold",
+                color: remaining < 10 ? "#e03c3c" : "#e0b04b",
+                fontFamily: "Consolas, monospace",
+              }}>
+                {remaining.toFixed(1)}s
+              </span>
+            )}
+            {defuseRemaining != null && (
+              <span style={{
+                fontSize: 10, fontFamily: "Consolas, monospace",
+                color: "#5fc98a", letterSpacing: 1,
+              }}>
+                DEF {defuseRemaining.toFixed(1)}s
+              </span>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Zoom indicator (bottom-right) */}
       <div style={{
