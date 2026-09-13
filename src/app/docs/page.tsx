@@ -289,12 +289,22 @@ export default function Docs() {
           <Fn name="renderer.TriangleFilled" args="x1, y1, x2, y2, x3, y3 [, color]">
             Draw a filled triangle.
           </Fn>
-          <Fn name="renderer.Polygon" args="points, [color, thickness]">
+          <Fn name="renderer.Polyline" args="points [, color, thickness]">
+            Draw an open polyline. <code className="text-text-faint">points</code> is an array of{" "}
+            <code className="text-text-faint">{"{x, y}"}</code> tables (minimum 3).
+          </Fn>
+          <Fn name="renderer.Polygon" args="points [, color, thickness]">
             Draw a closed polygon outline. <code className="text-text-faint">points</code> is an array of{" "}
             <code className="text-text-faint">{"{x, y}"}</code> tables (minimum 3).
           </Fn>
           <Fn name="renderer.PolygonFilled" args="points [, color]">
             Draw a filled convex polygon.
+          </Fn>
+          <Fn name="renderer.RoundedRect" args="x, y, w, h, rounding [, color]">
+            Draw a rounded rectangle outline.
+          </Fn>
+          <Fn name="renderer.RoundedRectFilled" args="x, y, w, h, rounding [, color]">
+            Draw a filled rounded rectangle.
           </Fn>
           <Fn name="renderer.Arc" args="cx, cy, radius, startAngle, endAngle [, color, segments, thickness]">
             Draw an arc outline. Angles are in radians.
@@ -307,6 +317,16 @@ export default function Docs() {
             <code className="text-text-faint">&quot;strong&quot;</code>,{" "}
             <code className="text-text-faint">&quot;mono&quot;</code>, or{" "}
             <code className="text-text-faint">&quot;display&quot;</code>.
+          </Fn>
+          <Fn name="renderer.TextEx" args='x, y, text [, color, size, font, alignX, alignY]'>
+            Draw text with alignment. <code className="text-text-faint">alignX</code> is{" "}
+            <code className="text-text-faint">&quot;left&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;center&quot;</code>, or{" "}
+            <code className="text-text-faint">&quot;right&quot;</code>.{" "}
+            <code className="text-text-faint">alignY</code> is{" "}
+            <code className="text-text-faint">&quot;top&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;center&quot;</code>, or{" "}
+            <code className="text-text-faint">&quot;bottom&quot;</code>.
           </Fn>
           <Fn name="renderer.MeasureText" args="text [, size, font]" ret="width, height">
             Measure text dimensions without drawing.
