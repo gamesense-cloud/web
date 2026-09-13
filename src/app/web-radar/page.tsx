@@ -38,12 +38,16 @@ interface Player {
   x: number; y: number; z: number;
   team: number; alive: boolean; health: number;
   name: string; dormant: boolean; enemy: boolean;
-  yaw?: number;
+  yaw?: number; pitch?: number;
   vx?: number; vy?: number;
   armor?: number; weapon?: string;
   scoped?: boolean; helmet?: boolean; defuser?: boolean; defusing?: boolean;
+  hasBomb?: boolean;
   flashAlpha?: number; money?: number;
   color?: number;
+  kills?: number; deaths?: number; assists?: number;
+  ping?: number;
+  slot?: number;
 }
 
 const COMP_COLORS = ["#4a9eff", "#5fc98a", "#e0b04b", "#e08840", "#a086ff"] as const;
@@ -283,7 +287,9 @@ function RadarCanvas() {
             if (data.localPlayer) next["__local"] = data.localPlayer;
             if (data.players) {
               for (let i = 0; i < data.players.length; i++) {
-                next[data.players[i].name || `p${i}`] = data.players[i];
+                const p: Player = data.players[i];
+                const key = p.slot != null ? `s${p.slot}` : (p.name || `p${i}`);
+                next[key] = p;
               }
             }
             currPosRef.current = next;
@@ -1587,7 +1593,7 @@ function RadarCanvas() {
               <div style={{ minWidth: 60 }}>
                 <div style={{ fontSize: 9, color: pColor + "99", display: "flex", alignItems: "center", gap: 3 }}>
                   {p.name?.length > 10 ? p.name.slice(0, 10) + ".." : p.name}
-                  {p.weapon?.replace(/^weapon_/, "").toLowerCase() === "c4" && (
+                  {(p.hasBomb || p.weapon?.replace(/^weapon_/, "").toLowerCase() === "c4") && (
                     <span style={{ fontSize: 7, color: "#e0b04b", fontWeight: "bold", background: "#e0b04b15", padding: "0 2px", borderRadius: 1 }}>C4</span>
                   )}
                 </div>
@@ -1718,7 +1724,17 @@ function RadarCanvas() {
                       <div style={{ fontSize: 8, color: "#777", marginTop: -1 }}>{weaponDisplayName(p.weapon)}</div>
                     )}
                   </div>
-                  <div style={{ textAlign: "right" }}>
+                  {(p.kills != null || p.deaths != null) && (
+                    <div style={{ textAlign: "center", minWidth: 40, fontFamily: "Consolas, monospace", fontSize: 9, color: "#aaa" }}>
+                      {p.kills ?? 0}/{p.deaths ?? 0}/{p.assists ?? 0}
+                    </div>
+                  )}
+                  {p.ping != null && p.ping > 0 && (
+                    <div style={{ textAlign: "right", minWidth: 28, fontFamily: "Consolas, monospace", fontSize: 8, color: p.ping < 80 ? "#5fc98a55" : p.ping < 150 ? "#e0b04b55" : "#e0656a55" }}>
+                      {p.ping}ms
+                    </div>
+                  )}
+                  <div style={{ textAlign: "right", minWidth: 42 }}>
                     <div style={{ fontSize: 10, color: p.alive ? "#4a9eff" : "#555", fontFamily: "Consolas, monospace" }}>
                       {p.alive ? `${p.health}hp` : "DEAD"}
                     </div>
@@ -1762,7 +1778,7 @@ function RadarCanvas() {
                     <div style={{ fontSize: 11, color: "#dcdcdc", display: "flex", gap: 4, alignItems: "center" }}>
                       {p.name}
                       {p.helmet && <span style={{ fontSize: 7, color: "#e0b04b55" }}>H</span>}
-                      {p.alive && p.weapon?.replace(/^weapon_/, "").toLowerCase() === "c4" && (
+                      {p.alive && (p.hasBomb || p.weapon?.replace(/^weapon_/, "").toLowerCase() === "c4") && (
                         <span style={{ fontSize: 7, color: "#e0b04b", fontWeight: "bold", background: "#e0b04b22", padding: "0 3px", borderRadius: 2 }}>C4</span>
                       )}
                     </div>
@@ -1770,7 +1786,17 @@ function RadarCanvas() {
                       <div style={{ fontSize: 8, color: "#777", marginTop: -1 }}>{weaponDisplayName(p.weapon)}</div>
                     )}
                   </div>
-                  <div style={{ textAlign: "right" }}>
+                  {(p.kills != null || p.deaths != null) && (
+                    <div style={{ textAlign: "center", minWidth: 40, fontFamily: "Consolas, monospace", fontSize: 9, color: "#aaa" }}>
+                      {p.kills ?? 0}/{p.deaths ?? 0}/{p.assists ?? 0}
+                    </div>
+                  )}
+                  {p.ping != null && p.ping > 0 && (
+                    <div style={{ textAlign: "right", minWidth: 28, fontFamily: "Consolas, monospace", fontSize: 8, color: p.ping < 80 ? "#5fc98a55" : p.ping < 150 ? "#e0b04b55" : "#e0656a55" }}>
+                      {p.ping}ms
+                    </div>
+                  )}
+                  <div style={{ textAlign: "right", minWidth: 42 }}>
                     <div style={{ fontSize: 10, color: p.alive ? "#e0b04b" : "#555", fontFamily: "Consolas, monospace" }}>
                       {p.alive ? `${p.health}hp` : "DEAD"}
                     </div>
@@ -1849,11 +1875,11 @@ function RadarCanvas() {
                   borderRadius: 1,
                   transition: "width 0.2s linear",
                 }} />
-                {defuseRemaining != null && (
+                {defuseRemaining != null && remaining != null && remaining > 0 && (
                   <div style={{
                     position: "absolute", top: 0, left: 0,
-                    width: `${Math.min(defuseRemaining / 10 * 100, 100)}%`, height: "100%",
-                    background: "#5fc98a",
+                    width: `${Math.min(defuseRemaining / remaining * 100, 100)}%`, height: "100%",
+                    background: defuseRemaining <= remaining ? "#5fc98a" : "#e0b04b",
                     borderRadius: 1,
                     transition: "width 0.2s linear",
                   }} />
