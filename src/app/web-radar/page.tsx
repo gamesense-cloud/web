@@ -148,7 +148,7 @@ function RadarCanvas() {
     entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
     entDebug?: EntDebug[];
     players?: Player[];
-    localPlayer?: { x: number; y: number; z: number; health: number; team: number };
+    localPlayer?: Player;
     bomb?: BombInfo;
   }>({
     status: "connecting", map: "---", mapDisplay: "---", ct: 0, t: 0, pollCount: 0,
@@ -254,10 +254,7 @@ function RadarCanvas() {
             entityScan: data.entityScan,
             entDebug: data.entDebug,
             players: data.players,
-            localPlayer: data.localPlayer ? {
-              x: data.localPlayer.x, y: data.localPlayer.y, z: data.localPlayer.z,
-              health: data.localPlayer.health, team: data.localPlayer.team,
-            } : undefined,
+            localPlayer: data.localPlayer ?? undefined,
             bomb: data.bomb,
           });
         } catch (e) {
@@ -916,9 +913,7 @@ function RadarCanvas() {
             <div style={{ padding: "0 16px", marginBottom: 8 }}>
               <div style={{ fontSize: 9, color: "#4a9eff88", letterSpacing: 1, marginBottom: 4 }}>COUNTER-TERRORISTS</div>
               {[...(hud.localPlayer?.team === 3 ? [{
-                name: "You", health: hud.localPlayer.health, alive: true, team: 3, enemy: false,
-                armor: (hud.localPlayer as Player)?.armor, weapon: (hud.localPlayer as Player)?.weapon,
-                helmet: (hud.localPlayer as Player)?.helmet, defuser: (hud.localPlayer as Player)?.defuser,
+                ...hud.localPlayer, name: "You", alive: true, enemy: false,
               } as Player] : []),
               ...(hud.players?.filter(p => p.team === 3) ?? [])].map((p, i) => (
                 <div key={`ct-${i}`} style={{
@@ -957,9 +952,7 @@ function RadarCanvas() {
             <div style={{ padding: "0 16px" }}>
               <div style={{ fontSize: 9, color: "#e0b04b88", letterSpacing: 1, marginBottom: 4 }}>TERRORISTS</div>
               {[...(hud.localPlayer?.team === 2 ? [{
-                name: "You", health: hud.localPlayer.health, alive: true, team: 2, enemy: false,
-                armor: (hud.localPlayer as Player)?.armor, weapon: (hud.localPlayer as Player)?.weapon,
-                helmet: (hud.localPlayer as Player)?.helmet,
+                ...hud.localPlayer, name: "You", alive: true, enemy: false,
               } as Player] : []),
               ...(hud.players?.filter(p => p.team === 2) ?? [])].map((p, i) => (
                 <div key={`t-${i}`} style={{
