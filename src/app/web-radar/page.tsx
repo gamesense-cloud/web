@@ -1009,9 +1009,12 @@ function RadarCanvas() {
             ctx.globalAlpha = (nukeLevel === "lower") === bombOnLower ? 1.0 : 0.25;
           }
           const bombTimerTotal = data.bomb.timerLength && data.bomb.timerLength > 0 ? data.bomb.timerLength : 40;
-          const bombTimerFrac = (data.bomb.planted && data.bomb.blowTime && data.curtime && data.bomb.blowTime > data.curtime)
-            ? Math.max(0, (data.bomb.blowTime - data.curtime) / bombTimerTotal) : undefined;
-          const bombDefusing = data.bomb.planted && data.bomb.defuseEnd != null && data.curtime != null && data.bomb.defuseEnd > data.curtime;
+          const canvasCurtime = serverCurtimeRef.current > 0 && lastReceiveRef.current > 0
+            ? serverCurtimeRef.current + (performance.now() - lastReceiveRef.current) / 1000
+            : data.curtime;
+          const bombTimerFrac = (data.bomb.planted && data.bomb.blowTime && canvasCurtime && data.bomb.blowTime > canvasCurtime)
+            ? Math.max(0, (data.bomb.blowTime - canvasCurtime) / bombTimerTotal) : undefined;
+          const bombDefusing = data.bomb.planted && data.bomb.defuseEnd != null && canvasCurtime != null && data.bomb.defuseEnd > canvasCurtime;
           drawBomb(ctx, bpos, data.bomb.planted, data.bomb.site, bombTimerFrac, bombDefusing);
           ctx.globalAlpha = 1;
         }
