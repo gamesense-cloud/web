@@ -211,9 +211,11 @@ function RadarCanvas() {
   const renderedPlayersRef = useRef<{ sx: number; sy: number; player: Player; isLocal: boolean }[]>([]);
   const [hoveredPlayer, setHoveredPlayer] = useState<{ player: Player; isLocal: boolean; sx: number; sy: number } | null>(null);
   const lastReceiveRef = useRef(0);
+  const serverCurtimeRef = useRef(0);
   const dataAgeRef = useRef(0);
   const latencyEmaRef = useRef(0);
   const prevRoundsRef = useRef(-1);
+  const [clockTick, setClockTick] = useState(0);
   const [showVelocity, setShowVelocity] = useState(() => loadPref("velocity", true));
   const showVelocityRef = useRef(loadPref("velocity", true));
 
@@ -304,6 +306,7 @@ function RadarCanvas() {
             gameDataRef.current = data;
             lastUpdateRef.current = performance.now();
             lastReceiveRef.current = performance.now();
+            if (data.curtime) serverCurtimeRef.current = data.curtime;
             if (data.age_ms != null) {
               const alpha = latencyEmaRef.current === 0 ? 1.0 : 0.3;
               latencyEmaRef.current = latencyEmaRef.current * (1 - alpha) + data.age_ms * alpha;
@@ -481,6 +484,19 @@ function RadarCanvas() {
     poll();
     return () => { alive = false; console.log("[radar] poll loop stopped"); };
   }, [session]);
+
+  // Clock tick — drives smooth timer interpolation between data fetches
+  useEffect(() => {
+    if (hud.status !== "live") return;
+    const id = setInterval(() => setClockTick(t => t + 1), 100);
+    return () => clearInterval(id);
+  }, [hud.status]);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  void clockTick;
+  const interpolatedCurtime = serverCurtimeRef.current > 0 && lastReceiveRef.current > 0
+    ? serverCurtimeRef.current + (performance.now() - lastReceiveRef.current) / 1000
+    : hud.curtime;
 
   // Canvas resize
   useEffect(() => {
@@ -1356,11 +1372,11 @@ function RadarCanvas() {
             </span>
           )}
           {hud.bomb?.planted && (() => {
-            const remaining = hud.bomb.blowTime && hud.curtime
-              ? Math.max(0, hud.bomb.blowTime - hud.curtime)
+            const remaining = hud.bomb.blowTime && interpolatedCurtime
+              ? Math.max(0, hud.bomb.blowTime - interpolatedCurtime)
               : null;
-            const defuseRemaining = hud.bomb.defuseEnd && hud.curtime && hud.bomb.defuseEnd > hud.curtime
-              ? Math.max(0, hud.bomb.defuseEnd - hud.curtime)
+            const defuseRemaining = hud.bomb.defuseEnd && interpolatedCurtime && hud.bomb.defuseEnd > interpolatedCurtime
+              ? Math.max(0, hud.bomb.defuseEnd - interpolatedCurtime)
               : null;
             return (
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1460,8 +1476,8 @@ function RadarCanvas() {
                     </span>
                   );
                 }
-                if (hud.roundPhase.roundStartTime && hud.roundPhase.roundTime && hud.curtime) {
-                  const elapsed = hud.curtime - hud.roundPhase.roundStartTime;
+                if (hud.roundPhase.roundStartTime && hud.roundPhase.roundTime && interpolatedCurtime) {
+                  const elapsed = interpolatedCurtime - hud.roundPhase.roundStartTime;
                   const remaining = Math.max(0, hud.roundPhase.roundTime - elapsed);
                   const mins = Math.floor(remaining / 60);
                   const secs = Math.floor(remaining % 60);
@@ -1664,8 +1680,8 @@ function RadarCanvas() {
               {hud.roundPhase && (
                 <div style={{ fontSize: 9, color: "#55555588", fontFamily: "Consolas, monospace", marginTop: 2 }}>
                   {hud.roundPhase.warmup ? "WARMUP" : hud.roundPhase.freeze ? "FREEZE TIME" : hud.roundPhase.roundsPlayed > 0 ? `Round ${hud.roundPhase.roundsPlayed + 1}` : ""}
-                  {!hud.roundPhase.warmup && !hud.roundPhase.freeze && hud.roundPhase.roundStartTime && hud.roundPhase.roundTime && hud.curtime && (() => {
-                    const remaining = Math.max(0, hud.roundPhase!.roundTime! - (hud.curtime! - hud.roundPhase!.roundStartTime!));
+                  {!hud.roundPhase.warmup && !hud.roundPhase.freeze && hud.roundPhase.roundStartTime && hud.roundPhase.roundTime && interpolatedCurtime && (() => {
+                    const remaining = Math.max(0, hud.roundPhase!.roundTime! - (interpolatedCurtime! - hud.roundPhase!.roundStartTime!));
                     return ` — ${Math.floor(remaining / 60)}:${String(Math.floor(remaining % 60)).padStart(2, "0")}`;
                   })()}
                 </div>
@@ -1855,11 +1871,11 @@ function RadarCanvas() {
 
       {/* Bomb planted banner with timer */}
       {hud.status === "live" && hud.bomb?.planted && (() => {
-        const remaining = hud.bomb.blowTime && hud.curtime
-          ? Math.max(0, hud.bomb.blowTime - hud.curtime)
+        const remaining = hud.bomb.blowTime && interpolatedCurtime
+          ? Math.max(0, hud.bomb.blowTime - interpolatedCurtime)
           : null;
-        const defuseRemaining = hud.bomb.defuseEnd && hud.curtime && hud.bomb.defuseEnd > hud.curtime
-          ? Math.max(0, hud.bomb.defuseEnd - hud.curtime)
+        const defuseRemaining = hud.bomb.defuseEnd && interpolatedCurtime && hud.bomb.defuseEnd > interpolatedCurtime
+          ? Math.max(0, hud.bomb.defuseEnd - interpolatedCurtime)
           : null;
         return (
           <div className="radar-bombbanner" style={{

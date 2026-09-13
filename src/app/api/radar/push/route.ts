@@ -3,17 +3,6 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
 
 const MAX_PAYLOAD_BYTES = 64 * 1024;
-const STALE_THRESHOLD_MS = 5 * 60 * 1000;
-let lastCleanup = 0;
-
-async function cleanupStaleSessions(db: ReturnType<typeof supabaseAdmin>) {
-  const now = Date.now();
-  if (now - lastCleanup < 60_000) return;
-  lastCleanup = now;
-
-  const cutoff = new Date(now - STALE_THRESHOLD_MS).toISOString();
-  await db.from("radar_data").delete().lt("updated_at", cutoff);
-}
 
 export async function POST(req: Request) {
   try {
@@ -64,8 +53,6 @@ export async function POST(req: Request) {
       console.error("[radar/push] supabase error:", error.message);
       return NextResponse.json({ error: "db_error" }, { status: 500 });
     }
-
-    cleanupStaleSessions(db).catch(() => {});
 
     return NextResponse.json({ ok: true });
   } catch (e) {
