@@ -1007,17 +1007,29 @@ function RadarCanvas() {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "#0a0e14", cursor: "crosshair" }}>
-      <style>{`@keyframes bombPulse { from { opacity: 0.7; } to { opacity: 1; } }`}</style>
+      <style>{`
+        @keyframes bombPulse { from { opacity: 0.7; } to { opacity: 1; } }
+        @media (max-width: 600px) {
+          .radar-topbar { height: auto !important; min-height: 32px; flex-wrap: wrap; padding: 4px 8px !important; gap: 4px !important; }
+          .radar-topbar-left { gap: 6px !important; flex-wrap: wrap; }
+          .radar-topbar-right { gap: 8px !important; }
+          .radar-brand { font-size: 11px !important; }
+          .radar-grenades { display: none !important; }
+          .radar-playerlist { display: none !important; }
+          .radar-scoreboard { min-width: 280px !important; max-width: 95vw !important; padding: 12px 0 !important; }
+          .radar-bombbanner { font-size: 10px !important; padding: 3px 12px !important; top: auto !important; bottom: 40px !important; }
+        }
+      `}</style>
       {/* Top bar */}
-      <div style={{
+      <div className="radar-topbar" style={{
         position: "absolute", top: 0, left: 0, right: 0, height: 36, zIndex: 10,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 16px",
         background: "linear-gradient(to bottom, rgba(13,13,13,0.95), rgba(13,13,13,0))",
         pointerEvents: "none",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ color: "#8e6ff7", fontWeight: "bold", fontSize: 13, fontFamily: "Tahoma, sans-serif" }}>
+        <div className="radar-topbar-left" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span className="radar-brand" style={{ color: "#8e6ff7", fontWeight: "bold", fontSize: 13, fontFamily: "Tahoma, sans-serif" }}>
             gamesense<span style={{ color: "#808080" }}>.cloud</span>
           </span>
           <span style={{ color: "#555555", fontSize: 11 }}>|</span>
@@ -1074,7 +1086,7 @@ function RadarCanvas() {
             if (counts.he) badges.push({ type: "he", count: counts.he, color: "#e06", label: "H" });
             if (counts.decoy) badges.push({ type: "decoy", count: counts.decoy, color: "#6a6", label: "D" });
             return (
-              <div style={{ display: "flex", gap: 4, marginLeft: 8 }}>
+              <div className="radar-grenades" style={{ display: "flex", gap: 4, marginLeft: 8 }}>
                 {badges.map(b => (
                   <span key={b.type} style={{
                     fontSize: 9, fontFamily: "Consolas, monospace", padding: "1px 4px",
@@ -1089,7 +1101,7 @@ function RadarCanvas() {
           })()}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div className="radar-topbar-right" style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{
               display: "inline-block", width: 6, height: 6, borderRadius: "50%",
@@ -1206,7 +1218,7 @@ function RadarCanvas() {
 
       {/* Compact player list (right side) */}
       {hud.status === "live" && hud.players && hud.players.length > 0 && !showScoreboard && (
-        <div style={{
+        <div className="radar-playerlist" style={{
           position: "absolute", top: 44, right: 8, zIndex: 10,
           pointerEvents: "none", fontFamily: "Tahoma, sans-serif",
         }}>
@@ -1265,7 +1277,7 @@ function RadarCanvas() {
             background: "rgba(10,14,20,0.85)", cursor: "pointer",
           }}
         >
-          <div style={{
+          <div className="radar-scoreboard" style={{
             background: "#111418", border: "1px solid #1e1e1e", borderRadius: 4,
             minWidth: 340, maxWidth: 500, padding: "16px 0",
             fontFamily: "Tahoma, Verdana, sans-serif",
@@ -1393,7 +1405,7 @@ function RadarCanvas() {
           ? Math.max(0, hud.bomb.defuseEnd - hud.curtime)
           : null;
         return (
-          <div style={{
+          <div className="radar-bombbanner" style={{
             position: "absolute", top: 40, left: "50%", transform: "translateX(-50%)", zIndex: 15,
             padding: "4px 20px", pointerEvents: "none",
             background: "rgba(224,60,60,0.15)", border: "1px solid rgba(224,60,60,0.3)",
