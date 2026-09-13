@@ -3,6 +3,7 @@ import { currentUser } from "@/lib/auth";
 import * as db from "@/lib/dashboard";
 import { downloadAction } from "@/app/actions";
 import { ActionButton } from "@/components/forms";
+import AnnounceForm from "./AnnounceForm";
 import ActivityChart from "@/components/ActivityChart";
 import {
   Empty, Meta, PageHead, Panel, Status,
@@ -353,6 +354,17 @@ async function AdminOverview() {
             ))}
           </dl>
         )}
+      </Panel>
+
+      <Panel label="announcements" className="col-12">
+        <AnnounceForm />
+        {(await db.listAnnouncements(5)).map((a) => (
+          <article key={a.id} className={`notice ${a.level}`}>
+            <h3>{a.title}</h3>
+            <p>{a.body}</p>
+            <span className="when">{ago(a.at)} ago · {a.author ?? "staff"}</span>
+          </article>
+        ))}
       </Panel>
 
       <Panel label="activity" className="col-12" flush>
