@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import {
   AuthError,
   changePassword,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { can } from "@/lib/permissions";
+import { rateLimit } from "@/lib/rate-limit";
 import * as db from "@/lib/dashboard";
 
 /**
@@ -30,9 +32,19 @@ const fail = (e: unknown): ActionState => {
   return { error: message };
 };
 
+async function clientIp(): Promise<string> {
+  const h = await headers();
+  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+}
+
 // ----------------------------------------------------------------- auth --
 export async function signInAction(_: ActionState, form: FormData): Promise<ActionState> {
   try {
+    const ip = await clientIp();
+    const rl = rateLimit(`login:${ip}`, 5, 60_000);
+    if (!rl.ok) {
+      return { error: `too many login attempts — try again in ${Math.ceil(rl.retryAfterMs / 1000)}s` };
+    }
     const user = await login(
       String(form.get("identifier") ?? ""),
       String(form.get("password") ?? "")
@@ -52,6 +64,11 @@ export async function signInAction(_: ActionState, form: FormData): Promise<Acti
 
 export async function registerAction(_: ActionState, form: FormData): Promise<ActionState> {
   try {
+    const ip = await clientIp();
+    const rl = rateLimit(`register:${ip}`, 3, 300_000);
+    if (!rl.ok) {
+      return { error: `too many registration attempts — try again in ${Math.ceil(rl.retryAfterMs / 1000)}s` };
+    }
     const user = await register({
       username: String(form.get("username") ?? ""),
       email: String(form.get("email") ?? ""),
@@ -78,6 +95,11 @@ export async function signOutAction() {
 export async function changePasswordAction(_: ActionState, form: FormData): Promise<ActionState> {
   try {
     const user = await requireUser();
+    const ip = await clientIp();
+    const rl = rateLimit(`chpw:${user.id}:${ip}`, 5, 300_000);
+    if (!rl.ok) {
+      return { error: `too many attempts — try again in ${Math.ceil(rl.retryAfterMs / 1000)}s` };
+    }
     await changePassword(
       user.id,
       String(form.get("current") ?? ""),

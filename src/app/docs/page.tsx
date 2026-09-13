@@ -90,6 +90,7 @@ const NAV = [
   { id: "trace", label: "trace" },
   { id: "panorama", label: "panorama" },
   { id: "types", label: "Types" },
+  { id: "quickstart", label: "Quick Start" },
 ];
 
 /* ── page ──────────────────────────────────────────────────────────── */
@@ -282,6 +283,9 @@ export default function Docs() {
           </Fn>
           <Fn name="entity.GetPropString" args="ent, class: string, field: string" ret="string">
             Read any string (pointer-to-char) schema field. Returns empty string on failure.
+          </Fn>
+          <Fn name="entity.GetEntityFromHandle" args="handle: integer" ret="entity | nil">
+            Resolve an entity handle (e.g. from GetPropInt on m_hActiveWeapon or m_hOwnerEntity) to an entity pointer. Returns nil if the handle is invalid.
           </Fn>
         </Section>
 
