@@ -264,6 +264,18 @@ export default function Docs() {
           <Fn name="entity.GetIndex" args="ent: userdata" ret="integer">
             Entity slot index (1–64). Returns 0 if not found.
           </Fn>
+          <Fn name="entity.GetPropInt" args="ent, class: string, field: string" ret="integer">
+            Read any integer schema field. Example: <code className="text-text-faint">entity.GetPropInt(ent, &quot;C_BaseEntity&quot;, &quot;m_iHealth&quot;)</code>
+          </Fn>
+          <Fn name="entity.GetPropFloat" args="ent, class: string, field: string" ret="number">
+            Read any float schema field.
+          </Fn>
+          <Fn name="entity.GetPropBool" args="ent, class: string, field: string" ret="boolean">
+            Read any boolean schema field.
+          </Fn>
+          <Fn name="entity.GetPropVec3" args="ent, class: string, field: string" ret="x, y, z">
+            Read any Vector schema field. Returns three floats.
+          </Fn>
         </Section>
 
         {/* ───────────── renderer ───────────── */}
