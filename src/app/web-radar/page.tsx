@@ -1852,7 +1852,7 @@ function RadarCanvas() {
                 {defuseRemaining != null && (
                   <div style={{
                     position: "absolute", top: 0, left: 0,
-                    width: `${Math.min(defuseRemaining / 40 * 100, 100)}%`, height: "100%",
+                    width: `${Math.min(defuseRemaining / 10 * 100, 100)}%`, height: "100%",
                     background: "#5fc98a",
                     borderRadius: 1,
                     transition: "width 0.2s linear",
@@ -1871,6 +1871,7 @@ function RadarCanvas() {
         display: "flex", alignItems: "center", gap: 6,
       }}>
         <button
+          aria-label="Zoom out"
           onClick={() => {
             zoomRef.current = Math.max(zoomRef.current / 1.3, 0.4);
             setZoomDisplay(Math.round(zoomRef.current * 100));
@@ -1887,6 +1888,7 @@ function RadarCanvas() {
           {zoomDisplay}%
         </span>
         <button
+          aria-label="Zoom in"
           onClick={() => {
             zoomRef.current = Math.min(zoomRef.current * 1.3, 4.0);
             setZoomDisplay(Math.round(zoomRef.current * 100));

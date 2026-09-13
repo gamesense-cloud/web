@@ -560,10 +560,10 @@ export default function Docs() {
             Set a per-entity property override. Pass nil as value to clear. Supports string, number, color, and boolean values.
           </Fn>
           <Fn name="esp.CustomText" args="entity_index, position, text [, color]">
-            Add custom text to an entity. Position is a string like <code className="text-text-faint">&quot;top&quot;</code> or <code className="text-text-faint">&quot;bottom&quot;</code>.
+            Add custom text to an entity. Position is a string like <code className="text-text-faint">&quot;top&quot;</code> or <code className="text-text-faint">&quot;bottom&quot;</code>. Cleared every frame — re-add in your paint handler.
           </Fn>
           <Fn name="esp.CustomBar" args="entity_index, position, value [, color]">
-            Add a custom bar (0.0–1.0) to an entity.
+            Add a custom bar (0.0–1.0) to an entity. Cleared every frame — re-add in your paint handler.
           </Fn>
           <Fn name="esp.GetOverride" args="entity_index, property" ret="value | nil">
             Read a previously set override.
