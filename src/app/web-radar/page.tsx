@@ -141,6 +141,13 @@ function RadarCanvas() {
   const showLowerRef = useRef(false);
   const nukeLowerImgRef = useRef<HTMLImageElement | null>(null);
   const [zoomDisplay, setZoomDisplay] = useState(100);
+  const [followMode, setFollowMode] = useState(false);
+  const followRef = useRef(false);
+  const [flashOverlay, setFlashOverlay] = useState(0);
+  const killFeedRef = useRef<{ name: string; team: number; time: number }[]>([]);
+  const [killFeed, setKillFeed] = useState<{ name: string; team: number; time: number }[]>([]);
+  const prevAliveRef = useRef<Record<string, boolean>>({});
+  const trailsRef = useRef<Record<string, { x: number; y: number; t: number }[]>>({});
 
   const [hud, setHud] = useState<{
     status: RadarStatus; map: string; mapDisplay: string; ct: number; t: number;
@@ -156,6 +163,7 @@ function RadarCanvas() {
   });
 
   useEffect(() => { showLowerRef.current = showLower; }, [showLower]);
+  useEffect(() => { followRef.current = followMode; }, [followMode]);
 
   const getInterpolated = useCallback((key: string, current: Player): Player => {
     const prev = prevPosRef.current[key];
@@ -241,6 +249,59 @@ function RadarCanvas() {
             });
           }
 
+          // Track kills (alive → dead transitions)
+          if (radarStatus === "live" && data.players) {
+            const now = Date.now();
+            const newDeaths: { name: string; team: number; time: number }[] = [];
+            for (const p of data.players) {
+              const key = p.name || "?";
+              const wasAlive = prevAliveRef.current[key];
+              if (wasAlive === true && !p.alive) {
+                newDeaths.push({ name: key, team: p.team, time: now });
+              }
+              prevAliveRef.current[key] = p.alive;
+            }
+            if (newDeaths.length > 0) {
+              const feed = [...killFeedRef.current, ...newDeaths].slice(-6);
+              killFeedRef.current = feed;
+              setKillFeed([...feed]);
+            }
+            // Expire old entries (older than 8 seconds)
+            const cutoff = now - 8000;
+            if (killFeedRef.current.length > 0 && killFeedRef.current[0].time < cutoff) {
+              killFeedRef.current = killFeedRef.current.filter(k => k.time >= cutoff);
+              setKillFeed([...killFeedRef.current]);
+            }
+          }
+
+          // Flash overlay for local player
+          if (radarStatus === "live" && data.localPlayer?.flashAlpha && data.localPlayer.flashAlpha > 20) {
+            setFlashOverlay(Math.min(data.localPlayer.flashAlpha / 255, 0.9));
+          } else {
+            setFlashOverlay(0);
+          }
+
+          // Store player trails
+          if (radarStatus === "live") {
+            const now = performance.now();
+            const trails = trailsRef.current;
+            if (data.localPlayer) {
+              const key = "__local";
+              if (!trails[key]) trails[key] = [];
+              trails[key].push({ x: data.localPlayer.x, y: data.localPlayer.y, t: now });
+              if (trails[key].length > 20) trails[key] = trails[key].slice(-20);
+            }
+            if (data.players) {
+              for (const p of data.players) {
+                if (!p.alive) continue;
+                const key = p.name || "?";
+                if (!trails[key]) trails[key] = [];
+                trails[key].push({ x: p.x, y: p.y, t: now });
+                if (trails[key].length > 20) trails[key] = trails[key].slice(-20);
+              }
+            }
+          }
+
           const mapKey = data.map || "";
           const mapMeta = MAPS[mapKey];
           setHud({
@@ -291,6 +352,7 @@ function RadarCanvas() {
     function onDown(e: KeyboardEvent) {
       if (e.key === "d" || e.key === "D") setShowDebug(v => !v);
       if (e.key === "n" || e.key === "N") setShowLower(v => !v);
+      if (e.key === "f" || e.key === "F") setFollowMode(v => !v);
       if (e.key === "Tab") { e.preventDefault(); setShowScoreboard(true); }
     }
     function onUp(e: KeyboardEvent) {
@@ -626,6 +688,16 @@ function RadarCanvas() {
         ctx.textAlign = "left";
       }
 
+      // Follow mode: auto-center on local player
+      if (followRef.current && data?.localPlayer && mapInfo) {
+        const lp = data.localPlayer;
+        const lpCanvas = worldToCanvas(lp.x, lp.y, mapInfo, radarSize, 0, 0);
+        const targetX = w / 2 - baseOx - lpCanvas.x * zoomRef.current;
+        const targetY = h / 2 - baseOy - lpCanvas.y * zoomRef.current;
+        panRef.current.x = lerp(panRef.current.x, targetX, 0.12);
+        panRef.current.y = lerp(panRef.current.y, targetY, 0.12);
+      }
+
       if (data?.connected && mapInfo) {
         const nukeLevel = isNuke ? (nukeLower ? "lower" : "upper") : null;
 
@@ -638,6 +710,27 @@ function RadarCanvas() {
           }
           drawBomb(ctx, bpos, data.bomb.planted);
           ctx.globalAlpha = 1;
+        }
+
+        // Draw player trails
+        const now = performance.now();
+        const trails = trailsRef.current;
+        for (const [key, pts] of Object.entries(trails)) {
+          if (pts.length < 2) continue;
+          const isLocal = key === "__local";
+          const player = isLocal ? data.localPlayer : data.players?.find(p => p.name === key);
+          if (!player || !player.alive) continue;
+          const baseColor = isLocal ? "142,111,247" : player.enemy ? "224,101,106" : "74,158,255";
+          for (let j = 0; j < pts.length - 1; j++) {
+            const age = now - pts[j].t;
+            if (age > 4000) continue;
+            const alpha = Math.max(0, 0.15 * (1 - age / 4000));
+            const tp = worldToCanvas(pts[j].x, pts[j].y, mapInfo, radarSize, 0, 0);
+            ctx.beginPath();
+            ctx.arc(tp.x, tp.y, 1.5, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${baseColor},${alpha.toFixed(2)})`;
+            ctx.fill();
+          }
         }
 
         if (data.localPlayer) {
@@ -684,27 +777,71 @@ function RadarCanvas() {
       <div style={{
         position: "fixed", inset: 0, zIndex: 100,
         background: "#0a0e14", display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center", gap: 16,
+        alignItems: "center", justifyContent: "center", gap: 20,
         fontFamily: "Tahoma, Verdana, sans-serif",
       }}>
-        <div style={{ color: "#8e6ff7", fontSize: 20, fontWeight: "bold" }}>
+        <style>{`
+          @keyframes radarSweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        `}</style>
+        <div style={{ position: "relative", width: 80, height: 80, marginBottom: 8 }}>
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: "50%",
+            border: "1px solid #1e1e1e",
+          }} />
+          <div style={{
+            position: "absolute", inset: 8, borderRadius: "50%",
+            border: "1px solid #1a1a1a",
+          }} />
+          <div style={{
+            position: "absolute", top: "50%", left: "50%",
+            width: 4, height: 4, borderRadius: "50%",
+            background: "#8e6ff7", transform: "translate(-50%, -50%)",
+            boxShadow: "0 0 8px #8e6ff755",
+          }} />
+          <div style={{
+            position: "absolute", top: "50%", left: "50%",
+            width: 2, height: 36, transformOrigin: "top center",
+            background: "linear-gradient(to bottom, #8e6ff744, transparent)",
+            animation: "radarSweep 3s linear infinite",
+          }} />
+        </div>
+        <div style={{ color: "#8e6ff7", fontSize: 22, fontWeight: "bold", letterSpacing: 0.5, animation: "fadeIn 0.5s ease-out" }}>
           gamesense<span style={{ color: "#808080" }}>.cloud</span>
         </div>
-        <div style={{ color: "#dcdcdc", fontSize: 14 }}>Web Radar</div>
+        <div style={{ color: "#555", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", animation: "fadeIn 0.5s ease-out 0.1s both" }}>
+          Web Radar
+        </div>
         <div style={{
-          marginTop: 24, padding: "16px 24px",
-          background: "#131313", border: "1px solid #1e1e1e",
-          maxWidth: 400, textAlign: "center", borderRadius: 2,
+          marginTop: 12, padding: "20px 28px",
+          background: "#111418", border: "1px solid #1e1e1e",
+          maxWidth: 380, textAlign: "center", borderRadius: 4,
+          animation: "fadeIn 0.5s ease-out 0.2s both",
         }}>
-          <p style={{ color: "#808080", fontSize: 12, lineHeight: 1.6, margin: "0 0 12px 0" }}>
-            No session ID provided.
+          <p style={{ color: "#808080", fontSize: 12, lineHeight: 1.6, margin: "0 0 16px 0" }}>
+            No active session. Start one from the DLL.
           </p>
-          <div style={{ textAlign: "left", color: "#555", fontSize: 11, lineHeight: 1.8 }}>
-            <div>1. Open gamesense.cloud in CS2</div>
-            <div>2. Go to <span style={{ color: "#8e6ff7" }}>Settings</span> &rarr; <span style={{ color: "#8e6ff7" }}>Web Radar</span></div>
-            <div>3. Click <span style={{ color: "#5fc98a" }}>Start Web Radar</span></div>
-            <div>4. Copy and share the link</div>
+          <div style={{ textAlign: "left", color: "#555", fontSize: 11, lineHeight: 2 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+              <span style={{ color: "#8e6ff744", fontWeight: "bold", minWidth: 14, textAlign: "right" }}>1</span>
+              <span>Load <span style={{ color: "#dcdcdc" }}>gamesense.cloud</span> in CS2</span>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+              <span style={{ color: "#8e6ff744", fontWeight: "bold", minWidth: 14, textAlign: "right" }}>2</span>
+              <span>Go to <span style={{ color: "#8e6ff7" }}>Settings</span> &rarr; <span style={{ color: "#8e6ff7" }}>Web Radar</span></span>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+              <span style={{ color: "#8e6ff744", fontWeight: "bold", minWidth: 14, textAlign: "right" }}>3</span>
+              <span>Click <span style={{ color: "#5fc98a" }}>Start Web Radar</span></span>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+              <span style={{ color: "#8e6ff744", fontWeight: "bold", minWidth: 14, textAlign: "right" }}>4</span>
+              <span>Copy the link &amp; open on any device</span>
+            </div>
           </div>
+        </div>
+        <div style={{ color: "#ffffff0a", fontSize: 9, letterSpacing: 1, marginTop: 8, animation: "fadeIn 0.5s ease-out 0.3s both" }}>
+          Scroll to zoom &middot; Drag to pan &middot; Tab for scoreboard &middot; F to follow
         </div>
       </div>
     );
@@ -1070,8 +1207,52 @@ function RadarCanvas() {
             [N] {showLower ? "LOWER" : "UPPER"}
           </span>
         )}
-        {!showDebug && <span style={{ color: "#ffffff0a", marginLeft: 12 }}>[D] debug &middot; scroll zoom &middot; drag pan &middot; dbl-click reset</span>}
+        {!showDebug && <span style={{ color: "#ffffff0a", marginLeft: 12 }}>[D] debug &middot; [F] follow &middot; scroll zoom &middot; drag pan &middot; dbl-click reset</span>}
       </div>
+
+      {/* Flash overlay when local player is flashed */}
+      {flashOverlay > 0 && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 25,
+          background: `rgba(255,255,255,${flashOverlay.toFixed(2)})`,
+          pointerEvents: "none",
+          transition: "background 0.15s ease-out",
+        }} />
+      )}
+
+      {/* Kill feed (top-right, below player list) */}
+      {killFeed.length > 0 && hud.status === "live" && !showScoreboard && (
+        <div style={{
+          position: "absolute", top: 44, left: 8, zIndex: 12,
+          pointerEvents: "none", fontFamily: "Tahoma, sans-serif",
+        }}>
+          {killFeed.map((k, i) => {
+            const age = Date.now() - k.time;
+            const opacity = age > 6000 ? Math.max(0, 1 - (age - 6000) / 2000) : 1;
+            return (
+              <div key={`${k.name}-${k.time}`} style={{
+                fontSize: 10, marginBottom: 2, opacity,
+                color: k.team === 3 ? "#4a9eff" : k.team === 2 ? "#e0b04b" : "#888",
+                display: "flex", alignItems: "center", gap: 4,
+              }}>
+                <span style={{ color: "#e0656a", fontSize: 8 }}>&#x2620;</span>
+                {k.name}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Follow mode indicator */}
+      {followMode && hud.status === "live" && (
+        <div style={{
+          position: "absolute", bottom: 44, right: 12, zIndex: 10,
+          pointerEvents: "none", fontFamily: "Consolas, monospace",
+          fontSize: 9, color: "#8e6ff744", letterSpacing: 1,
+        }}>
+          FOLLOW
+        </div>
+      )}
 
       <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
     </div>
