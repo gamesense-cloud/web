@@ -413,6 +413,7 @@ export default function Docs() {
             <Fn name="group:SliderInt" args="label, min, max [, default]" ret="control">Integer slider.</Fn>
             <Fn name="group:SliderFloat" args="label, min, max [, default]" ret="control">Float slider.</Fn>
             <Fn name="group:Combo" args='label, options: table [, default_index]' ret="control">Dropdown selector. Index is 1-based.</Fn>
+            <Fn name="group:Multiselect" args='label, options: table [, defaults: table]' ret="control">Multi-select dropdown. Returns a table of selected indices.</Fn>
             <Fn name="group:Button" args="label [, callback]" ret="control">Clickable button.</Fn>
             <Fn name="group:ColorPicker" args="label [, default: {r,g,b,a}]" ret="control">RGBA color picker (0–1 range).</Fn>
             <Fn name="group:Textbox" args="label [, default: string]" ret="control">Text input field.</Fn>

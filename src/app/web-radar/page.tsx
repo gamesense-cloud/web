@@ -81,6 +81,8 @@ interface ApiResponse {
   grenades?: GrenadeInfo[];
   curtime?: number;
   tickCount?: number;
+  tScore?: number;
+  ctScore?: number;
   debug?: Record<string, unknown>;
   entityScan?: { total: number; null: number; noPawn: number; badPos?: number; noTeam?: number; added: number };
   entDebug?: EntDebug[];
@@ -178,6 +180,8 @@ function RadarCanvas() {
 
   const [hud, setHud] = useState<{
     status: RadarStatus; map: string; mapDisplay: string; ct: number; t: number;
+    ctScore?: number; tScore?: number;
+    ctAlive: number; tAlive: number;
     reason?: string; age?: number; pollCount: number;
     curtime?: number; tickCount?: number;
     debug?: Record<string, unknown>;
@@ -188,7 +192,7 @@ function RadarCanvas() {
     bomb?: BombInfo;
     grenades?: GrenadeInfo[];
   }>({
-    status: "connecting", map: "---", mapDisplay: "---", ct: 0, t: 0, pollCount: 0,
+    status: "connecting", map: "---", mapDisplay: "---", ct: 0, t: 0, ctAlive: 0, tAlive: 0, pollCount: 0,
   });
 
   useEffect(() => { showLowerRef.current = showLower; }, [showLower]);
@@ -264,19 +268,21 @@ function RadarCanvas() {
           }
 
           // Count alive players
-          let ct = 0, t = 0;
+          let ctAlive = 0, tAlive = 0;
           if (radarStatus === "live") {
             if (data.localPlayer?.alive !== false) {
-              if (data.localPlayer?.team === 3) ct++;
-              else if (data.localPlayer?.team === 2) t++;
+              if (data.localPlayer?.team === 3) ctAlive++;
+              else if (data.localPlayer?.team === 2) tAlive++;
             }
             data.players?.forEach(p => {
               if (p.alive) {
-                if (p.team === 3) ct++;
-                else if (p.team === 2) t++;
+                if (p.team === 3) ctAlive++;
+                else if (p.team === 2) tAlive++;
               }
             });
           }
+          const ctScore = data.ctScore as number | undefined;
+          const tScore = data.tScore as number | undefined;
 
           // Track kills (alive → dead transitions)
           if (radarStatus === "live" && data.players) {
@@ -357,7 +363,9 @@ function RadarCanvas() {
             status: radarStatus,
             map: mapKey.toUpperCase() || "---",
             mapDisplay: mapMeta?.display || mapKey || "---",
-            ct, t,
+            ct: ctScore ?? ctAlive, t: tScore ?? tAlive,
+            ctScore, tScore,
+            ctAlive, tAlive,
             reason: data.reason,
             age: data.age_ms,
             pollCount: n,
@@ -1194,9 +1202,11 @@ function RadarCanvas() {
               )}
               <span style={{ fontSize: 12, color: "#4a9eff", fontFamily: "Consolas, monospace" }}>
                 CT {hud.ct}
+                <span style={{ fontSize: 9, color: "#4a9eff55", marginLeft: 2 }}>({hud.ctAlive})</span>
               </span>
               <span style={{ fontSize: 12, color: "#e0b04b", fontFamily: "Consolas, monospace" }}>
                 T {hud.t}
+                <span style={{ fontSize: 9, color: "#e0b04b55", marginLeft: 2 }}>({hud.tAlive})</span>
               </span>
               <button
                 onClick={() => setShowScoreboard(v => !v)}
@@ -1294,18 +1304,22 @@ function RadarCanvas() {
           position: "absolute", top: 44, right: 8, zIndex: 10,
           pointerEvents: "none", fontFamily: "Tahoma, sans-serif",
         }}>
-          {hud.players.filter(p => p.alive).map((p, i) => (
+          {hud.players.filter(p => p.alive).map((p, i) => {
+            const pColor = (!p.enemy && p.color != null && p.color >= 0 && p.color < COMP_COLORS.length)
+              ? COMP_COLORS[p.color]
+              : (p.enemy ? "#e0656a" : "#4a9eff");
+            return (
             <div key={i} style={{
               display: "flex", alignItems: "center", gap: 6, marginBottom: 3,
               opacity: 0.8,
             }}>
               <span style={{
                 width: 3, height: 3, borderRadius: "50%",
-                background: p.enemy ? "#e0656a" : "#4a9eff",
+                background: pColor,
                 display: "inline-block", flexShrink: 0,
               }} />
               <div style={{ minWidth: 60 }}>
-                <div style={{ fontSize: 9, color: p.enemy ? "#e0656a99" : "#4a9eff99" }}>
+                <div style={{ fontSize: 9, color: pColor + "99" }}>
                   {p.name?.length > 10 ? p.name.slice(0, 10) + ".." : p.name}
                 </div>
                 {p.weapon && (
@@ -1335,7 +1349,8 @@ function RadarCanvas() {
                 )}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
 
@@ -1358,9 +1373,15 @@ function RadarCanvas() {
               {hud.map}
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 4 }}>
-              <span style={{ fontSize: 18, fontWeight: "bold", color: "#4a9eff" }}>CT {hud.ct}</span>
+              <div style={{ textAlign: "center" }}>
+                <span style={{ fontSize: 18, fontWeight: "bold", color: "#4a9eff" }}>CT {hud.ct}</span>
+                <div style={{ fontSize: 9, color: "#4a9eff55" }}>{hud.ctAlive} alive</div>
+              </div>
               <span style={{ fontSize: 14, color: "#555", alignSelf: "center" }}>vs</span>
-              <span style={{ fontSize: 18, fontWeight: "bold", color: "#e0b04b" }}>T {hud.t}</span>
+              <div style={{ textAlign: "center" }}>
+                <span style={{ fontSize: 18, fontWeight: "bold", color: "#e0b04b" }}>T {hud.t}</span>
+                <div style={{ fontSize: 9, color: "#e0b04b55" }}>{hud.tAlive} alive</div>
+              </div>
             </div>
             {(() => {
               const allPlayers = [...(hud.localPlayer ? [{ ...hud.localPlayer } as Player] : []), ...(hud.players ?? [])];
@@ -1380,14 +1401,17 @@ function RadarCanvas() {
               {[...(hud.localPlayer?.team === 3 ? [{
                 ...hud.localPlayer, name: "You", enemy: false,
               } as Player] : []),
-              ...(hud.players?.filter(p => p.team === 3) ?? [])].map((p, i) => (
+              ...(hud.players?.filter(p => p.team === 3) ?? [])].map((p, i) => {
+                const dotColor = (p.color != null && p.color >= 0 && p.color < COMP_COLORS.length)
+                  ? COMP_COLORS[p.color] : "#4a9eff";
+                return (
                 <div key={`ct-${i}`} style={{
                   display: "flex", alignItems: "center", gap: 8, padding: "3px 0",
                   opacity: p.alive ? 1 : 0.35,
                 }}>
                   <span style={{
                     width: 4, height: 4, borderRadius: "50%",
-                    background: p.alive ? "#4a9eff" : "#333",
+                    background: p.alive ? dotColor : "#333",
                     display: "inline-block", flexShrink: 0,
                   }} />
                   <div style={{ flex: 1 }}>
@@ -1416,7 +1440,8 @@ function RadarCanvas() {
                     )}
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
             {/* T players */}
             <div style={{ padding: "0 16px" }}>
@@ -1424,14 +1449,17 @@ function RadarCanvas() {
               {[...(hud.localPlayer?.team === 2 ? [{
                 ...hud.localPlayer, name: "You", enemy: false,
               } as Player] : []),
-              ...(hud.players?.filter(p => p.team === 2) ?? [])].map((p, i) => (
+              ...(hud.players?.filter(p => p.team === 2) ?? [])].map((p, i) => {
+                const dotColor = (p.color != null && p.color >= 0 && p.color < COMP_COLORS.length)
+                  ? COMP_COLORS[p.color] : "#e0b04b";
+                return (
                 <div key={`t-${i}`} style={{
                   display: "flex", alignItems: "center", gap: 8, padding: "3px 0",
                   opacity: p.alive ? 1 : 0.35,
                 }}>
                   <span style={{
                     width: 4, height: 4, borderRadius: "50%",
-                    background: p.alive ? "#e0b04b" : "#333",
+                    background: p.alive ? dotColor : "#333",
                     display: "inline-block", flexShrink: 0,
                   }} />
                   <div style={{ flex: 1 }}>
@@ -1459,7 +1487,8 @@ function RadarCanvas() {
                     )}
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
             <div style={{ textAlign: "center", marginTop: 12, fontSize: 9, color: "#333" }}>
               Tab or tap to close
