@@ -79,6 +79,13 @@ const NAV = [
   { id: "http", label: "http" },
   { id: "cheat", label: "cheat" },
   { id: "system", label: "system" },
+  { id: "math", label: "math" },
+  { id: "json", label: "json" },
+  { id: "store", label: "store" },
+  { id: "file", label: "file" },
+  { id: "timer", label: "timer" },
+  { id: "log", label: "log" },
+  { id: "ffi", label: "ffi" },
   { id: "cvar", label: "cvar" },
   { id: "trace", label: "trace" },
   { id: "panorama", label: "panorama" },
@@ -526,6 +533,183 @@ export default function Docs() {
           <Fn name="system.GetTimestamp" args="" ret="integer">Unix timestamp (seconds since epoch).</Fn>
           <Fn name="system.GetTickCount" args="" ret="integer">Milliseconds since system boot (via GetTickCount64).</Fn>
           <Fn name="system.PlaySound" args="path: string">Play a WAV file asynchronously.</Fn>
+        </Section>
+
+        {/* ───────────── math ───────────── */}
+        <Section id="math" title="math">
+          <p>
+            Extended math utilities for angle and vector operations. Augments the standard Lua{" "}
+            <code className="text-accent">math</code> table — all functions are accessed via{" "}
+            <code className="text-text-faint">math.AngleNormalize()</code> etc.
+          </p>
+          <Fn name="math.AngleNormalize" args="angle: number" ret="number">
+            Normalize an angle to the range [-180, 180].
+          </Fn>
+          <Fn name="math.AngleDifference" args="a: number, b: number" ret="number">
+            Shortest angular difference between two angles.
+          </Fn>
+          <Fn name="math.VectorAngles" args="x, y, z" ret="pitch, yaw">
+            Convert a direction vector to Euler angles.
+          </Fn>
+          <Fn name="math.AngleVectors" args="pitch, yaw" ret="fx, fy, fz">
+            Convert Euler angles to a forward direction vector.
+          </Fn>
+          <Fn name="math.VectorLength" args="x, y, z" ret="number">3D vector length.</Fn>
+          <Fn name="math.VectorDistance" args="x1, y1, z1, x2, y2, z2" ret="number">
+            Distance between two 3D points.
+          </Fn>
+          <Fn name="math.Lerp" args="t, a, b" ret="number">
+            Linear interpolation: <code className="text-text-faint">a + t * (b - a)</code>.
+          </Fn>
+          <Fn name="math.Clamp" args="value, min, max" ret="number">
+            Clamp value to [min, max].
+          </Fn>
+        </Section>
+
+        {/* ───────────── json ───────────── */}
+        <Section id="json" title="json">
+          <p>JSON encoding and decoding. Both PascalCase and lowercase names are supported.</p>
+          <Fn name="json.Decode" args="str: string" ret="table | nil">
+            Parse a JSON string into a Lua table. Returns nil on invalid input.
+          </Fn>
+          <Fn name="json.Encode" args="value: any [, pretty: boolean]" ret="string">
+            Serialize a Lua value to JSON. Pass <code className="text-text-faint">true</code> as second arg for indented output.
+          </Fn>
+          <Fn name="json.Valid" args="str: string" ret="boolean">
+            Check whether a string is valid JSON without parsing it.
+          </Fn>
+          <p className="text-xs">
+            Aliases: <code className="text-text-faint">json.decode</code>,{" "}
+            <code className="text-text-faint">json.encode</code>,{" "}
+            <code className="text-text-faint">json.valid</code>
+          </p>
+        </Section>
+
+        {/* ───────────── store ───────────── */}
+        <Section id="store" title="store">
+          <p>
+            Per-script persistent key-value storage. Data is saved as JSON and survives script reloads.
+          </p>
+          <Fn name="store.get" args="key: string" ret="value | nil">Read a stored value.</Fn>
+          <Fn name="store.set" args="key: string, value: any">Write a value. Pass nil to delete.</Fn>
+          <Fn name="store.has" args="key: string" ret="boolean">Check if a key exists.</Fn>
+          <Fn name="store.remove" args="key: string">Delete a key.</Fn>
+          <Fn name="store.clear" args="">Delete all keys for this script.</Fn>
+          <Fn name="store.keys" args="" ret="table">Return all stored keys as a sequential table.</Fn>
+          <Fn name="store.save" args="">Force an immediate write to disk.</Fn>
+        </Section>
+
+        {/* ───────────── file ───────────── */}
+        <Section id="file" title="file">
+          <p>
+            Filesystem access sandboxed to the scripts root directory. All paths are relative
+            to the root; attempts to escape via <code className="text-text-faint">..</code> are rejected.
+          </p>
+          <Fn name="file.Read" args="path: string" ret="string | nil">Read file contents as a string. Returns nil if the file doesn&apos;t exist.</Fn>
+          <Fn name="file.Write" args="path: string, content: string">Write a string to a file (creates or overwrites).</Fn>
+          <Fn name="file.Append" args="path: string, content: string">Append content to a file.</Fn>
+          <Fn name="file.Exists" args="path: string" ret="boolean">Check whether a path exists.</Fn>
+          <Fn name="file.IsDirectory" args="path: string" ret="boolean">True if the path is a directory.</Fn>
+          <Fn name="file.Size" args="path: string" ret="integer">File size in bytes (0 on error).</Fn>
+          <Fn name="file.List" args="path: string" ret="table">List filenames in a directory.</Fn>
+          <Fn name="file.MakeDirectory" args="path: string" ret="boolean">Create a directory (recursive). Returns success.</Fn>
+          <Fn name="file.Remove" args="path: string" ret="boolean">Delete a file. Returns success.</Fn>
+          <Fn name="file.Root" args="" ret="string">Returns the scripts root directory path.</Fn>
+        </Section>
+
+        {/* ───────────── timer ───────────── */}
+        <Section id="timer" title="timer">
+          <p>Deferred execution and periodic tasks.</p>
+          <Fn name="timer.After" args="delay: number, callback: function" ret="handle: integer">
+            Run a function once after <code className="text-text-faint">delay</code> seconds.
+          </Fn>
+          <Fn name="timer.Every" args="interval: number, callback: function" ret="handle: integer">
+            Run a function every <code className="text-text-faint">interval</code> seconds.
+            Return <code className="text-text-faint">false</code> from the callback to stop.
+          </Fn>
+          <Fn name="timer.NextFrame" args="callback: function" ret="handle: integer">
+            Run a function on the next frame. Shortcut for <code className="text-text-faint">timer.After(0, fn)</code>.
+          </Fn>
+          <Fn name="timer.Cancel" args="handle: integer" ret="boolean">Cancel a timer by handle.</Fn>
+          <Fn name="timer.Count" args="" ret="integer">Number of active timers for this script.</Fn>
+        </Section>
+
+        {/* ───────────── log ───────────── */}
+        <Section id="log" title="log">
+          <p>
+            Logging API. <code className="text-accent">print()</code> is redirected to{" "}
+            <code className="text-text-faint">log.info</code>, so standard Lua prints appear in
+            the console.
+          </p>
+          <Fn name="log.debug" args="...">Log at debug level. Arguments are joined with tabs.</Fn>
+          <Fn name="log.info" args="...">Log at info level.</Fn>
+          <Fn name="log.warn" args="...">Log at warning level.</Fn>
+          <Fn name="log.error" args="...">Log at error level.</Fn>
+          <Fn name="log.write" args='level: string, ...'>
+            Log at a runtime-selected level. Level must be{" "}
+            <code className="text-text-faint">&quot;debug&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;info&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;warn&quot;</code>, or{" "}
+            <code className="text-text-faint">&quot;error&quot;</code>.
+          </Fn>
+        </Section>
+
+        {/* ───────────── ffi ───────────── */}
+        <Section id="ffi" title="ffi">
+          <p>
+            LuaJIT-compatible FFI subset for calling Windows API functions directly from Lua.
+            Works on x64 Windows — all calling conventions collapse to Microsoft x64 ABI.
+          </p>
+          <Fn name="ffi.cdef" args="declaration: string">
+            Compatibility stub — accepts C declarations but does not parse them.
+          </Fn>
+          <Fn name="ffi.new" args='ctype: string [, size]' ret="cdata">
+            Allocate a typed buffer. Supports array syntax: <code className="text-text-faint">&quot;char[4096]&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;int[?]&quot;</code> (VLA — pass size as second arg).
+          </Fn>
+          <Fn name="ffi.cast" args="ctype: string, value" ret="integer">
+            Cast a value to a raw integer (pointer-sized).
+          </Fn>
+          <Fn name="ffi.string" args="cdata [, len]" ret="string">
+            Read a C string from a cdata buffer or pointer.
+          </Fn>
+          <Fn name="ffi.sizeof" args="ctype | cdata" ret="integer">
+            Size in bytes of a type or cdata object.
+          </Fn>
+          <Fn name="ffi.copy" args="dst, src [, len]">
+            Copy bytes between cdata buffers or from a Lua string.
+          </Fn>
+          <Fn name="ffi.fill" args="dst, len [, byte]">
+            Fill a cdata buffer with a byte value (default 0).
+          </Fn>
+          <Fn name="ffi.load" args="library: string" ret="table">
+            Load a DLL and return a table whose fields resolve to exports on access.
+          </Fn>
+          <Fn name="ffi.abi" args="param: string" ret="boolean">
+            Query ABI info. Returns true for <code className="text-text-faint">&quot;win&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;64bit&quot;</code>, and{" "}
+            <code className="text-text-faint">&quot;le&quot;</code>.
+          </Fn>
+
+          <div className="mt-3">
+            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">ffi.C</h4>
+            <p className="text-xs">
+              Auto-resolving table of system library exports. Access any function from kernel32, user32,
+              advapi32, ntdll, ws2_32, shell32, gdi32, ole32, msvcrt, winhttp, or crypt32 directly:
+            </p>
+            <pre className="text-xs font-mono bg-surface-2 rounded border border-border p-2 mt-1 overflow-x-auto">
+{`local result = ffi.C.MessageBoxA(0, "Hello", "Title", 0)`}
+            </pre>
+          </div>
+
+          <div className="mt-3">
+            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">CData Object</h4>
+            <p className="text-xs">
+              Indexable buffer with bounds checking. Supports <code className="text-text-faint">[index]</code> read/write
+              (0-based), <code className="text-text-faint">#cdata</code> for total size in bytes,
+              and <code className="text-text-faint">tostring()</code>.
+            </p>
+          </div>
         </Section>
 
         {/* ───────────── cvar ───────────── */}
