@@ -42,7 +42,10 @@ interface Player {
   armor?: number; weapon?: string;
   scoped?: boolean; helmet?: boolean; defuser?: boolean; defusing?: boolean;
   flashAlpha?: number; money?: number;
+  color?: number;
 }
+
+const COMP_COLORS = ["#4a9eff", "#5fc98a", "#e0b04b", "#e08840", "#a086ff"] as const;
 
 interface EntDebug {
   i: number; ct: number; pt: number; h1: string; h2: string; pawn: boolean;
@@ -562,9 +565,12 @@ function RadarCanvas() {
       isLocal: boolean, isEnemy: boolean, isDormant: boolean,
       isAlive: boolean, health: number, name: string, yaw?: number,
       weapon?: string, scoped?: boolean, defusing?: boolean, armor?: number,
-      flashAlpha?: number, money?: number
+      flashAlpha?: number, money?: number, compColor?: number
     ) {
-      const color = isLocal ? "#8e6ff7" : isEnemy ? "#e0656a" : "#4a9eff";
+      const teamColor = (compColor != null && compColor >= 0 && compColor < COMP_COLORS.length)
+        ? COMP_COLORS[compColor]
+        : (isEnemy ? "#e0656a" : "#4a9eff");
+      const color = isLocal ? "#8e6ff7" : teamColor;
       const nameColor = isLocal ? "#a086ff" : isEnemy ? "#e0656a" : "#dcdcdc";
 
       if (!isAlive) {
@@ -920,7 +926,7 @@ function RadarCanvas() {
             lp.health, lp.name,
             lp.yaw ?? data.localPlayer.yaw, data.localPlayer.weapon,
             data.localPlayer.scoped, data.localPlayer.defusing, data.localPlayer.armor,
-            data.localPlayer.flashAlpha, data.localPlayer.money);
+            data.localPlayer.flashAlpha, data.localPlayer.money, data.localPlayer.color);
           ctx.globalAlpha = 1;
           const sx = baseOx + panRef.current.x + pos.x * zoomRef.current;
           const sy = baseOy + panRef.current.y + pos.y * zoomRef.current;
@@ -939,7 +945,7 @@ function RadarCanvas() {
             }
             drawPlayer(ctx, pos, false, ip.enemy, ip.dormant, ip.alive, ip.health, ip.name,
               ip.yaw ?? p.yaw, p.weapon, p.scoped, p.defusing, p.armor,
-              p.flashAlpha, p.money);
+              p.flashAlpha, p.money, p.color);
             ctx.globalAlpha = 1;
             if (p.alive) {
               const psx = baseOx + panRef.current.x + pos.x * zoomRef.current;
