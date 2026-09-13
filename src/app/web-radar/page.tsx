@@ -1519,8 +1519,11 @@ function RadarCanvas() {
                 display: "inline-block", flexShrink: 0,
               }} />
               <div style={{ minWidth: 60 }}>
-                <div style={{ fontSize: 9, color: pColor + "99" }}>
+                <div style={{ fontSize: 9, color: pColor + "99", display: "flex", alignItems: "center", gap: 3 }}>
                   {p.name?.length > 10 ? p.name.slice(0, 10) + ".." : p.name}
+                  {p.weapon?.replace(/^weapon_/, "").toLowerCase() === "c4" && (
+                    <span style={{ fontSize: 7, color: "#e0b04b", fontWeight: "bold", background: "#e0b04b15", padding: "0 2px", borderRadius: 1 }}>C4</span>
+                  )}
                 </div>
                 {p.weapon && (
                   <div style={{ fontSize: 7, color: weaponColor(p.weapon), marginTop: -1 }}>
@@ -1693,6 +1696,9 @@ function RadarCanvas() {
                     <div style={{ fontSize: 11, color: "#dcdcdc", display: "flex", gap: 4, alignItems: "center" }}>
                       {p.name}
                       {p.helmet && <span style={{ fontSize: 7, color: "#e0b04b55" }}>H</span>}
+                      {p.alive && p.weapon?.replace(/^weapon_/, "").toLowerCase() === "c4" && (
+                        <span style={{ fontSize: 7, color: "#e0b04b", fontWeight: "bold", background: "#e0b04b22", padding: "0 3px", borderRadius: 2 }}>C4</span>
+                      )}
                     </div>
                     {p.alive && p.weapon && (
                       <div style={{ fontSize: 8, color: "#777", marginTop: -1 }}>{weaponDisplayName(p.weapon)}</div>
@@ -1960,11 +1966,21 @@ function RadarCanvas() {
       )}
 
       {/* Player hover tooltip */}
-      {hoveredPlayer && hoveredPlayer.player.alive && (
+      {hoveredPlayer && hoveredPlayer.player.alive && (() => {
+        const ttW = 200, ttH = 120;
+        const vw = typeof window !== "undefined" ? window.innerWidth : 1920;
+        const vh = typeof window !== "undefined" ? window.innerHeight : 1080;
+        const ttLeft = hoveredPlayer.sx + 16 + ttW > vw
+          ? hoveredPlayer.sx - ttW - 8
+          : hoveredPlayer.sx + 16;
+        const ttTop = hoveredPlayer.sy - 8 + ttH > vh
+          ? Math.max(4, vh - ttH - 4)
+          : hoveredPlayer.sy - 8;
+        return (
         <div style={{
           position: "absolute",
-          left: hoveredPlayer.sx + 16,
-          top: hoveredPlayer.sy - 8,
+          left: ttLeft,
+          top: ttTop,
           zIndex: 30,
           pointerEvents: "none",
           background: "rgba(17,20,24,0.95)",
@@ -2017,7 +2033,8 @@ function RadarCanvas() {
             {hoveredPlayer.player.defusing && <span style={{ color: "#5fc98a" }}>DEFUSING</span>}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
     </div>
