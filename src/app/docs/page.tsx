@@ -214,6 +214,20 @@ const NAV = [
   { id: "cvar", label: "cvar" },
   { id: "trace", label: "trace" },
   { id: "panorama", label: "panorama" },
+  { id: "chams", label: "chams" },
+  { id: "world", label: "world" },
+  { id: "materials", label: "materials" },
+  { id: "anim", label: "anim" },
+  { id: "net", label: "net" },
+  { id: "sound", label: "sound" },
+  { id: "particle", label: "particle" },
+  { id: "skin", label: "skin" },
+  { id: "movement", label: "movement" },
+  { id: "aimbot", label: "aimbot" },
+  { id: "visuals", label: "visuals" },
+  { id: "config", label: "config" },
+  { id: "bit", label: "bit" },
+  { id: "antiaim", label: "antiaim" },
   { id: "types", label: "Types" },
   { id: "quickstart", label: "Quick Start" },
 ];
@@ -1183,6 +1197,550 @@ ffi.C.MessageBoxA(0, "Hello from Lua!", "gscloud", 0)`}</Example>
           </Fn>
         </Section>
 
+        {/* ───────────── chams ───────────── */}
+        <Section id="chams" title="chams">
+          <p>
+            Player model material override system. Renders custom materials on player models with
+            support for 11 material types and separate visible/occluded (through-wall) passes.
+          </p>
+          <Fn name="chams.Enable" args="enabled: boolean">Enable or disable the chams system.</Fn>
+          <Fn name="chams.SetColor" args='target: string, r, g, b, a'>
+            Set color for a target. Target is one of:{" "}
+            <code className="text-text-faint">&quot;enemy_visible&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;enemy_occluded&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;team_visible&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;team_occluded&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;local_visible&quot;</code>.
+            RGBA values are 0.0–1.0.
+          </Fn>
+          <Fn name="chams.SetMaterial" args="type: string">
+            Set the material type:{" "}
+            <code className="text-text-faint">&quot;flat&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;matte&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;metallic&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;glow&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;bloom&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;electric&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;liquid&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;hologram&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;outlines&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;distortion&quot;</code>,{" "}
+            <code className="text-text-faint">&quot;pearl&quot;</code>.
+          </Fn>
+          <Fn name="chams.GetConfig" args="" ret="table">Current chams configuration table.</Fn>
+          <Fn name="chams.IsReady" args="" ret="boolean">Whether KV3 materials have been initialized.</Fn>
+          <Fn name="chams.SetTeamEnabled" args="enabled: boolean">Toggle chams on teammates.</Fn>
+          <Fn name="chams.SetOccludedEnabled" args="enabled: boolean">Toggle the occluded (through-wall) pass for enemies.</Fn>
+          <Fn name="chams.SetLocalEnabled" args="enabled: boolean">Toggle chams on the local player model.</Fn>
+          <Example title="Example — glow chams on enemies">{`chams.Enable(true)
+chams.SetMaterial("glow")
+chams.SetColor("enemy_visible", 1.0, 0.2, 0.2, 1.0)
+chams.SetColor("enemy_occluded", 1.0, 0.8, 0.0, 0.6)
+chams.SetOccludedEnabled(true)
+
+-- optional: team chams
+chams.SetTeamEnabled(true)
+chams.SetColor("team_visible", 0.2, 0.5, 1.0, 1.0)`}</Example>
+        </Section>
+
+        {/* ───────────── world ───────────── */}
+        <Section id="world" title="world">
+          <p>
+            World modulation — override fog, ambient lighting, skybox, night mode,
+            color correction, and prop transparency.
+          </p>
+          <Fn name="world.SetNightMode" args="enabled: boolean">Toggle dark environment override.</Fn>
+          <Fn name="world.SetFog" args="enabled, r, g, b, start, end_dist, density">
+            Override fog parameters. Colors are 0–255, distances in world units, density 0.0–1.0.
+          </Fn>
+          <Fn name="world.SetAmbient" args="r, g, b">Set ambient lighting color (0.0–1.0).</Fn>
+          <Fn name="world.SetSkybox" args="name: string">Change the skybox material name.</Fn>
+          <Fn name="world.SetColorCorrection" args="brightness, contrast, saturation">
+            Post-processing adjustments. All values are floats, 1.0 = default.
+          </Fn>
+          <Fn name="world.SetPropTransparency" args="alpha: number">World prop opacity (0.0–1.0). 0 = invisible.</Fn>
+          <Fn name="world.Apply" args="">Force-apply all overrides to the current map.</Fn>
+          <Fn name="world.Reset" args="">Reset all world overrides to game defaults.</Fn>
+          <Fn name="world.GetConfig" args="" ret="table">Current world configuration table.</Fn>
+          <Example title="Example — night mode with custom fog">{`world.SetNightMode(true)
+world.SetFog(true, 20, 20, 40, 0, 800, 0.6)
+world.SetAmbient(0.05, 0.05, 0.15)
+world.SetColorCorrection(0.8, 1.2, 0.5)
+world.Apply()`}</Example>
+        </Section>
+
+        {/* ───────────── materials ───────────── */}
+        <Section id="materials" title="materials">
+          <p>
+            Low-level memory access primitives. SEH-protected reads/writes, pattern scanning,
+            module enumeration, and virtual function calls. For advanced users building custom features.
+          </p>
+          <Fn name="materials.ReadByte" args="addr: integer" ret="integer">SEH-safe byte read.</Fn>
+          <Fn name="materials.ReadInt" args="addr: integer" ret="integer">SEH-safe 32-bit int read.</Fn>
+          <Fn name="materials.ReadFloat" args="addr: integer" ret="number">SEH-safe float read.</Fn>
+          <Fn name="materials.ReadPointer" args="addr: integer" ret="integer">SEH-safe 64-bit pointer read.</Fn>
+          <Fn name="materials.WriteByte" args="addr: integer, val: integer">SEH-safe byte write.</Fn>
+          <Fn name="materials.WriteInt" args="addr: integer, val: integer">SEH-safe 32-bit int write.</Fn>
+          <Fn name="materials.WriteFloat" args="addr: integer, val: number">SEH-safe float write.</Fn>
+          <Fn name="materials.WritePointer" args="addr: integer, val: integer">SEH-safe 64-bit pointer write.</Fn>
+          <Fn name="materials.PatternScan" args="module: string, pattern: string" ret="integer">
+            Scan a DLL for a byte pattern. Returns the address or 0 on failure.
+          </Fn>
+          <Fn name="materials.GetModuleHandle" args="name: string" ret="integer">Module base address.</Fn>
+          <Fn name="materials.GetModuleSize" args="name: string" ret="integer">Module image size in bytes.</Fn>
+          <Fn name="materials.GetExport" args="module: string, name: string" ret="integer">
+            Resolve an exported function address.
+          </Fn>
+          <Fn name="materials.CallVFunc" args="obj: integer, index: integer, ..." ret="integer">
+            Call a virtual function by vtable index.
+          </Fn>
+          <Fn name="materials.ResolveRelative" args="addr, offset, instrSize" ret="integer">
+            Resolve a RIP-relative address (common in x64 code).
+          </Fn>
+          <Example title="Example — pattern scan + read">{`local base = materials.GetModuleHandle("client.dll")
+local addr = materials.PatternScan("client.dll", "48 8B 05 ?? ?? ?? ?? 48 85 C0 74")
+if addr ~= 0 then
+  local resolved = materials.ResolveRelative(addr, 3, 7)
+  local ptr = materials.ReadPointer(resolved)
+  print("Found: " .. string.format("0x%X", ptr))
+end`}</Example>
+        </Section>
+
+        {/* ───────────── anim ───────────── */}
+        <Section id="anim" title="anim">
+          <p>
+            Animation and bone access. Read and write bone positions/rotations,
+            query model info, and control animation sequences.
+          </p>
+          <Fn name="anim.GetBonePosition" args="ent, boneIndex: integer" ret="x, y, z">
+            Bone world position from the scene node bone array.
+          </Fn>
+          <Fn name="anim.GetBoneRotation" args="ent, boneIndex: integer" ret="pitch, yaw, roll">
+            Bone rotation as Euler angles (converted from quaternion).
+          </Fn>
+          <Fn name="anim.GetBoneCount" args="ent" ret="integer">Number of bones in the model.</Fn>
+          <Fn name="anim.GetModelName" args="ent" ret="string">Model file path string.</Fn>
+          <Fn name="anim.SetBonePosition" args="ent, boneIndex: integer, x, y, z">Write a bone position.</Fn>
+          <Fn name="anim.GetSequence" args="ent" ret="integer">Current animation sequence index.</Fn>
+          <Fn name="anim.SetSequence" args="ent, seq: integer">Set the animation sequence.</Fn>
+          <Fn name="anim.GetCycle" args="ent" ret="number">Animation cycle progress (0.0–1.0).</Fn>
+          <Fn name="anim.SetCycle" args="ent, cycle: number">Set animation cycle (0.0–1.0).</Fn>
+          <Fn name="anim.GetAbsOrigin" args="ent" ret="x, y, z">Absolute origin from the scene node.</Fn>
+          <Fn name="anim.GetAbsRotation" args="ent" ret="pitch, yaw, roll">Absolute rotation from the scene node.</Fn>
+          <Example title="Example — read head bone">{`local me = entity.GetLocalPlayer()
+if me then
+  local hx, hy, hz = anim.GetBonePosition(me, 6) -- bone 6 = head
+  print("Head at: " .. hx .. ", " .. hy .. ", " .. hz)
+  print("Bones: " .. anim.GetBoneCount(me))
+  print("Model: " .. anim.GetModelName(me))
+end`}</Example>
+        </Section>
+
+        {/* ───────────── net ───────────── */}
+        <Section id="net" title="net">
+          <p>
+            Network information via <code className="text-text-faint">NetworkClientService_001</code> →{" "}
+            <code className="text-text-faint">INetChannel</code>. Latency, loss, choke, and server details.
+          </p>
+          <Fn name="net.GetLatency" args="" ret="number">Round-trip time in seconds.</Fn>
+          <Fn name="net.GetIncomingLoss" args="" ret="number">Incoming packet loss ratio (0.0–1.0).</Fn>
+          <Fn name="net.GetOutgoingLoss" args="" ret="number">Outgoing packet loss ratio.</Fn>
+          <Fn name="net.GetChoke" args="" ret="number">Choke ratio (0.0–1.0).</Fn>
+          <Fn name="net.GetServerAddress" args="" ret="string">Server IP:port string.</Fn>
+          <Fn name="net.GetInSequence" args="" ret="integer">Incoming sequence number.</Fn>
+          <Fn name="net.GetOutSequence" args="" ret="integer">Outgoing sequence number.</Fn>
+          <Fn name="net.IsConnected" args="" ret="boolean">Whether a net channel exists.</Fn>
+        </Section>
+
+        {/* ───────────── sound ───────────── */}
+        <Section id="sound" title="sound">
+          <p>Sound playback via the Source 2 sound system.</p>
+          <Fn name="sound.Play" args="path: string">Play a sound file via PlayVSnd.</Fn>
+          <Fn name="sound.PlayWithVolume" args="path: string, volume: number">
+            Play with a specific volume (0.0–1.0).
+          </Fn>
+          <Fn name="sound.StopAll" args="">Stop all playing sounds (executes <code className="text-text-faint">stopsound</code>).</Fn>
+        </Section>
+
+        {/* ───────────── particle ───────────── */}
+        <Section id="particle" title="particle">
+          <p>Particle effect creation and management.</p>
+          <Fn name="particle.Create" args="name: string, entity" ret="handle">
+            Create a particle effect attached to an entity. Returns a particle handle.
+          </Fn>
+          <Fn name="particle.GetManager" args="" ret="userdata">
+            Get the particle system manager pointer.
+          </Fn>
+        </Section>
+
+        {/* ───────────── skin ───────────── */}
+        <Section id="skin" title="skin">
+          <p>
+            Weapon skin manipulation via <code className="text-text-faint">CEconItemView</code>.
+            Modify paint kits, seeds, wear, and StatTrak values on weapons.
+          </p>
+          <Fn name="skin.SetPaintKit" args="weapon, id: integer">Set the skin paint kit ID.</Fn>
+          <Fn name="skin.SetSeed" args="weapon, seed: integer">Set the pattern seed.</Fn>
+          <Fn name="skin.SetWear" args="weapon, wear: number">Set wear value (0.0 = factory new, 1.0 = battle-scarred).</Fn>
+          <Fn name="skin.SetStatTrak" args="weapon, kills: integer">Set the StatTrak kill counter.</Fn>
+          <Fn name="skin.GetPaintKit" args="weapon" ret="integer">Read current paint kit ID.</Fn>
+          <Fn name="skin.GetWear" args="weapon" ret="number">Read current wear value.</Fn>
+          <Fn name="skin.ForceUpdate" args="">
+            Regenerate all weapon visuals (calls <code className="text-text-faint">RegenerateWeaponSkins</code>).
+          </Fn>
+          <Example title="Example — skin changer">{`events.On("frame_stage", function(stage)
+  if stage ~= 5 then return end
+  local me = entity.GetLocalPlayer()
+  if not me then return end
+  local weapon = entity.GetWeapon(me)
+  if not weapon then return end
+
+  skin.SetPaintKit(weapon, 344)  -- Howl
+  skin.SetSeed(weapon, 0)
+  skin.SetWear(weapon, 0.001)    -- factory new
+  skin.SetStatTrak(weapon, 1337)
+  skin.ForceUpdate()
+end)`}</Example>
+        </Section>
+
+        {/* ───────────── movement ───────────── */}
+        <Section id="movement" title="movement">
+          <p>
+            Movement helpers — bunny hop, air strafing, speed queries, and direct command manipulation.
+            Works with the <code className="text-accent">createmove</code> event&apos;s cmd parameter.
+          </p>
+          <Fn name="movement.GetSpeed" args="ent" ret="number">2D velocity magnitude (XY plane).</Fn>
+          <Fn name="movement.GetSpeed3D" args="ent" ret="number">3D velocity magnitude.</Fn>
+          <Fn name="movement.IsOnGround" args="ent" ret="boolean">
+            True when <code className="text-text-faint">FL_ONGROUND</code> flag is set.
+          </Fn>
+          <Fn name="movement.IsCrouching" args="ent" ret="boolean">
+            True when <code className="text-text-faint">FL_DUCKING</code> flag is set.
+          </Fn>
+          <Fn name="movement.GetMoveType" args="ent" ret="integer">Movement type enum value.</Fn>
+          <Fn name="movement.AutoBhop" args="cmd">
+            Automatic bunny-hop — sets <code className="text-text-faint">IN_JUMP</code> when on ground,
+            clears it when airborne.
+          </Fn>
+          <Fn name="movement.StrafeOptimize" args="cmd, viewYaw: number">
+            Air strafe optimizer — adjusts sidemove based on velocity direction.
+          </Fn>
+          <Fn name="movement.GetFallVelocity" args="ent" ret="number">Vertical velocity component (Z).</Fn>
+          <Fn name="movement.CorrectMovement" args="cmd, oldYaw: number, newYaw: number">
+            Rotate forwardmove/sidemove to match new view angles after an angle change.
+          </Fn>
+          <Fn name="movement.GetMaxSpeed" args="ent" ret="number">
+            Max speed from <code className="text-text-faint">m_flMaxSpeed</code> (default 250).
+          </Fn>
+          <Fn name="movement.SetForwardMove" args="cmd, val: number">Write forwardmove to the command.</Fn>
+          <Fn name="movement.SetSideMove" args="cmd, val: number">Write sidemove to the command.</Fn>
+          <Fn name="movement.GetForwardMove" args="cmd" ret="number">Read forwardmove from the command.</Fn>
+          <Fn name="movement.GetSideMove" args="cmd" ret="number">Read sidemove from the command.</Fn>
+          <Example title="Example — bhop + air strafe">{`events.On("createmove", function(cmd)
+  movement.AutoBhop(cmd)
+
+  local me = entity.GetLocalPlayer()
+  if me and not movement.IsOnGround(me) then
+    local _, yaw = engine.GetViewAngles()
+    movement.StrafeOptimize(cmd, yaw)
+  end
+end)
+
+-- show speed on screen
+events.On("paint", function()
+  local me = entity.GetLocalPlayer()
+  if not me then return end
+  local speed = math.floor(movement.GetSpeed(me))
+  local w, h = renderer.ScreenSize()
+  renderer.Text(w/2, h - 60, speed .. " u/s",
+    Color(200, 220, 255), 16, "mono")
+end)`}</Example>
+        </Section>
+
+        {/* ───────────── aimbot ───────────── */}
+        <Section id="aimbot" title="aimbot">
+          <p>
+            Aim calculation utilities — angle math, FOV checks, smoothing, recoil compensation,
+            and distance functions. Build your own aim logic with these building blocks.
+          </p>
+          <Fn name="aimbot.CalcAngle" args="sx, sy, sz, dx, dy, dz" ret="pitch, yaw">
+            Calculate the angles from source position to destination position.
+          </Fn>
+          <Fn name="aimbot.GetFOV" args="myPitch, myYaw, targetPitch, targetYaw" ret="number">
+            Angular distance in degrees between two view directions.
+          </Fn>
+          <Fn name="aimbot.SmoothAngle" args="curPitch, curYaw, tgtPitch, tgtYaw, factor" ret="pitch, yaw">
+            Interpolate towards target angles. Factor 1.0 = instant, higher = slower.
+          </Fn>
+          <Fn name="aimbot.NormalizeAngle" args="pitch, yaw" ret="pitch, yaw">
+            Clamp pitch to [-89, 89] and yaw to [-180, 180].
+          </Fn>
+          <Fn name="aimbot.GetDistance" args="x1, y1, z1, x2, y2, z2" ret="number">3D distance between points.</Fn>
+          <Fn name="aimbot.GetDistance2D" args="x1, y1, x2, y2" ret="number">2D distance between points.</Fn>
+          <Fn name="aimbot.GetRCS" args="" ret="pitch, yaw">
+            Recoil compensation values (2x <code className="text-text-faint">m_aimPunchAngle</code>).
+            Subtract from your aim angles for RCS.
+          </Fn>
+          <Fn name="aimbot.GetPunchAngle" args="" ret="pitch, yaw, roll">
+            Raw aim punch angle vector.
+          </Fn>
+          <Fn name="aimbot.AngleDelta" args="a: number, b: number" ret="number">
+            Shortest angular distance between two angles.
+          </Fn>
+          <Fn name="aimbot.VectorToAngle" args="x, y, z" ret="pitch, yaw">Direction vector to Euler angles.</Fn>
+          <Fn name="aimbot.AngleToVector" args="pitch, yaw" ret="x, y, z">Euler angles to direction vector.</Fn>
+          <Fn name="aimbot.GetShotsFired" args="" ret="integer">
+            Number of shots fired in current burst (<code className="text-text-faint">m_iShotsFired</code>).
+          </Fn>
+          <Fn name="aimbot.IsVisible" args="sx, sy, sz, dx, dy, dz" ret="boolean">
+            Basic visibility check (trace). Returns true as fallback if trace unavailable.
+          </Fn>
+          <Example title="Example — smooth aim at nearest enemy head">{`events.On("createmove", function(cmd)
+  if not input.IsKeyDown(input.MOUSE_RIGHT) then return end
+
+  local me = entity.GetLocalPlayer()
+  if not me then return end
+  local ex, ey, ez = entity.GetEyePosition(me)
+  local myP, myY = engine.GetViewAngles()
+
+  local bestFOV = 5.0  -- max FOV
+  local bestP, bestY = myP, myY
+
+  for _, ply in ipairs(entity.GetPlayers()) do
+    if entity.IsEnemy(ply) and entity.IsAlive(ply) then
+      local hx, hy, hz = entity.GetHitboxPosition(ply, 6) -- head
+      local tp, ty = aimbot.CalcAngle(ex, ey, ez, hx, hy, hz)
+      local fov = aimbot.GetFOV(myP, myY, tp, ty)
+      if fov < bestFOV then
+        bestFOV = fov
+        bestP, bestY = tp, ty
+      end
+    end
+  end
+
+  if bestFOV < 5.0 then
+    -- apply RCS
+    local rp, ry = aimbot.GetRCS()
+    bestP = bestP - rp
+    bestY = bestY - ry
+    -- smooth
+    bestP, bestY = aimbot.SmoothAngle(myP, myY, bestP, bestY, 3.0)
+    engine.SetViewAngles(bestP, bestY, 0)
+  end
+end)`}</Example>
+        </Section>
+
+        {/* ───────────── visuals ───────────── */}
+        <Section id="visuals" title="visuals">
+          <p>
+            Visual effect helpers — smoke/flash removal, scope overlay, third person,
+            visual recoil suppression, and FOV override.
+          </p>
+          <Fn name="visuals.SetRemoveSmoke" args="enabled: boolean">Toggle smoke grenade removal.</Fn>
+          <Fn name="visuals.GetRemoveSmoke" args="" ret="boolean">Whether smoke removal is active.</Fn>
+          <Fn name="visuals.SetRemoveFlash" args="enabled: boolean">Toggle flashbang removal.</Fn>
+          <Fn name="visuals.SetFlashMaxAlpha" args="alpha: number">
+            Maximum flash alpha (0.0 = fully removed). Only applies when flash removal is enabled.
+          </Fn>
+          <Fn name="visuals.ApplyFlash" args="">
+            Apply the flash override. Call this in your <code className="text-accent">frame_stage</code> handler.
+          </Fn>
+          <Fn name="visuals.SetNoScopeOverlay" args="enabled: boolean">Remove the sniper scope overlay.</Fn>
+          <Fn name="visuals.SetThirdPerson" args="enabled: boolean">Toggle third-person camera.</Fn>
+          <Fn name="visuals.SetThirdPersonDist" args="dist: number">Third-person camera distance (default 150).</Fn>
+          <Fn name="visuals.SetNoVisualRecoil" args="enabled: boolean">Suppress visual punch (screen shake on fire).</Fn>
+          <Fn name="visuals.ApplyNoRecoil" args="">
+            Zero the visual punch angles. Call in <code className="text-accent">frame_stage</code>.
+          </Fn>
+          <Fn name="visuals.GetConfig" args="" ret="table">Current visuals configuration table.</Fn>
+          <Fn name="visuals.Reset" args="">Reset all visual overrides to defaults.</Fn>
+          <Fn name="visuals.GetFOV" args="" ret="integer">Read the current desired FOV.</Fn>
+          <Fn name="visuals.SetFOV" args="fov: integer">Override field of view (e.g. 120 for wide).</Fn>
+          <Example title="Example — no flash + wide FOV">{`visuals.SetRemoveFlash(true)
+visuals.SetFlashMaxAlpha(0.0)
+visuals.SetNoScopeOverlay(true)
+visuals.SetNoVisualRecoil(true)
+visuals.SetFOV(110)
+
+events.On("frame_stage", function(stage)
+  if stage == 5 then
+    visuals.ApplyFlash()
+    visuals.ApplyNoRecoil()
+  end
+end)`}</Example>
+        </Section>
+
+        {/* ───────────── config ───────────── */}
+        <Section id="config" title="config">
+          <p>
+            Configuration save/load system. Files are stored in the scripts/configs directory.
+            Path traversal (<code className="text-text-faint">..</code>) is blocked.
+          </p>
+          <Fn name="config.Save" args="filename: string, data: string" ret="boolean">
+            Save a string to a config file. Returns true on success. Typically used with{" "}
+            <code className="text-text-faint">json.Encode()</code>.
+          </Fn>
+          <Fn name="config.Load" args="filename: string" ret="string | nil">
+            Load a config file as a string. Returns nil if not found.
+          </Fn>
+          <Fn name="config.Exists" args="filename: string" ret="boolean">Check if a config file exists.</Fn>
+          <Fn name="config.Delete" args="filename: string" ret="boolean">Delete a config file.</Fn>
+          <Fn name="config.List" args="" ret="table">List all config filenames as a sequential table.</Fn>
+          <Fn name="config.GetPath" args="" ret="string">Return the config directory path.</Fn>
+          <Example title="Example — save/load settings">{`local settings = {
+  aimFov = 5.0,
+  espEnabled = true,
+  chamsColor = {1, 0, 0, 1},
+}
+
+-- save
+local ok = config.Save("my_cfg.json", json.Encode(settings, true))
+if ok then cheat.Notify("Config saved!") end
+
+-- load
+local raw = config.Load("my_cfg.json")
+if raw then
+  settings = json.Decode(raw)
+  cheat.Notify("Config loaded!")
+end
+
+-- list all configs
+for _, name in ipairs(config.List()) do
+  print("Config: " .. name)
+end`}</Example>
+        </Section>
+
+        {/* ───────────── bit ───────────── */}
+        <Section id="bit" title="bit">
+          <p>
+            Bitwise operations and CS2 engine constants. Use these for button flags,
+            entity flags, team numbers, and hitbox IDs.
+          </p>
+          <Fn name="bit.band" args="a, b" ret="integer">Bitwise AND.</Fn>
+          <Fn name="bit.bor" args="a, b" ret="integer">Bitwise OR.</Fn>
+          <Fn name="bit.bxor" args="a, b" ret="integer">Bitwise XOR.</Fn>
+          <Fn name="bit.bnot" args="a" ret="integer">Bitwise NOT.</Fn>
+          <Fn name="bit.lshift" args="a, n" ret="integer">Left shift by n bits.</Fn>
+          <Fn name="bit.rshift" args="a, n" ret="integer">Unsigned right shift by n bits.</Fn>
+          <Fn name="bit.test" args="flags, bit" ret="boolean">Test whether a bit/mask is set in flags.</Fn>
+
+          <div className="mt-3">
+            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Button Constants (IN_*)</h4>
+            <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-xs mt-1">
+              {["IN_ATTACK", "IN_JUMP", "IN_DUCK", "IN_FORWARD", "IN_BACK", "IN_USE",
+                "IN_CANCEL", "IN_LEFT", "IN_RIGHT", "IN_MOVELEFT", "IN_MOVERIGHT",
+                "IN_ATTACK2", "IN_RUN", "IN_RELOAD", "IN_ALT1", "IN_ALT2", "IN_SCORE",
+                "IN_SPEED", "IN_WALK", "IN_ZOOM", "IN_WEAPON1", "IN_WEAPON2",
+                "IN_BULLRUSH", "IN_GRENADE1", "IN_GRENADE2", "IN_LOOKSPIN",
+              ].map(c => <code key={c} className="text-text-faint">bit.{c}</code>)}
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Entity Flags</h4>
+            <p className="text-xs">
+              <code className="text-text-faint">FL_ONGROUND</code>,{" "}
+              <code className="text-text-faint">FL_DUCKING</code>,{" "}
+              <code className="text-text-faint">FL_FROZEN</code>,{" "}
+              <code className="text-text-faint">FL_ATCONTROLS</code>,{" "}
+              <code className="text-text-faint">FL_FLY</code>
+            </p>
+          </div>
+
+          <div className="mt-3">
+            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Teams &amp; Hitboxes</h4>
+            <p className="text-xs">
+              Teams:{" "}
+              <code className="text-text-faint">TEAM_NONE</code> (0),{" "}
+              <code className="text-text-faint">TEAM_SPECTATOR</code> (1),{" "}
+              <code className="text-text-faint">TEAM_T</code> (2),{" "}
+              <code className="text-text-faint">TEAM_CT</code> (3)
+            </p>
+            <p className="text-xs mt-1">
+              Hitboxes:{" "}
+              <code className="text-text-faint">HITBOX_HEAD</code> (6),{" "}
+              <code className="text-text-faint">HITBOX_NECK</code> (5),{" "}
+              <code className="text-text-faint">HITBOX_CHEST</code> (4),{" "}
+              <code className="text-text-faint">HITBOX_STOMACH</code> (3),{" "}
+              <code className="text-text-faint">HITBOX_PELVIS</code> (0)
+            </p>
+          </div>
+          <Example title="Example — check flags with bit ops">{`events.On("createmove", function(cmd)
+  local me = entity.GetLocalPlayer()
+  if not me then return end
+  local flags = entity.GetFlags(me)
+
+  if bit.test(flags, bit.FL_ONGROUND) then
+    print("On ground")
+  end
+
+  -- check if jumping
+  local buttons = 0 -- from cmd
+  if bit.test(buttons, bit.IN_JUMP) then
+    print("Jumping!")
+  end
+end)`}</Example>
+        </Section>
+
+        {/* ───────────── antiaim ───────────── */}
+        <Section id="antiaim" title="antiaim">
+          <p>
+            Anti-aim angle manipulation for HvH. Supports desync, jitter, real/fake angle separation,
+            and freestanding (face away from target).
+          </p>
+          <Fn name="antiaim.Enable" args="enabled: boolean">Toggle anti-aim processing.</Fn>
+          <Fn name="antiaim.IsEnabled" args="" ret="boolean">Whether anti-aim is active.</Fn>
+          <Fn name="antiaim.SetRealAngles" args="pitch, yaw">Set the &quot;real&quot; server-side angles.</Fn>
+          <Fn name="antiaim.GetRealAngles" args="" ret="pitch, yaw">Read current real angles.</Fn>
+          <Fn name="antiaim.SetFakeAngles" args="pitch, yaw">Set the &quot;fake&quot; client-side angles.</Fn>
+          <Fn name="antiaim.GetFakeAngles" args="" ret="pitch, yaw">Read current fake angles.</Fn>
+          <Fn name="antiaim.SetDesync" args="enabled: boolean">Toggle desync (real/fake angle split).</Fn>
+          <Fn name="antiaim.SetDesyncAmount" args="degrees: number">
+            Desync offset in degrees (clamped to [-58, 58]).
+          </Fn>
+          <Fn name="antiaim.GetDesyncAmount" args="" ret="number">Current desync amount.</Fn>
+          <Fn name="antiaim.SetJitter" args="enabled: boolean">Toggle yaw jitter.</Fn>
+          <Fn name="antiaim.SetJitterRange" args="degrees: number">Jitter range in degrees.</Fn>
+          <Fn name="antiaim.Apply" args="cmd">
+            Apply the configured anti-aim to the command&apos;s view angles. Call inside{" "}
+            <code className="text-accent">createmove</code>.
+          </Fn>
+          <Fn name="antiaim.GetAtTarget" args="targetX, targetY, myX, myY" ret="number">
+            Calculate yaw facing away from a target position (freestanding).
+          </Fn>
+          <Fn name="antiaim.GetConfig" args="" ret="table">Current anti-aim configuration table.</Fn>
+          <Fn name="antiaim.Reset" args="">Reset all anti-aim settings to defaults.</Fn>
+          <Example title="Example — desync anti-aim">{`antiaim.Enable(true)
+antiaim.SetDesync(true)
+antiaim.SetDesyncAmount(58)
+antiaim.SetJitter(true)
+antiaim.SetJitterRange(30)
+
+events.On("createmove", function(cmd)
+  local me = entity.GetLocalPlayer()
+  if not me then return end
+
+  -- freestand: face away from nearest enemy
+  local ex, ey, ez = entity.GetEyePosition(me)
+  local nearest, nearDist = nil, 99999
+  for _, ply in ipairs(entity.GetPlayers()) do
+    if entity.IsEnemy(ply) and entity.IsAlive(ply) then
+      local px, py, pz = entity.GetPosition(ply)
+      local d = aimbot.GetDistance(ex, ey, ez, px, py, pz)
+      if d < nearDist then nearDist = d; nearest = ply end
+    end
+  end
+
+  if nearest then
+    local px, py = entity.GetPosition(nearest)
+    local yaw = antiaim.GetAtTarget(px, py, ex, ey)
+    antiaim.SetRealAngles(-89, yaw) -- down pitch
+  end
+
+  antiaim.Apply(cmd)
+end)`}</Example>
+        </Section>
+
         {/* ───────────── types ───────────── */}
         <Section id="types" title="Types">
           <p>
@@ -1312,6 +1870,56 @@ events.On("paint", function()
     renderer.Text(w - 130, y + 6, cheat.GetTimestamp(),
       Color(180, 180, 180), 11, "mono")
   end
+end)`}</LuaCode>
+          </div>
+
+          <div className="border border-border rounded-lg p-5 bg-surface">
+            <h3 className="text-sm font-bold mb-3">Bunny Hop + Air Strafe</h3>
+            <LuaCode className="p-4">{`-- auto bhop with air strafe optimization
+events.On("createmove", function(cmd)
+  movement.AutoBhop(cmd)
+
+  local me = entity.GetLocalPlayer()
+  if me and not movement.IsOnGround(me) then
+    local _, yaw = engine.GetViewAngles()
+    movement.StrafeOptimize(cmd, yaw)
+  end
+end)
+
+-- speedometer HUD
+events.On("paint", function()
+  local me = entity.GetLocalPlayer()
+  if not me then return end
+  local speed = math.floor(movement.GetSpeed(me))
+  local w, h = renderer.ScreenSize()
+  local color = speed > 300 and Color(100, 255, 100) or Color(200, 200, 200)
+  renderer.Text(w/2, h - 50, speed .. " u/s", color, 18, "mono")
+end)`}</LuaCode>
+          </div>
+
+          <div className="border border-border rounded-lg p-5 bg-surface">
+            <h3 className="text-sm font-bold mb-3">Skin Changer</h3>
+            <LuaCode className="p-4">{`local tab = ui.Tab("Skins")
+local g = tab:Group("Weapon Skins")
+local paintKit = g:SliderInt("Paint Kit", 1, 1200, 344)
+local wear = g:SliderFloat("Wear", 0.0, 1.0, 0.001)
+local seed = g:SliderInt("Seed", 0, 1000, 0)
+local stattrak = g:SliderInt("StatTrak", -1, 99999, -1)
+
+events.On("frame_stage", function(stage)
+  if stage ~= 5 then return end
+  local me = entity.GetLocalPlayer()
+  if not me then return end
+  local weapon = entity.GetWeapon(me)
+  if not weapon then return end
+
+  skin.SetPaintKit(weapon, paintKit:Get())
+  skin.SetWear(weapon, wear:Get())
+  skin.SetSeed(weapon, seed:Get())
+  if stattrak:Get() >= 0 then
+    skin.SetStatTrak(weapon, stattrak:Get())
+  end
+  skin.ForceUpdate()
 end)`}</LuaCode>
           </div>
         </section>
