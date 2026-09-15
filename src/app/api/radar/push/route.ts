@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "invalid session_id format" }, { status: 400 });
     }
 
-    const rl = rateLimit(`radar:${session_id}`, 30, 10_000);
+    const rl = rateLimit(`radar:${session_id}`, 60, 10_000);
     if (!rl.ok) {
       return NextResponse.json({ error: "rate_limited" }, { status: 429 });
     }
