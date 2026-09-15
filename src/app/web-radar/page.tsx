@@ -1291,7 +1291,6 @@ function RadarCanvas() {
           .radar-topbar { height: auto !important; min-height: 32px; flex-wrap: wrap; padding: 4px 8px !important; gap: 4px !important; }
           .radar-topbar-left { gap: 6px !important; flex-wrap: wrap; }
           .radar-topbar-right { gap: 8px !important; }
-          .radar-brand { font-size: 11px !important; }
           .radar-grenades { display: none !important; }
           .radar-playerlist { display: none !important; }
           .radar-scoreboard { min-width: 280px !important; max-width: 95vw !important; padding: 12px 0 !important; }
@@ -1301,10 +1300,6 @@ function RadarCanvas() {
       {/* Top bar */}
       <div className="radar-topbar absolute top-0 left-0 right-0 h-9 z-10 flex items-center justify-between px-4 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(13,13,13,0.95), rgba(13,13,13,0))" }}>
         <div className="radar-topbar-left flex items-center gap-3">
-          <span className="radar-brand text-text font-bold text-[13px] font-ui">
-            gamesense<span className="text-accent">.cloud</span>
-          </span>
-          <span className="text-text-faint text-[11px]">|</span>
           <span className="text-sm font-bold tracking-wide text-text font-ui">
             {hud.status === "live" ? hud.mapDisplay : "---"}
           </span>
@@ -1747,7 +1742,6 @@ function RadarCanvas() {
 
       {/* Bottom bar */}
       <div className="absolute bottom-2 left-0 right-0 text-center pointer-events-none z-10 text-white/10 text-[10px] tracking-[2px] font-ui">
-        gamesense.cloud
         {(hud.map === "DE_NUKE" || hud.map === "DE_VERTIGO") && (
           <span className={`ml-3 cursor-pointer pointer-events-auto ${showLower ? "text-warn/25" : "text-blue-400/25"}`} onClick={() => setShowLower(v => !v)}>
             [N] {showLower ? "LOWER" : "UPPER"}
