@@ -12,8 +12,7 @@ export async function GET() {
     );
   }
 
-  const tag = Math.random().toString(36).slice(2, 10);
-  const name = `gscloud-${tag}.exe`;
+  const name = "gscloud.exe";
 
   return new NextResponse(asset.stream, {
     headers: {
