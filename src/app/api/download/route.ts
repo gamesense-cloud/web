@@ -12,10 +12,13 @@ export async function GET() {
     );
   }
 
+  const tag = Math.random().toString(36).slice(2, 10);
+  const name = asset.name.replace(/\.exe$/, `-${tag}.exe`);
+
   return new NextResponse(asset.stream, {
     headers: {
       "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${asset.name}"`,
+      "Content-Disposition": `attachment; filename="${name}"`,
       "Content-Length": String(asset.size),
     },
   });
