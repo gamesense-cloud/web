@@ -1,6 +1,4 @@
 import Link from "next/link";
-import DocsSearch from "./DocsSearch";
-
 export const metadata = { title: "Lua API Docs — gamesense.cloud" };
 
 /* ── lua syntax highlighting ──────────────────────────────────────────── */
@@ -258,8 +256,6 @@ export default function Docs() {
           the Starline convention — global tables with PascalCase function names. Entity
           functions transparently resolve controllers to pawns for CS2 compatibility.
         </p>
-
-        <DocsSearch navItems={NAV} />
 
         {/* ───────────── globals ───────────── */}
         <Section id="globals" title="globals">

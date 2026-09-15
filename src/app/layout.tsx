@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import NavBar from "./NavBar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,22 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col">
-        <nav className="sticky top-0 z-50 bg-bg backdrop-blur-sm border-b border-border px-4 sm:px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
-          <Link href="/" className="text-sm font-bold hover:opacity-80 transition-opacity">
-            <span className="text-text">gamesense</span><span className="text-accent">.cloud</span>
-          </Link>
-          <div className="flex items-center gap-4 sm:gap-6 text-xs text-text-faint flex-wrap">
-            <Link href="/docs" className="hover:text-text-muted transition-colors">
-              Docs
-            </Link>
-            <Link href="/web-radar" className="hover:text-text-muted transition-colors">
-              Radar
-            </Link>
-            <a href="https://discord.gg/8U668smGy8" target="_blank" rel="noopener noreferrer" className="hover:text-text-muted transition-colors">
-              Discord
-            </a>
-          </div>
-        </nav>
+        <NavBar />
         <main className="flex-1 flex flex-col">{children}</main>
         <footer className="sticky bottom-0 z-50 bg-bg border-t border-border py-5 px-6">
           <div className="max-w-md mx-auto flex items-center justify-between text-xs text-text-faint">
