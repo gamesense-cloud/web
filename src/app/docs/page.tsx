@@ -594,8 +594,8 @@ end)`}</Example>
           <Fn name="ui.SetValue" args="id: string, value">Set a control&apos;s value by its ID.</Fn>
 
           <div className="mt-3">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">tab:Group(name) → group</h4>
-            <p className="text-xs mb-2">Create a named group within a tab.</p>
+            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">tab:Group(name [, panel]) → group</h4>
+            <p className="text-xs mb-2">Create a named group within a tab. Optional <code className="text-text-faint">panel</code> is <code className="text-text-faint">&quot;A&quot;</code> or <code className="text-text-faint">&quot;B&quot;</code> — controls which column of the Script Items tab the group&apos;s widgets appear in. Defaults to <code className="text-text-faint">&quot;A&quot;</code>.</p>
           </div>
 
           <div className="mt-1">
@@ -625,16 +625,17 @@ end)`}</Example>
             </p>
           </div>
           <Example title="Example — full UI setup">{`local tab = ui.Tab("Aim Helper")
-local g = tab:Group("Settings")
+local g = tab:Group("Settings", "A")       -- panel A (left column)
+local info = tab:Group("Visuals", "B")     -- panel B (right column)
 
 local enabled = g:Checkbox("Enabled", true)
 local fov     = g:SliderFloat("FOV", 1.0, 30.0, 5.0)
 local style   = g:Combo("Style", {"Circle", "Cross", "Dot"}, 1)
 local hotkey  = g:Keybind("Toggle Key", input.KEY_X)
-local color   = g:ColorPicker("Color", {1, 0, 0, 1})
 
-g:Separator("Info")
-local status = g:Label("Status: idle")
+local color   = info:ColorPicker("Color", {1, 0, 0, 1})
+info:Separator("Info")
+local status = info:Label("Status: idle")
 
 enabled:OnChange(function(val)
   status:Set(val and "Status: active" or "Status: idle")
