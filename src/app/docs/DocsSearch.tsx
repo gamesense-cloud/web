@@ -85,7 +85,7 @@ export default function DocsSearch({ navItems }: Props) {
   }, []);
 
   return (
-    <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur-sm border-b border-border -mx-6 px-6 py-3 mb-6">
+    <div className="sticky top-[45px] z-10 bg-surface/95 backdrop-blur-sm border-b border-border -mx-6 px-6 py-3 mb-6">
       <div className="relative">
         <input
           ref={inputRef}

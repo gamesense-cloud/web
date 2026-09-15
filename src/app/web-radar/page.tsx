@@ -176,6 +176,7 @@ function RadarCanvas() {
   const session = params.get("session");
   const [sessionInput, setSessionInput] = useState("");
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameDataRef = useRef<ApiResponse | null>(null);
   const prevPosRef = useRef<Record<string, Player>>({});
@@ -498,17 +499,20 @@ function RadarCanvas() {
     ? serverCurtimeRef.current + (performance.now() - lastReceiveRef.current) / 1000
     : hud.curtime;
 
-  // Canvas resize
+  // Canvas resize — track the container, not the window
   useEffect(() => {
+    const container = containerRef.current;
+    const c = canvasRef.current;
+    if (!container || !c) return;
     function resize() {
-      const c = canvasRef.current;
-      if (!c) return;
-      c.width = window.innerWidth;
-      c.height = window.innerHeight;
+      if (!container || !c) return;
+      c.width = container.clientWidth;
+      c.height = container.clientHeight;
     }
     resize();
-    window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
+    const observer = new ResizeObserver(resize);
+    observer.observe(container);
+    return () => observer.disconnect();
   }, []);
 
   // Keyboard events
@@ -556,7 +560,9 @@ function RadarCanvas() {
       }
     }
     function onMove(e: MouseEvent) {
-      mouseRef.current = { x: e.clientX, y: e.clientY };
+      const rect = c!.getBoundingClientRect();
+      const rx = e.clientX - rect.left, ry = e.clientY - rect.top;
+      mouseRef.current = { x: rx, y: ry };
       if (dragRef.current.active) {
         panRef.current.x = dragRef.current.panX + (e.clientX - dragRef.current.startX);
         panRef.current.y = dragRef.current.panY + (e.clientY - dragRef.current.startY);
@@ -566,7 +572,7 @@ function RadarCanvas() {
         let closest: typeof rps[0] | null = null;
         let bestDist = 16;
         for (const rp of rps) {
-          const dx = e.clientX - rp.sx, dy = e.clientY - rp.sy;
+          const dx = rx - rp.sx, dy = ry - rp.sy;
           const d = Math.sqrt(dx * dx + dy * dy);
           if (d < bestDist) { bestDist = d; closest = rp; }
         }
@@ -1203,7 +1209,7 @@ function RadarCanvas() {
   if (!session) {
     return (
       <div style={{
-        position: "fixed", inset: 0, zIndex: 100,
+        flex: 1,
         background: "#0a0e14", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", gap: 20,
         fontFamily: "Tahoma, Verdana, sans-serif",
@@ -1234,8 +1240,8 @@ function RadarCanvas() {
             animation: "radarSweep 3s linear infinite",
           }} />
         </div>
-        <div style={{ color: "#8e6ff7", fontSize: 22, fontWeight: "bold", letterSpacing: 0.5, animation: "fadeIn 0.5s ease-out" }}>
-          gamesense<span style={{ color: "#808080" }}>.cloud</span>
+        <div style={{ color: "#dcdcdc", fontSize: 22, fontWeight: "bold", letterSpacing: 0.5, animation: "fadeIn 0.5s ease-out" }}>
+          gamesense<span style={{ color: "#8e6ff7" }}>.cloud</span>
         </div>
         <div style={{ color: "#555", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", animation: "fadeIn 0.5s ease-out 0.1s both" }}>
           Web Radar
@@ -1333,7 +1339,7 @@ function RadarCanvas() {
   const sc = STATUS_CONFIG[hud.status];
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "#0a0e14", cursor: "crosshair" }}>
+    <div ref={containerRef} style={{ position: "relative", flex: 1, background: "#0a0e14", cursor: "crosshair", overflow: "hidden" }}>
       <style>{`
         @keyframes bombPulse { from { opacity: 0.7; } to { opacity: 1; } }
         @media (max-width: 600px) {
@@ -1356,8 +1362,8 @@ function RadarCanvas() {
         pointerEvents: "none",
       }}>
         <div className="radar-topbar-left" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span className="radar-brand" style={{ color: "#8e6ff7", fontWeight: "bold", fontSize: 13, fontFamily: "Tahoma, sans-serif" }}>
-            gamesense<span style={{ color: "#808080" }}>.cloud</span>
+          <span className="radar-brand" style={{ color: "#dcdcdc", fontWeight: "bold", fontSize: 13, fontFamily: "Tahoma, sans-serif" }}>
+            gamesense<span style={{ color: "#8e6ff7" }}>.cloud</span>
           </span>
           <span style={{ color: "#555555", fontSize: 11 }}>|</span>
           <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 1, color: "#dcdcdc", fontFamily: "Tahoma, sans-serif" }}>
@@ -2168,8 +2174,9 @@ function RadarCanvas() {
       {/* Player hover tooltip */}
       {hoveredPlayer && hoveredPlayer.player.alive && (() => {
         const ttW = 200, ttH = 120;
-        const vw = typeof window !== "undefined" ? window.innerWidth : 1920;
-        const vh = typeof window !== "undefined" ? window.innerHeight : 1080;
+        const container = containerRef.current;
+        const vw = container ? container.clientWidth : 1920;
+        const vh = container ? container.clientHeight : 1080;
         const ttLeft = hoveredPlayer.sx + 16 + ttW > vw
           ? hoveredPlayer.sx - ttW - 8
           : hoveredPlayer.sx + 16;
@@ -2275,7 +2282,7 @@ export default function RadarPage() {
   return (
     <Suspense fallback={
       <div style={{
-        position: "fixed", inset: 0, background: "#0a0e14",
+        flex: 1, background: "#0a0e14",
         display: "flex", alignItems: "center", justifyContent: "center",
         color: "#808080", fontFamily: "Tahoma, sans-serif", fontSize: 13,
       }}>

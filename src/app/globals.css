@@ -341,6 +341,46 @@ select.field { padding: 0 6px; }
 .auth-shell .note { color: var(--faint); font-size: 11px; text-align: center; line-height: 1.7; }
 .auth-shell .note a { color: var(--accent); }
 
+/* --------------------------------------------------------- glow button -- */
+.glow-btn {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+.glow-btn::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: conic-gradient(from 0deg, var(--accent), var(--accent-hi), var(--ok), var(--accent-hi), var(--accent));
+  animation: glow-spin 3s linear infinite;
+  z-index: -1;
+  opacity: 0.6;
+  filter: blur(12px);
+}
+.glow-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  z-index: -1;
+}
+.glow-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 32px color-mix(in srgb, var(--accent) 40%, transparent),
+              0 0 64px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.glow-btn:hover::before {
+  opacity: 1;
+}
+.glow-btn:active {
+  transform: translateY(0);
+}
+@keyframes glow-spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

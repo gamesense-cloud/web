@@ -3,6 +3,121 @@ import DocsSearch from "./DocsSearch";
 
 export const metadata = { title: "Lua API Docs — gamesense.cloud" };
 
+/* ── lua syntax highlighting ──────────────────────────────────────────── */
+
+const LUA_KEYWORDS = new Set([
+  "and", "break", "do", "else", "elseif", "end", "for", "function",
+  "if", "in", "local", "nil", "not", "or", "repeat", "return",
+  "then", "until", "while", "true", "false",
+]);
+
+const LUA_BUILTINS = new Set([
+  "ipairs", "pairs", "print", "tostring", "tonumber", "type",
+  "require", "pcall", "xpcall", "select", "unpack", "error",
+  "setmetatable", "getmetatable", "rawget", "rawset", "next",
+  "assert", "string", "table", "math", "Color",
+]);
+
+function highlightLua(code: string): React.ReactNode[] {
+  const tokens: React.ReactNode[] = [];
+  let i = 0;
+  let key = 0;
+
+  while (i < code.length) {
+    // Multi-line comments: --[[ ... ]]
+    if (code[i] === "-" && code[i + 1] === "-" && code[i + 2] === "[" && code[i + 3] === "[") {
+      const end = code.indexOf("]]", i + 4);
+      const slice = end === -1 ? code.slice(i) : code.slice(i, end + 2);
+      tokens.push(<span key={key++} className="text-[#6a9955]">{slice}</span>);
+      i += slice.length;
+      continue;
+    }
+
+    // Single-line comments: -- ...
+    if (code[i] === "-" && code[i + 1] === "-") {
+      const end = code.indexOf("\n", i);
+      const slice = end === -1 ? code.slice(i) : code.slice(i, end);
+      tokens.push(<span key={key++} className="text-[#6a9955]">{slice}</span>);
+      i += slice.length;
+      continue;
+    }
+
+    // Strings: "..." or '...'
+    if (code[i] === '"' || code[i] === "'") {
+      const quote = code[i];
+      let j = i + 1;
+      while (j < code.length && code[j] !== quote) {
+        if (code[j] === "\\") j++;
+        j++;
+      }
+      const slice = code.slice(i, j + 1);
+      tokens.push(<span key={key++} className="text-[#ce9178]">{slice}</span>);
+      i = j + 1;
+      continue;
+    }
+
+    // Multi-line strings: [[ ... ]]
+    if (code[i] === "[" && code[i + 1] === "[") {
+      const end = code.indexOf("]]", i + 2);
+      const slice = end === -1 ? code.slice(i) : code.slice(i, end + 2);
+      tokens.push(<span key={key++} className="text-[#ce9178]">{slice}</span>);
+      i += slice.length;
+      continue;
+    }
+
+    // Numbers
+    if (/[0-9]/.test(code[i]) && (i === 0 || /[\s(,{=+\-*/<>~%[]/.test(code[i - 1]))) {
+      let j = i;
+      if (code[j] === "0" && (code[j + 1] === "x" || code[j + 1] === "X")) {
+        j += 2;
+        while (j < code.length && /[0-9a-fA-F]/.test(code[j])) j++;
+      } else {
+        while (j < code.length && /[0-9.]/.test(code[j])) j++;
+      }
+      tokens.push(<span key={key++} className="text-[#b5cea8]">{code.slice(i, j)}</span>);
+      i = j;
+      continue;
+    }
+
+    // Identifiers and keywords
+    if (/[a-zA-Z_]/.test(code[i])) {
+      let j = i;
+      while (j < code.length && /[a-zA-Z0-9_]/.test(code[j])) j++;
+      const word = code.slice(i, j);
+      if (LUA_KEYWORDS.has(word)) {
+        tokens.push(<span key={key++} className="text-[#c586c0]">{word}</span>);
+      } else if (LUA_BUILTINS.has(word)) {
+        tokens.push(<span key={key++} className="text-[#dcdcaa]">{word}</span>);
+      } else {
+        tokens.push(<span key={key++}>{word}</span>);
+      }
+      i = j;
+      continue;
+    }
+
+    // Operators: .. ~= == <= >= ~=
+    if (code[i] === "." && code[i + 1] === ".") {
+      tokens.push(<span key={key++} className="text-text-faint">{".."}</span>);
+      i += 2;
+      continue;
+    }
+
+    // Everything else (whitespace, punctuation)
+    tokens.push(<span key={key++}>{code[i]}</span>);
+    i++;
+  }
+
+  return tokens;
+}
+
+function LuaCode({ children, className = "" }: { children: string; className?: string }) {
+  return (
+    <pre className={`text-xs font-mono bg-surface-2 rounded border border-border p-3 overflow-x-auto leading-relaxed whitespace-pre ${className}`}>
+      <code>{highlightLua(children)}</code>
+    </pre>
+  );
+}
+
 /* ── tiny helpers ─────────────────────────────────────────────────────── */
 
 function Badge({ children, color = "accent" }: { children: React.ReactNode; color?: string }) {
@@ -36,7 +151,7 @@ function Sig({ name, args, ret }: { name: string; args: string; ret?: string }) 
 
 function Section({ id, title, badge, children }: { id: string; title: string; badge?: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-20">
+    <section id={id} className="scroll-mt-28">
       <h2 className="text-lg font-bold mt-10 mb-1 flex items-center gap-2">
         <span className="text-accent">{title}</span>
         {badge && <Badge color={badge === "stub" ? "warn" : "ok"}>{badge}</Badge>}
@@ -71,9 +186,7 @@ function Example({ title, children }: { title: string; children: string }) {
   return (
     <div className="mt-4 mb-2">
       <h4 className="text-xs font-bold text-accent uppercase tracking-wider mb-2">{title}</h4>
-      <pre className="text-xs font-mono bg-surface-2 rounded border border-border p-3 overflow-x-auto leading-relaxed whitespace-pre">
-        {children}
-      </pre>
+      <LuaCode>{children}</LuaCode>
     </div>
   );
 }
@@ -113,7 +226,7 @@ export default function Docs() {
   return (
     <div className="flex min-h-screen">
       {/* sidebar nav */}
-      <aside className="hidden lg:block w-52 shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto py-8 px-4">
+      <aside className="hidden lg:block w-52 shrink-0 border-r border-border sticky top-[45px] h-[calc(100vh-45px)] overflow-y-auto py-8 px-4">
         <Link href="/" className="text-text-muted text-xs hover:text-text transition-colors">
           &larr; Home
         </Link>
@@ -999,9 +1112,7 @@ end)`}</Example>
               Auto-resolving table of system library exports. Access any function from kernel32, user32,
               advapi32, ntdll, ws2_32, shell32, gdi32, ole32, msvcrt, winhttp, or crypt32 directly:
             </p>
-            <pre className="text-xs font-mono bg-surface-2 rounded border border-border p-2 mt-1 overflow-x-auto">
-{`local result = ffi.C.MessageBoxA(0, "Hello", "Title", 0)`}
-            </pre>
+            <LuaCode className="p-2 mt-1">{`local result = ffi.C.MessageBoxA(0, "Hello", "Title", 0)`}</LuaCode>
           </div>
 
           <div className="mt-3">
@@ -1124,15 +1235,14 @@ ffi.C.MessageBoxA(0, "Hello from Lua!", "gscloud", 0)`}</Example>
         </Section>
 
         {/* ───────────── quick start ───────────── */}
-        <section id="quickstart" className="scroll-mt-20 mt-16 mb-8 space-y-6">
+        <section id="quickstart" className="scroll-mt-28 mt-16 mb-8 space-y-6">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <span className="text-accent">Quick Start</span> Examples
           </h2>
 
           <div className="border border-border rounded-lg p-5 bg-surface">
             <h3 className="text-sm font-bold mb-3">ESP Script</h3>
-            <pre className="text-xs font-mono bg-surface-2 rounded border border-border p-4 overflow-x-auto leading-relaxed">
-{`-- Create a UI tab with controls
+            <LuaCode className="p-4">{`-- Create a UI tab with controls
 local tab = ui.Tab("My Script")
 local grp = tab:Group("Settings")
 local enabled = grp:Checkbox("Enable ESP", true)
@@ -1153,14 +1263,12 @@ hooks.Add("Paint", "my_esp", function()
       end
     end
   end
-end)`}
-            </pre>
+end)`}</LuaCode>
           </div>
 
           <div className="border border-border rounded-lg p-5 bg-surface">
             <h3 className="text-sm font-bold mb-3">HUD Overlay with Stats</h3>
-            <pre className="text-xs font-mono bg-surface-2 rounded border border-border p-4 overflow-x-auto leading-relaxed">
-{`local tab = ui.Tab("HUD")
+            <LuaCode className="p-4">{`local tab = ui.Tab("HUD")
 local g   = tab:Group("Display")
 local showSpeed = g:Checkbox("Show Speed", true)
 local showClock = g:Checkbox("Show Clock", true)
@@ -1207,8 +1315,7 @@ events.On("paint", function()
     renderer.Text(w - 130, y + 6, cheat.GetTimestamp(),
       Color(180, 180, 180), 11, "mono")
   end
-end)`}
-            </pre>
+end)`}</LuaCode>
           </div>
         </section>
 

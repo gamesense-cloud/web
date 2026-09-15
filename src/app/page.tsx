@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getLatestRelease } from "@/lib/github";
 
 async function getStats(): Promise<{ users: number; radars: number }> {
   try {
@@ -14,15 +13,6 @@ async function getStats(): Promise<{ users: number; radars: number }> {
     return { users: users.count ?? 0, radars: radars.count ?? 0 };
   } catch {
     return { users: 0, radars: 0 };
-  }
-}
-
-async function getVersion(): Promise<string | null> {
-  try {
-    const release = await getLatestRelease("launcher");
-    return release?.tag_name ?? null;
-  } catch {
-    return null;
   }
 }
 
@@ -41,46 +31,10 @@ const FEATURES = [
     href: "/docs",
     color: "var(--ok)",
   },
-  {
-    title: "Live Grenades & Bomb",
-    desc: "Smoke clouds, molotov fire zones, flash bangs and HEs rendered on the radar with real-time AOE indicators.",
-    href: "/web-radar",
-    color: "var(--warn)",
-  },
-  {
-    title: "Round Timer & Scores",
-    desc: "Full scoreboard with team scores, round timer, freeze/warmup phase indicators, and alive player counts.",
-    href: "/web-radar",
-    color: "var(--bad)",
-  },
-  {
-    title: "Movement Tracking",
-    desc: "Player velocity arrows, movement trails, and interpolated positions for smooth real-time tracking.",
-    href: "/web-radar",
-    color: "#4a9eff",
-  },
-  {
-    title: "Kill Feed & Scoreboard",
-    desc: "Real-time kill feed with killer/victim pairs, weapon and headshot info. Full scoreboard with economy breakdown.",
-    href: "/web-radar",
-    color: "#e0656a",
-  },
-  {
-    title: "In-Game GUI",
-    desc: "Built-in ImGui overlay with script editor, console, settings, font management, and Lua UI controls.",
-    href: "/docs",
-    color: "#e0b04b",
-  },
-] as const;
-
-const STEPS = [
-  { num: "1", title: "Download", desc: "Grab the loader from gamesense.cloud" },
-  { num: "2", title: "Inject", desc: "Run the loader while CS2 is open" },
-  { num: "3", title: "Share", desc: "Click Start Radar — link is copied to clipboard" },
 ] as const;
 
 export default async function Home() {
-  const [stats, version] = await Promise.all([getStats(), getVersion()]);
+  const stats = await getStats();
 
   return (
     <div className="flex-1 flex flex-col items-center px-6 pt-20 pb-12">
@@ -108,30 +62,22 @@ export default async function Home() {
         )}
       </div>
 
-      <div className="mt-8 flex items-center gap-3">
+      <div className="mt-8">
         <a
           href="/api/download"
-          className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hi text-on-accent font-semibold px-8 py-3 rounded transition-colors text-sm"
+          className="glow-btn inline-flex items-center gap-2.5 bg-gradient-to-r from-accent to-accent-hi text-on-accent font-bold px-10 py-4 rounded-lg text-base shadow-lg shadow-accent/25 transition-all"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
           Download
         </a>
-        {version && (
-          <Link
-            href="/changelog"
-            className="text-text-faint text-xs hover:text-text-muted transition-colors font-mono"
-          >
-            {version}
-          </Link>
-        )}
       </div>
 
       {/* Feature cards */}
-      <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl w-full">
+      <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl w-full">
         {FEATURES.map((f) => (
           <Link
             key={f.title}
@@ -166,24 +112,6 @@ export default async function Home() {
         ))}
       </div>
 
-      {/* How it works */}
-      <div className="mt-16 w-full max-w-2xl">
-        <h2 className="text-center text-text-muted text-xs font-bold tracking-widest uppercase mb-6">
-          How it works
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {STEPS.map((s) => (
-            <div key={s.num} className="text-center">
-              <div className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-accent-dim text-accent text-sm font-bold mb-2">
-                {s.num}
-              </div>
-              <div className="text-sm font-bold text-text mb-1">{s.title}</div>
-              <div className="text-text-faint text-xs">{s.desc}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Quick links */}
       <div className="mt-12 flex items-center justify-center gap-x-6 gap-y-2 text-xs text-text-faint flex-wrap">
         <Link href="/docs" className="hover:text-text-muted transition-colors">
@@ -194,13 +122,9 @@ export default async function Home() {
           Web Radar
         </Link>
         <span className="text-border">|</span>
-        <Link href="/changelog" className="hover:text-text-muted transition-colors">
-          Changelog
-        </Link>
-        <span className="text-border">|</span>
-        <Link href="/contact" className="hover:text-text-muted transition-colors">
-          Contact
-        </Link>
+        <a href="https://discord.gg/8U668smGy8" target="_blank" rel="noopener noreferrer" className="hover:text-text-muted transition-colors">
+          Discord
+        </a>
       </div>
     </div>
   );
