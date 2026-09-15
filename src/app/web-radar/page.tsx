@@ -1208,130 +1208,75 @@ function RadarCanvas() {
 
   if (!session) {
     return (
-      <div style={{
-        flex: 1,
-        background: "#0a0e14", display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center", gap: 20,
-        fontFamily: "Tahoma, Verdana, sans-serif",
-      }}>
+      <div className="flex-1 flex flex-col items-center justify-center gap-5 bg-bg font-ui px-6">
         <style>{`
           @keyframes radarSweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
           @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         `}</style>
-        <div style={{ position: "relative", width: 80, height: 80, marginBottom: 8 }}>
-          <div style={{
-            position: "absolute", inset: 0, borderRadius: "50%",
-            border: "1px solid #1e1e1e",
-          }} />
-          <div style={{
-            position: "absolute", inset: 8, borderRadius: "50%",
-            border: "1px solid #1a1a1a",
-          }} />
-          <div style={{
-            position: "absolute", top: "50%", left: "50%",
-            width: 4, height: 4, borderRadius: "50%",
-            background: "#8e6ff7", transform: "translate(-50%, -50%)",
-            boxShadow: "0 0 8px #8e6ff755",
-          }} />
-          <div style={{
-            position: "absolute", top: "50%", left: "50%",
-            width: 2, height: 36, transformOrigin: "top center",
-            background: "linear-gradient(to bottom, #8e6ff744, transparent)",
-            animation: "radarSweep 3s linear infinite",
-          }} />
-        </div>
-        <div style={{ color: "#dcdcdc", fontSize: 22, fontWeight: "bold", letterSpacing: 0.5, animation: "fadeIn 0.5s ease-out" }}>
-          gamesense<span style={{ color: "#8e6ff7" }}>.cloud</span>
-        </div>
-        <div style={{ color: "#555", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", animation: "fadeIn 0.5s ease-out 0.1s both" }}>
-          Web Radar
-        </div>
-        <div style={{
-          marginTop: 12, padding: "20px 28px",
-          background: "#111418", border: "1px solid #1e1e1e",
-          maxWidth: 380, textAlign: "center", borderRadius: 4,
-          animation: "fadeIn 0.5s ease-out 0.2s both",
-        }}>
-          <p style={{ color: "#808080", fontSize: 12, lineHeight: 1.6, margin: "0 0 16px 0" }}>
-            No active session. Start one from the DLL.
-          </p>
-          <div style={{ textAlign: "left", color: "#555", fontSize: 11, lineHeight: 2 }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-              <span style={{ color: "#8e6ff744", fontWeight: "bold", minWidth: 14, textAlign: "right" }}>1</span>
-              <span>Load <span style={{ color: "#dcdcdc" }}>gamesense.cloud</span> in CS2</span>
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-              <span style={{ color: "#8e6ff744", fontWeight: "bold", minWidth: 14, textAlign: "right" }}>2</span>
-              <span>Go to <span style={{ color: "#8e6ff7" }}>Settings</span> &rarr; <span style={{ color: "#8e6ff7" }}>Web Radar</span></span>
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-              <span style={{ color: "#8e6ff744", fontWeight: "bold", minWidth: 14, textAlign: "right" }}>3</span>
-              <span>Click <span style={{ color: "#5fc98a" }}>Start Web Radar</span></span>
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-              <span style={{ color: "#8e6ff744", fontWeight: "bold", minWidth: 14, textAlign: "right" }}>4</span>
-              <span>Copy the link &amp; open on any device</span>
-            </div>
-          </div>
-        </div>
-        <div style={{
-          marginTop: 16, animation: "fadeIn 0.5s ease-out 0.25s both",
-        }}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const id = sessionInput.trim();
-              if (id.length >= 16) {
-                window.location.href = `/web-radar?session=${encodeURIComponent(id)}`;
-              }
-            }}
-            style={{ display: "flex", gap: 8, alignItems: "center" }}
-          >
-            <input
-              type="text"
-              placeholder="Paste session ID..."
-              value={sessionInput}
-              onChange={(e) => setSessionInput(e.target.value)}
-              style={{
-                background: "#111418", border: "1px solid #1e1e1e",
-                borderRadius: 4, padding: "8px 12px",
-                color: "#dcdcdc", fontSize: 12, fontFamily: "Consolas, monospace",
-                width: 220, outline: "none",
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#8e6ff744")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "#1e1e1e")}
-            />
-            <button
-              type="submit"
-              disabled={sessionInput.trim().length < 16}
-              style={{
-                background: sessionInput.trim().length >= 16 ? "#8e6ff722" : "#111418",
-                border: `1px solid ${sessionInput.trim().length >= 16 ? "#8e6ff744" : "#1e1e1e"}`,
-                borderRadius: 4, padding: "8px 16px",
-                color: sessionInput.trim().length >= 16 ? "#8e6ff7" : "#555",
-                fontSize: 11, fontWeight: "bold", cursor: sessionInput.trim().length >= 16 ? "pointer" : "default",
-                letterSpacing: 1,
-              }}
-            >
-              CONNECT
-            </button>
-          </form>
+
+        <div className="relative w-20 h-20 mb-2">
+          <div className="absolute inset-0 rounded-full border border-border" />
+          <div className="absolute inset-2 rounded-full border border-border/60" />
+          <div className="absolute top-1/2 left-1/2 w-1 h-1 rounded-full bg-accent -translate-x-1/2 -translate-y-1/2 shadow-[0_0_8px_var(--color-accent)]" />
+          <div className="absolute top-1/2 left-1/2 w-0.5 h-9 origin-top" style={{ background: "linear-gradient(to bottom, var(--color-accent), transparent)", animation: "radarSweep 3s linear infinite" }} />
         </div>
 
-        <div style={{ color: "#ffffff0a", fontSize: 9, letterSpacing: 1, marginTop: 8, animation: "fadeIn 0.5s ease-out 0.3s both" }}>
-          Scroll to zoom &middot; Drag to pan &middot; Tab for scoreboard &middot; F to follow
+        <h1 className="text-2xl font-bold tracking-tight" style={{ animation: "fadeIn 0.5s ease-out" }}>
+          gamesense<span className="text-accent">.cloud</span>
+        </h1>
+        <p className="text-text-faint text-xs uppercase tracking-[2px]" style={{ animation: "fadeIn 0.5s ease-out 0.1s both" }}>
+          Web Radar
+        </p>
+
+        <div className="gb mt-3 p-5 max-w-sm w-full text-center" style={{ animation: "fadeIn 0.5s ease-out 0.2s both" }}>
+          <p className="text-text-muted text-xs leading-relaxed mb-4">
+            No active session. Start one from the DLL.
+          </p>
+          <div className="text-left text-text-faint text-[11px] leading-[2] space-y-0">
+            {[
+              <>Load <span className="text-text">gamesense.cloud</span> in CS2</>,
+              <>Go to <span className="text-accent">Settings</span> &rarr; <span className="text-accent">Web Radar</span></>,
+              <>Click <span className="text-ok">Start Web Radar</span></>,
+              <>Copy the link &amp; open on any device</>,
+            ].map((step, i) => (
+              <div key={i} className="flex gap-2 items-baseline">
+                <span className="text-accent/25 font-bold min-w-[14px] text-right">{i + 1}</span>
+                <span>{step}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <a href="/docs" style={{
-          color: "#8e6ff744", fontSize: 10, marginTop: 16,
-          textDecoration: "none", letterSpacing: 1,
-          animation: "fadeIn 0.5s ease-out 0.4s both",
-          transition: "color 0.2s",
-        }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#8e6ff7")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#8e6ff744")}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const id = sessionInput.trim();
+            if (id.length >= 16) {
+              window.location.href = `/web-radar?session=${encodeURIComponent(id)}`;
+            }
+          }}
+          className="flex gap-2 items-center mt-2"
+          style={{ animation: "fadeIn 0.5s ease-out 0.25s both" }}
         >
-          Lua API Docs
-        </a>
+          <input
+            type="text"
+            placeholder="Paste session ID..."
+            value={sessionInput}
+            onChange={(e) => setSessionInput(e.target.value)}
+            className="bg-surface border border-border rounded px-3 py-2 text-text text-xs font-mono w-56 outline-none focus:border-accent-dim transition-colors"
+          />
+          <button
+            type="submit"
+            disabled={sessionInput.trim().length < 16}
+            className="border rounded px-4 py-2 text-[11px] font-bold tracking-wide transition-colors disabled:bg-surface disabled:border-border disabled:text-text-faint disabled:cursor-default bg-accent/10 border-accent/25 text-accent cursor-pointer hover:bg-accent/20"
+          >
+            CONNECT
+          </button>
+        </form>
+
+        <p className="text-text/5 text-[9px] tracking-wide mt-1" style={{ animation: "fadeIn 0.5s ease-out 0.3s both" }}>
+          Scroll to zoom &middot; Drag to pan &middot; Tab for scoreboard &middot; F to follow
+        </p>
       </div>
     );
   }
@@ -1339,7 +1284,7 @@ function RadarCanvas() {
   const sc = STATUS_CONFIG[hud.status];
 
   return (
-    <div ref={containerRef} style={{ position: "relative", flex: 1, background: "#0a0e14", cursor: "crosshair", overflow: "hidden" }}>
+    <div ref={containerRef} className="relative flex-1 bg-bg cursor-crosshair overflow-hidden">
       <style>{`
         @keyframes bombPulse { from { opacity: 0.7; } to { opacity: 1; } }
         @media (max-width: 600px) {
@@ -1354,28 +1299,20 @@ function RadarCanvas() {
         }
       `}</style>
       {/* Top bar */}
-      <div className="radar-topbar" style={{
-        position: "absolute", top: 0, left: 0, right: 0, height: 36, zIndex: 10,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 16px",
-        background: "linear-gradient(to bottom, rgba(13,13,13,0.95), rgba(13,13,13,0))",
-        pointerEvents: "none",
-      }}>
-        <div className="radar-topbar-left" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span className="radar-brand" style={{ color: "#dcdcdc", fontWeight: "bold", fontSize: 13, fontFamily: "Tahoma, sans-serif" }}>
-            gamesense<span style={{ color: "#8e6ff7" }}>.cloud</span>
+      <div className="radar-topbar absolute top-0 left-0 right-0 h-9 z-10 flex items-center justify-between px-4 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(13,13,13,0.95), rgba(13,13,13,0))" }}>
+        <div className="radar-topbar-left flex items-center gap-3">
+          <span className="radar-brand text-text font-bold text-[13px] font-ui">
+            gamesense<span className="text-accent">.cloud</span>
           </span>
-          <span style={{ color: "#555555", fontSize: 11 }}>|</span>
-          <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 1, color: "#dcdcdc", fontFamily: "Tahoma, sans-serif" }}>
+          <span className="text-text-faint text-[11px]">|</span>
+          <span className="text-sm font-bold tracking-wide text-text font-ui">
             {hud.status === "live" ? hud.mapDisplay : "---"}
           </span>
           {hud.status === "live" && hud.roundPhase && (hud.roundPhase.freeze || hud.roundPhase.warmup) && (
-            <span style={{
-              fontSize: 9, padding: "1px 6px", borderRadius: 2, letterSpacing: 1,
-              fontFamily: "Consolas, monospace", fontWeight: "bold",
-              background: hud.roundPhase.warmup ? "#e0b04b15" : "#4a9eff15",
-              border: `1px solid ${hud.roundPhase.warmup ? "#e0b04b33" : "#4a9eff33"}`,
-              color: hud.roundPhase.warmup ? "#e0b04b" : "#4a9eff",
+            <span className="text-[9px] px-1.5 py-px rounded-sm tracking-wide font-mono font-bold" style={{
+              background: hud.roundPhase.warmup ? "var(--color-warn)/8" : "#4a9eff15",
+              border: `1px solid ${hud.roundPhase.warmup ? "var(--color-warn)" : "#4a9eff"}33`,
+              color: hud.roundPhase.warmup ? "var(--color-warn)" : "#4a9eff",
             }}>
               {hud.roundPhase.warmup ? "WARMUP" : "FREEZE"}
             </span>
@@ -1388,34 +1325,18 @@ function RadarCanvas() {
               ? Math.max(0, hud.bomb.defuseEnd - interpolatedCurtime)
               : null;
             return (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{
-                  fontSize: 11, fontWeight: "bold", color: "#e03c3c", letterSpacing: 2,
-                  fontFamily: "Consolas, monospace",
-                  animation: "bombPulse 0.5s ease-in-out infinite alternate",
-                }}>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-bad tracking-[2px] font-mono" style={{ animation: "bombPulse 0.5s ease-in-out infinite alternate" }}>
                   BOMB PLANTED
                 </span>
-                {hud.bomb.site && (
-                  <span style={{ fontSize: 10, color: "#e03c3c88", fontFamily: "Consolas, monospace" }}>
-                    {hud.bomb.site}
-                  </span>
-                )}
+                {hud.bomb.site && <span className="text-[10px] text-bad/50 font-mono">{hud.bomb.site}</span>}
                 {remaining != null && remaining > 0 && (
-                  <span style={{
-                    fontSize: 12, fontWeight: "bold", fontFamily: "Consolas, monospace",
-                    color: remaining < 10 ? "#e03c3c" : "#e0b04b",
-                  }}>
+                  <span className={`text-xs font-bold font-mono ${remaining < 10 ? "text-bad" : "text-warn"}`}>
                     {remaining.toFixed(1)}s
                   </span>
                 )}
                 {defuseRemaining != null && (
-                  <span style={{
-                    fontSize: 10, fontFamily: "Consolas, monospace",
-                    color: "#5fc98a", letterSpacing: 1,
-                  }}>
-                    DEF {defuseRemaining.toFixed(1)}s
-                  </span>
+                  <span className="text-[10px] font-mono text-ok tracking-wide">DEF {defuseRemaining.toFixed(1)}s</span>
                 )}
               </div>
             );
@@ -1430,12 +1351,10 @@ function RadarCanvas() {
             if (counts.he) badges.push({ type: "he", count: counts.he, color: "#e06", label: "H" });
             if (counts.decoy) badges.push({ type: "decoy", count: counts.decoy, color: "#6a6", label: "D" });
             return (
-              <div className="radar-grenades" style={{ display: "flex", gap: 4, marginLeft: 8 }}>
+              <div className="radar-grenades flex gap-1 ml-2">
                 {badges.map(b => (
-                  <span key={b.type} style={{
-                    fontSize: 9, fontFamily: "Consolas, monospace", padding: "1px 4px",
-                    background: `${b.color}15`, border: `1px solid ${b.color}33`, borderRadius: 2,
-                    color: b.color,
+                  <span key={b.type} className="text-[9px] font-mono px-1 py-px rounded-sm" style={{
+                    background: `${b.color}15`, border: `1px solid ${b.color}33`, color: b.color,
                   }}>
                     {b.count}{b.label}
                   </span>
@@ -1445,85 +1364,40 @@ function RadarCanvas() {
           })()}
         </div>
 
-        <div className="radar-topbar-right" style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{
-              display: "inline-block", width: 6, height: 6, borderRadius: "50%",
-              background: sc.color,
-              boxShadow: `0 0 4px ${sc.color}44`,
-              animation: hud.status === "live" ? undefined : "none",
-            }} />
-            <span style={{ fontSize: 11, color: sc.color, fontFamily: "Tahoma, sans-serif" }}>
-              {sc.label}
-            </span>
+        <div className="radar-topbar-right flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: sc.color, boxShadow: `0 0 4px ${sc.color}44` }} />
+            <span className="text-[11px] font-ui" style={{ color: sc.color }}>{sc.label}</span>
             {hud.status === "live" && hud.age != null && (() => {
               const age = hud.age;
-              const ageColor = age < 500 ? "#5fc98a55" : age < 2000 ? "#e0b04b66" : "#e0656a88";
-              return (
-                <span style={{
-                  fontSize: 9, color: ageColor, fontFamily: "Consolas, monospace", marginLeft: 4,
-                }}>
-                  {age < 1000 ? `${Math.round(age)}ms` : `${(age / 1000).toFixed(1)}s`}
-                </span>
-              );
+              const ageColor = age < 500 ? "var(--color-ok)" : age < 2000 ? "var(--color-warn)" : "var(--color-bad)";
+              return <span className="text-[9px] font-mono ml-1 opacity-40" style={{ color: ageColor }}>{age < 1000 ? `${Math.round(age)}ms` : `${(age / 1000).toFixed(1)}s`}</span>;
             })()}
           </div>
           {hud.status === "live" && (
             <>
               {hud.roundPhase && (() => {
-                if (hud.roundPhase.warmup) {
-                  return (
-                    <span style={{ fontSize: 11, fontWeight: "bold", color: "#808080", fontFamily: "Consolas, monospace", letterSpacing: 1 }}>
-                      WARMUP
-                    </span>
-                  );
-                }
-                if (hud.roundPhase.freeze) {
-                  return (
-                    <span style={{ fontSize: 11, fontWeight: "bold", color: "#5fc98a", fontFamily: "Consolas, monospace", letterSpacing: 1 }}>
-                      FREEZE
-                    </span>
-                  );
-                }
+                if (hud.roundPhase.warmup) return <span className="text-[11px] font-bold text-text-muted font-mono tracking-wide">WARMUP</span>;
+                if (hud.roundPhase.freeze) return <span className="text-[11px] font-bold text-ok font-mono tracking-wide">FREEZE</span>;
                 if (hud.roundPhase.roundStartTime && hud.roundPhase.roundTime && interpolatedCurtime) {
                   const elapsed = interpolatedCurtime - hud.roundPhase.roundStartTime;
                   const remaining = Math.max(0, hud.roundPhase.roundTime - elapsed);
                   const mins = Math.floor(remaining / 60);
                   const secs = Math.floor(remaining % 60);
-                  const urgent = remaining < 30;
-                  return (
-                    <span style={{
-                      fontSize: 13, fontWeight: "bold", fontFamily: "Consolas, monospace",
-                      color: urgent ? "#e03c3c" : "#dcdcdc",
-                      letterSpacing: 1,
-                    }}>
-                      {mins}:{String(secs).padStart(2, "0")}
-                    </span>
-                  );
+                  return <span className={`text-[13px] font-bold font-mono tracking-wide ${remaining < 30 ? "text-bad" : "text-text"}`}>{mins}:{String(secs).padStart(2, "0")}</span>;
                 }
                 return null;
               })()}
               {hud.roundPhase && hud.roundPhase.roundsPlayed > 0 && (
-                <span style={{ fontSize: 9, color: "#ffffff22", fontFamily: "Consolas, monospace" }}>
-                  R{hud.roundPhase.roundsPlayed + 1}
-                </span>
+                <span className="text-[9px] text-white/15 font-mono">R{hud.roundPhase.roundsPlayed + 1}</span>
               )}
-              <span style={{ fontSize: 12, color: "#4a9eff", fontFamily: "Consolas, monospace" }}>
-                CT {hud.ct}
-                <span style={{ fontSize: 9, color: "#4a9eff55", marginLeft: 2 }}>({hud.ctAlive})</span>
+              <span className="text-xs font-mono" style={{ color: "#4a9eff" }}>
+                CT {hud.ct}<span className="text-[9px] ml-0.5 opacity-35">({hud.ctAlive})</span>
               </span>
-              <span style={{ fontSize: 12, color: "#e0b04b", fontFamily: "Consolas, monospace" }}>
-                T {hud.t}
-                <span style={{ fontSize: 9, color: "#e0b04b55", marginLeft: 2 }}>({hud.tAlive})</span>
+              <span className="text-xs font-mono text-warn">
+                T {hud.t}<span className="text-[9px] ml-0.5 opacity-35">({hud.tAlive})</span>
               </span>
-              <button
-                onClick={() => setShowScoreboard(v => !v)}
-                style={{
-                  background: "none", border: "1px solid #333", borderRadius: 3,
-                  color: "#666", fontSize: 10, padding: "2px 8px", cursor: "pointer",
-                  pointerEvents: "auto",
-                }}
-              >
+              <button onClick={() => setShowScoreboard(v => !v)} className="bg-transparent border border-frame rounded-sm text-text-faint text-[10px] px-2 py-0.5 cursor-pointer pointer-events-auto hover:border-accent-dim hover:text-text-muted transition-colors">
                 TAB
               </button>
             </>
@@ -1533,21 +1407,10 @@ function RadarCanvas() {
 
       {/* Center status message when not live */}
       {hud.status !== "live" && (
-        <div style={{
-          position: "absolute", inset: 0, zIndex: 5,
-          display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center",
-          pointerEvents: hud.status === "no_session" ? "auto" : "none",
-        }}>
-          <div style={{
-            padding: "20px 32px", background: "rgba(19,19,19,0.95)",
-            border: "1px solid #1e1e1e", borderRadius: 2, textAlign: "center",
-            maxWidth: 400,
-          }}>
-            <div style={{ fontSize: 14, color: sc.color, fontFamily: "Tahoma, sans-serif", fontWeight: "bold" }}>
-              {sc.label}
-            </div>
-            <div style={{ marginTop: 8, fontSize: 11, color: "#555", fontFamily: "Tahoma, sans-serif" }}>
+        <div className={`absolute inset-0 z-[5] flex flex-col items-center justify-center ${hud.status === "no_session" ? "pointer-events-auto" : "pointer-events-none"}`}>
+          <div className="gb p-5 text-center max-w-sm backdrop-blur-sm bg-surface/95">
+            <div className="text-sm font-bold font-ui" style={{ color: sc.color }}>{sc.label}</div>
+            <p className="mt-2 text-[11px] text-text-faint font-ui">
               {hud.status === "no_session" && "No active DLL session found for this link."}
               {hud.status === "stale" && "DLL stopped sending data. Session may have ended."}
               {hud.status === "waiting" && (hud.reason === "sdk_not_initialized"
@@ -1555,15 +1418,15 @@ function RadarCanvas() {
                 : "DLL connected — waiting for game to start...")}
               {hud.status === "connecting" && "Connecting to session..."}
               {hud.status === "error" && "Failed to reach the server."}
-            </div>
+            </p>
             {hud.status === "no_session" && (
-              <div style={{ marginTop: 12, textAlign: "left" }}>
-                <div style={{ fontSize: 10, color: "#444", fontFamily: "Consolas, monospace", marginBottom: 8 }}>
-                  Session: <span style={{ color: "#666" }}>{session}</span>
+              <div className="mt-3 text-left">
+                <div className="text-[10px] text-text-faint/60 font-mono mb-2">
+                  Session: <span className="text-text-muted">{session}</span>
                 </div>
-                <div style={{ fontSize: 10, color: "#555", lineHeight: 1.8, fontFamily: "Tahoma, sans-serif" }}>
+                <p className="text-[10px] text-text-faint leading-relaxed font-ui">
                   This usually means the DLL was restarted and generated a new session ID. Copy the new URL from the DLL&apos;s Web Radar panel.
-                </div>
+                </p>
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1575,31 +1438,16 @@ function RadarCanvas() {
                       if (m) window.location.href = `/web-radar?session=${m[1]}`;
                     }
                   }}
-                  style={{ display: "flex", gap: 6, marginTop: 12, alignItems: "center" }}
+                  className="flex gap-1.5 mt-3 items-center"
                 >
                   <input
                     type="text"
                     placeholder="Paste new session ID or URL..."
                     value={sessionInput}
                     onChange={(e) => setSessionInput(e.target.value)}
-                    style={{
-                      flex: 1, background: "#0d1117", border: "1px solid #1e1e1e",
-                      borderRadius: 3, padding: "6px 10px",
-                      color: "#dcdcdc", fontSize: 11, fontFamily: "Consolas, monospace",
-                      outline: "none",
-                    }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "#8e6ff744")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "#1e1e1e")}
+                    className="flex-1 bg-bg border border-border rounded px-2.5 py-1.5 text-text text-[11px] font-mono outline-none focus:border-accent-dim transition-colors"
                   />
-                  <button
-                    type="submit"
-                    style={{
-                      background: "#8e6ff722", border: "1px solid #8e6ff744",
-                      borderRadius: 3, padding: "6px 14px",
-                      color: "#8e6ff7", fontSize: 10, fontWeight: "bold", cursor: "pointer",
-                      letterSpacing: 1,
-                    }}
-                  >
+                  <button type="submit" className="bg-accent/15 border border-accent/30 rounded px-3.5 py-1.5 text-accent text-[10px] font-bold tracking-wide cursor-pointer hover:bg-accent/25 transition-colors">
                     GO
                   </button>
                 </form>
@@ -1611,45 +1459,35 @@ function RadarCanvas() {
 
       {/* Debug overlay (bottom-left) — toggle with D key */}
       {showDebug && (
-        <div style={{
-          position: "absolute", bottom: 28, left: 8, zIndex: 10,
-          fontSize: 9, color: "#444", fontFamily: "Consolas, monospace",
-          pointerEvents: "none", lineHeight: 1.6,
-          background: "rgba(0,0,0,0.6)", padding: "6px 8px", borderRadius: 2,
-          maxHeight: "40vh", overflowY: "auto",
-        }}>
-          <div style={{ color: "#666", marginBottom: 2 }}>-- debug (D to hide) --</div>
+        <div className="absolute bottom-7 left-2 z-10 text-[9px] text-text-faint/60 font-mono pointer-events-none leading-relaxed bg-black/60 p-1.5 rounded max-h-[40vh] overflow-y-auto">
+          <div className="text-text-muted mb-0.5">-- debug (D to hide) --</div>
           <div>polls: {hud.pollCount} | status: {hud.status}</div>
           {hud.reason && <div>reason: {hud.reason}</div>}
           {hud.age != null && <div>age: {Math.round(hud.age)}ms</div>}
           <div>session: {session?.slice(0, 8)}…</div>
           {hud.localPlayer && (
-            <div style={{ color: "#8e6ff7" }}>
+            <div className="text-accent">
               local: ({Math.round(hud.localPlayer.x)}, {Math.round(hud.localPlayer.y)}, {Math.round(hud.localPlayer.z)}) hp={hud.localPlayer.health} team={hud.localPlayer.team}
             </div>
           )}
           {hud.entityScan && (
-            <div>
-              entities: {hud.entityScan.added} found | {hud.entityScan.null} null | {hud.entityScan.noPawn} noPawn | {hud.entityScan.badPos ?? hud.entityScan.noTeam ?? 0} badPos
-            </div>
+            <div>entities: {hud.entityScan.added} found | {hud.entityScan.null} null | {hud.entityScan.noPawn} noPawn | {hud.entityScan.badPos ?? hud.entityScan.noTeam ?? 0} badPos</div>
           )}
           {hud.players && hud.players.length > 0 && (
             <div style={{ color: "#4a9eff" }}>
-              players({hud.players.length}): {hud.players.map((p, i) => `[${p.name}:t${p.team} (${Math.round(p.x)},${Math.round(p.y)}) hp${p.health}]`).join(" ")}
+              players({hud.players.length}): {hud.players.map((p) => `[${p.name}:t${p.team} (${Math.round(p.x)},${Math.round(p.y)}) hp${p.health}]`).join(" ")}
             </div>
           )}
           {hud.debug && (
-            <div style={{ maxWidth: 350, wordBreak: "break-all" }}>
-              sdk: {Object.entries(hud.debug).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(" ")}
-            </div>
+            <div className="max-w-[350px] break-all">sdk: {Object.entries(hud.debug).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(" ")}</div>
           )}
           {hud.bomb && (
-            <div style={{ color: hud.bomb.planted ? "#e03c3c" : "#e0b04b" }}>
+            <div className={hud.bomb.planted ? "text-bad" : "text-warn"}>
               bomb: ({Math.round(hud.bomb.x)}, {Math.round(hud.bomb.y)}, {Math.round(hud.bomb.z)}) {hud.bomb.planted ? "PLANTED" : "carried"}
             </div>
           )}
           {hud.entDebug && hud.entDebug.length > 0 && (
-            <div style={{ maxWidth: 400, wordBreak: "break-all", marginTop: 2, color: "#555" }}>
+            <div className="max-w-[400px] break-all mt-0.5 text-text-faint">
               ents: {hud.entDebug.map(e => `[${e.i}:ct${e.ct} pt${e.pt} h1=${e.h1} h2=${e.h2} pawn=${e.pawn}]`).join(" ")}
             </div>
           )}
@@ -1658,10 +1496,7 @@ function RadarCanvas() {
 
       {/* Compact player list (right side) */}
       {hud.status === "live" && hud.players && hud.players.length > 0 && !showScoreboard && (
-        <div className="radar-playerlist" style={{
-          position: "absolute", top: 44, right: 8, zIndex: 10,
-          pointerEvents: "none", fontFamily: "Tahoma, sans-serif",
-        }}>
+        <div className="radar-playerlist absolute top-11 right-2 z-10 pointer-events-none font-ui">
           {hud.players.filter(p => p.alive)
             .sort((a, b) => a.enemy === b.enemy ? (a.health ?? 0) - (b.health ?? 0) : a.enemy ? -1 : 1)
             .map((p, i) => {
@@ -1669,45 +1504,31 @@ function RadarCanvas() {
               ? COMP_COLORS[p.color]
               : (p.enemy ? "#e0656a" : "#4a9eff");
             return (
-            <div key={i} style={{
-              display: "flex", alignItems: "center", gap: 6, marginBottom: 3,
-              opacity: 0.8,
-            }}>
-              <span style={{
-                width: 3, height: 3, borderRadius: "50%",
-                background: pColor,
-                display: "inline-block", flexShrink: 0,
-              }} />
-              <div style={{ minWidth: 60 }}>
-                <div style={{ fontSize: 9, color: pColor + "99", display: "flex", alignItems: "center", gap: 3 }}>
+            <div key={i} className="flex items-center gap-1.5 mb-0.5 opacity-80">
+              <span className="w-[3px] h-[3px] rounded-full shrink-0" style={{ background: pColor }} />
+              <div className="min-w-[60px]">
+                <div className="text-[9px] flex items-center gap-1" style={{ color: pColor + "99" }}>
                   {p.name?.length > 10 ? p.name.slice(0, 10) + ".." : p.name}
                   {(p.hasBomb || p.weapon?.replace(/^weapon_/, "").toLowerCase() === "c4") && (
-                    <span style={{ fontSize: 7, color: "#e0b04b", fontWeight: "bold", background: "#e0b04b15", padding: "0 2px", borderRadius: 1 }}>C4</span>
+                    <span className="text-[7px] text-warn font-bold bg-warn/10 px-0.5 rounded-sm">C4</span>
                   )}
                 </div>
                 {p.weapon && (
-                  <div style={{ fontSize: 7, color: weaponColor(p.weapon), marginTop: -1 }}>
+                  <div className="text-[7px] -mt-px" style={{ color: weaponColor(p.weapon) }}>
                     {weaponDisplayName(p.weapon)}{p.scoped ? " [S]" : ""}{p.defusing ? " [DEF]" : ""}
                   </div>
                 )}
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                <div style={{
-                  width: 30, height: 3, background: "#1a1a1a", borderRadius: 1, overflow: "hidden",
-                }}>
-                  <div style={{
-                    width: `${p.health}%`, height: "100%",
-                    background: p.health > 50 ? "#5fc98a" : p.health > 25 ? "#e0b04b" : "#e0656a",
+              <div className="flex flex-col gap-px">
+                <div className="w-[30px] h-[3px] bg-surface-2 rounded-sm overflow-hidden">
+                  <div className="h-full rounded-sm" style={{
+                    width: `${p.health}%`,
+                    background: p.health > 50 ? "var(--color-ok)" : p.health > 25 ? "var(--color-warn)" : "var(--color-bad)",
                   }} />
                 </div>
                 {(p.armor ?? 0) > 0 && (
-                  <div style={{
-                    width: 30, height: 2, background: "#1a1a1a", borderRadius: 1, overflow: "hidden",
-                  }}>
-                    <div style={{
-                      width: `${p.armor}%`, height: "100%",
-                      background: "#4a9eff55",
-                    }} />
+                  <div className="w-[30px] h-[2px] bg-surface-2 rounded-sm overflow-hidden">
+                    <div className="h-full bg-blue-400/35 rounded-sm" style={{ width: `${p.armor}%` }} />
                   </div>
                 )}
               </div>
@@ -1721,23 +1542,13 @@ function RadarCanvas() {
       {showScoreboard && hud.status === "live" && (
         <div
           onClick={() => setShowScoreboard(false)}
-          style={{
-            position: "absolute", inset: 0, zIndex: 20,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: "rgba(10,14,20,0.85)", cursor: "pointer",
-          }}
+          className="absolute inset-0 z-20 flex items-center justify-center bg-bg/85 backdrop-blur-sm cursor-pointer"
         >
-          <div className="radar-scoreboard" style={{
-            background: "#111418", border: "1px solid #1e1e1e", borderRadius: 4,
-            minWidth: 340, maxWidth: 500, padding: "16px 0",
-            fontFamily: "Tahoma, Verdana, sans-serif",
-          }}>
-            <div style={{ textAlign: "center", marginBottom: 12 }}>
-              <div style={{ fontSize: 13, color: "#dcdcdc", fontWeight: "bold", letterSpacing: 1 }}>
-                {hud.mapDisplay}
-              </div>
+          <div className="radar-scoreboard gb rounded min-w-[340px] max-w-[500px] py-4 font-ui">
+            <div className="text-center mb-3">
+              <div className="text-[13px] text-text font-bold tracking-wide">{hud.mapDisplay}</div>
               {hud.roundPhase && (
-                <div style={{ fontSize: 9, color: "#55555588", fontFamily: "Consolas, monospace", marginTop: 2 }}>
+                <div className="text-[9px] text-text-faint/50 font-mono mt-0.5">
                   {hud.roundPhase.warmup ? "WARMUP" : hud.roundPhase.freeze ? "FREEZE TIME" : hud.roundPhase.roundsPlayed > 0 ? `Round ${hud.roundPhase.roundsPlayed + 1}` : ""}
                   {!hud.roundPhase.warmup && !hud.roundPhase.freeze && hud.roundPhase.roundStartTime && hud.roundPhase.roundTime && interpolatedCurtime && (() => {
                     const remaining = Math.max(0, hud.roundPhase!.roundTime! - (interpolatedCurtime! - hud.roundPhase!.roundStartTime!));
@@ -1746,15 +1557,15 @@ function RadarCanvas() {
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 4 }}>
-              <div style={{ textAlign: "center" }}>
-                <span style={{ fontSize: 18, fontWeight: "bold", color: "#4a9eff" }}>CT {hud.ct}</span>
-                <div style={{ fontSize: 9, color: "#4a9eff55" }}>{hud.ctAlive} alive</div>
+            <div className="flex justify-center gap-8 mb-1">
+              <div className="text-center">
+                <span className="text-lg font-bold" style={{ color: "#4a9eff" }}>CT {hud.ct}</span>
+                <div className="text-[9px] opacity-35" style={{ color: "#4a9eff" }}>{hud.ctAlive} alive</div>
               </div>
-              <span style={{ fontSize: 14, color: "#555", alignSelf: "center" }}>vs</span>
-              <div style={{ textAlign: "center" }}>
-                <span style={{ fontSize: 18, fontWeight: "bold", color: "#e0b04b" }}>T {hud.t}</span>
-                <div style={{ fontSize: 9, color: "#e0b04b55" }}>{hud.tAlive} alive</div>
+              <span className="text-sm text-text-faint self-center">vs</span>
+              <div className="text-center">
+                <span className="text-lg font-bold text-warn">T {hud.t}</span>
+                <div className="text-[9px] text-warn/35">{hud.tAlive} alive</div>
               </div>
             </div>
             {(() => {
@@ -1768,27 +1579,27 @@ function RadarCanvas() {
               const tAvg = tAliveList.length > 0 ? tMoney / tAliveList.length : 0;
               const buyColor = (avg: number) => avg >= 4000 ? "#5fc98a55" : avg >= 2000 ? "#e0b04b55" : "#e0656a55";
               return (ctMoney > 0 || tMoney > 0) ? (
-                <div style={{ display: "flex", justifyContent: "center", gap: 24, marginBottom: 12, alignItems: "center" }}>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 10, color: "#4a9eff55", fontFamily: "Consolas, monospace" }}>${ctMoney.toLocaleString()}</div>
-                    <div style={{ fontSize: 7, color: buyColor(ctAvg), fontFamily: "Consolas, monospace", letterSpacing: 1 }}>{buyType(ctAvg)}</div>
+                <div className="flex justify-center gap-6 mb-3 items-center">
+                  <div className="text-center">
+                    <div className="text-[10px] font-mono opacity-35" style={{ color: "#4a9eff" }}>${ctMoney.toLocaleString()}</div>
+                    <div className="text-[7px] font-mono tracking-wide" style={{ color: buyColor(ctAvg) }}>{buyType(ctAvg)}</div>
                   </div>
-                  <span style={{ fontSize: 10, color: "#5fc98a22", fontFamily: "Consolas, monospace" }}>economy</span>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 10, color: "#e0b04b55", fontFamily: "Consolas, monospace" }}>${tMoney.toLocaleString()}</div>
-                    <div style={{ fontSize: 7, color: buyColor(tAvg), fontFamily: "Consolas, monospace", letterSpacing: 1 }}>{buyType(tAvg)}</div>
+                  <span className="text-[10px] font-mono text-ok/15">economy</span>
+                  <div className="text-center">
+                    <div className="text-[10px] font-mono text-warn/35">${tMoney.toLocaleString()}</div>
+                    <div className="text-[7px] font-mono tracking-wide" style={{ color: buyColor(tAvg) }}>{buyType(tAvg)}</div>
                   </div>
                 </div>
-              ) : <div style={{ marginBottom: 8 }} />;
+              ) : <div className="mb-2" />;
             })()}
             {/* CT players */}
-            <div style={{ padding: "0 16px", marginBottom: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
-                <span style={{ fontSize: 9, color: "#4a9eff88", letterSpacing: 1, flex: 1 }}>COUNTER-TERRORISTS</span>
-                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 40, textAlign: "center" }}>K/D/A</span>
-                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 20, textAlign: "center" }}>MVP</span>
-                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 28, textAlign: "right" }}>PING</span>
-                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 42, textAlign: "right" }}>HP</span>
+            <div className="px-4 mb-2">
+              <div className="flex items-center mb-1">
+                <span className="text-[9px] tracking-wide flex-1 opacity-55" style={{ color: "#4a9eff" }}>COUNTER-TERRORISTS</span>
+                <span className="text-[7px] font-mono text-white/10 min-w-[40px] text-center">K/D/A</span>
+                <span className="text-[7px] font-mono text-white/10 min-w-[20px] text-center">MVP</span>
+                <span className="text-[7px] font-mono text-white/10 min-w-[28px] text-right">PING</span>
+                <span className="text-[7px] font-mono text-white/10 min-w-[42px] text-right">HP</span>
               </div>
               {[...(hud.localPlayer?.team === 3 ? [{
                 ...hud.localPlayer, name: "You", enemy: false,
@@ -1799,65 +1610,42 @@ function RadarCanvas() {
                 const dotColor = (p.color != null && p.color >= 0 && p.color < COMP_COLORS.length)
                   ? COMP_COLORS[p.color] : "#4a9eff";
                 return (
-                <div key={`ct-${i}`} style={{
-                  display: "flex", alignItems: "center", gap: 8, padding: "3px 0",
-                  opacity: p.alive ? 1 : 0.35,
-                }}>
-                  <span style={{
-                    width: 4, height: 4, borderRadius: "50%",
-                    background: p.alive ? dotColor : "#333",
-                    display: "inline-block", flexShrink: 0,
-                  }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, color: "#dcdcdc", display: "flex", gap: 4, alignItems: "center" }}>
+                <div key={`ct-${i}`} className={`flex items-center gap-2 py-0.5 ${p.alive ? "opacity-100" : "opacity-35"}`}>
+                  <span className="w-1 h-1 rounded-full shrink-0" style={{ background: p.alive ? dotColor : "var(--color-frame)" }} />
+                  <div className="flex-1">
+                    <div className="text-[11px] text-text flex gap-1 items-center">
                       {p.name}
-                      {p.helmet && <span style={{ fontSize: 7, color: "#4a9eff55" }}>H</span>}
-                      {p.defuser && <span style={{ fontSize: 7, color: "#5fc98a55" }}>D</span>}
+                      {p.helmet && <span className="text-[7px] opacity-35" style={{ color: "#4a9eff" }}>H</span>}
+                      {p.defuser && <span className="text-[7px] text-ok/35">D</span>}
                     </div>
-                    {p.alive && p.weapon && (
-                      <div style={{ fontSize: 8, color: "#777", marginTop: -1 }}>{weaponDisplayName(p.weapon)}</div>
-                    )}
+                    {p.alive && p.weapon && <div className="text-[8px] text-text-muted -mt-px">{weaponDisplayName(p.weapon)}</div>}
                   </div>
                   {(p.kills != null || p.deaths != null) && (
-                    <div style={{ textAlign: "center", minWidth: 40, fontFamily: "Consolas, monospace", fontSize: 9, color: "#aaa" }}>
-                      {p.kills ?? 0}/{p.deaths ?? 0}/{p.assists ?? 0}
-                    </div>
+                    <div className="text-center min-w-[40px] font-mono text-[9px] text-text-muted">{p.kills ?? 0}/{p.deaths ?? 0}/{p.assists ?? 0}</div>
                   )}
-                  <div style={{ textAlign: "center", minWidth: 20, fontFamily: "Consolas, monospace", fontSize: 8, color: (p.mvps ?? 0) > 0 ? "#e0b04b88" : "#ffffff0a" }}>
+                  <div className={`text-center min-w-[20px] font-mono text-[8px] ${(p.mvps ?? 0) > 0 ? "text-warn/55" : "text-white/5"}`}>
                     {(p.mvps ?? 0) > 0 ? `★${p.mvps}` : "—"}
                   </div>
                   {p.ping != null && p.ping > 0 && (
-                    <div style={{ textAlign: "right", minWidth: 28, fontFamily: "Consolas, monospace", fontSize: 8, color: p.ping < 80 ? "#5fc98a55" : p.ping < 150 ? "#e0b04b55" : "#e0656a55" }}>
-                      {p.ping}ms
-                    </div>
+                    <div className={`text-right min-w-[28px] font-mono text-[8px] ${p.ping < 80 ? "text-ok/35" : p.ping < 150 ? "text-warn/35" : "text-bad/35"}`}>{p.ping}ms</div>
                   )}
-                  <div style={{ textAlign: "right", minWidth: 42 }}>
-                    <div style={{ fontSize: 10, color: p.alive ? "#4a9eff" : "#555", fontFamily: "Consolas, monospace" }}>
-                      {p.alive ? `${p.health}hp` : "DEAD"}
-                    </div>
-                    {p.alive && (p.armor ?? 0) > 0 && (
-                      <div style={{ fontSize: 8, color: "#4a9eff55", fontFamily: "Consolas, monospace" }}>
-                        {p.armor}ap
-                      </div>
-                    )}
-                    {p.alive && (p.money ?? 0) > 0 && (
-                      <div style={{ fontSize: 8, color: "#5fc98a44", fontFamily: "Consolas, monospace" }}>
-                        ${p.money}
-                      </div>
-                    )}
+                  <div className="text-right min-w-[42px]">
+                    <div className="text-[10px] font-mono" style={{ color: p.alive ? "#4a9eff" : "var(--color-text-faint)" }}>{p.alive ? `${p.health}hp` : "DEAD"}</div>
+                    {p.alive && (p.armor ?? 0) > 0 && <div className="text-[8px] font-mono opacity-35" style={{ color: "#4a9eff" }}>{p.armor}ap</div>}
+                    {p.alive && (p.money ?? 0) > 0 && <div className="text-[8px] font-mono text-ok/30">${p.money}</div>}
                   </div>
                 </div>
               );
               })}
             </div>
             {/* T players */}
-            <div style={{ padding: "0 16px" }}>
-              <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
-                <span style={{ fontSize: 9, color: "#e0b04b88", letterSpacing: 1, flex: 1 }}>TERRORISTS</span>
-                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 40, textAlign: "center" }}>K/D/A</span>
-                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 20, textAlign: "center" }}>MVP</span>
-                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 28, textAlign: "right" }}>PING</span>
-                <span style={{ fontSize: 7, color: "#ffffff15", fontFamily: "Consolas, monospace", minWidth: 42, textAlign: "right" }}>HP</span>
+            <div className="px-4">
+              <div className="flex items-center mb-1">
+                <span className="text-[9px] tracking-wide flex-1 text-warn/55">TERRORISTS</span>
+                <span className="text-[7px] font-mono text-white/10 min-w-[40px] text-center">K/D/A</span>
+                <span className="text-[7px] font-mono text-white/10 min-w-[20px] text-center">MVP</span>
+                <span className="text-[7px] font-mono text-white/10 min-w-[28px] text-right">PING</span>
+                <span className="text-[7px] font-mono text-white/10 min-w-[42px] text-right">HP</span>
               </div>
               {[...(hud.localPlayer?.team === 2 ? [{
                 ...hud.localPlayer, name: "You", enemy: false,
@@ -1868,62 +1656,37 @@ function RadarCanvas() {
                 const dotColor = (p.color != null && p.color >= 0 && p.color < COMP_COLORS.length)
                   ? COMP_COLORS[p.color] : "#e0b04b";
                 return (
-                <div key={`t-${i}`} style={{
-                  display: "flex", alignItems: "center", gap: 8, padding: "3px 0",
-                  opacity: p.alive ? 1 : 0.35,
-                }}>
-                  <span style={{
-                    width: 4, height: 4, borderRadius: "50%",
-                    background: p.alive ? dotColor : "#333",
-                    display: "inline-block", flexShrink: 0,
-                  }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, color: "#dcdcdc", display: "flex", gap: 4, alignItems: "center" }}>
+                <div key={`t-${i}`} className={`flex items-center gap-2 py-0.5 ${p.alive ? "opacity-100" : "opacity-35"}`}>
+                  <span className="w-1 h-1 rounded-full shrink-0" style={{ background: p.alive ? dotColor : "var(--color-frame)" }} />
+                  <div className="flex-1">
+                    <div className="text-[11px] text-text flex gap-1 items-center">
                       {p.name}
-                      {p.helmet && <span style={{ fontSize: 7, color: "#e0b04b55" }}>H</span>}
+                      {p.helmet && <span className="text-[7px] text-warn/35">H</span>}
                       {p.alive && (p.hasBomb || p.weapon?.replace(/^weapon_/, "").toLowerCase() === "c4") && (
-                        <span style={{ fontSize: 7, color: "#e0b04b", fontWeight: "bold", background: "#e0b04b22", padding: "0 3px", borderRadius: 2 }}>C4</span>
+                        <span className="text-[7px] text-warn font-bold bg-warn/15 px-0.5 rounded-sm">C4</span>
                       )}
                     </div>
-                    {p.alive && p.weapon && (
-                      <div style={{ fontSize: 8, color: "#777", marginTop: -1 }}>{weaponDisplayName(p.weapon)}</div>
-                    )}
+                    {p.alive && p.weapon && <div className="text-[8px] text-text-muted -mt-px">{weaponDisplayName(p.weapon)}</div>}
                   </div>
                   {(p.kills != null || p.deaths != null) && (
-                    <div style={{ textAlign: "center", minWidth: 40, fontFamily: "Consolas, monospace", fontSize: 9, color: "#aaa" }}>
-                      {p.kills ?? 0}/{p.deaths ?? 0}/{p.assists ?? 0}
-                    </div>
+                    <div className="text-center min-w-[40px] font-mono text-[9px] text-text-muted">{p.kills ?? 0}/{p.deaths ?? 0}/{p.assists ?? 0}</div>
                   )}
-                  <div style={{ textAlign: "center", minWidth: 20, fontFamily: "Consolas, monospace", fontSize: 8, color: (p.mvps ?? 0) > 0 ? "#e0b04b88" : "#ffffff0a" }}>
+                  <div className={`text-center min-w-[20px] font-mono text-[8px] ${(p.mvps ?? 0) > 0 ? "text-warn/55" : "text-white/5"}`}>
                     {(p.mvps ?? 0) > 0 ? `★${p.mvps}` : "—"}
                   </div>
                   {p.ping != null && p.ping > 0 && (
-                    <div style={{ textAlign: "right", minWidth: 28, fontFamily: "Consolas, monospace", fontSize: 8, color: p.ping < 80 ? "#5fc98a55" : p.ping < 150 ? "#e0b04b55" : "#e0656a55" }}>
-                      {p.ping}ms
-                    </div>
+                    <div className={`text-right min-w-[28px] font-mono text-[8px] ${p.ping < 80 ? "text-ok/35" : p.ping < 150 ? "text-warn/35" : "text-bad/35"}`}>{p.ping}ms</div>
                   )}
-                  <div style={{ textAlign: "right", minWidth: 42 }}>
-                    <div style={{ fontSize: 10, color: p.alive ? "#e0b04b" : "#555", fontFamily: "Consolas, monospace" }}>
-                      {p.alive ? `${p.health}hp` : "DEAD"}
-                    </div>
-                    {p.alive && (p.armor ?? 0) > 0 && (
-                      <div style={{ fontSize: 8, color: "#e0b04b55", fontFamily: "Consolas, monospace" }}>
-                        {p.armor}ap
-                      </div>
-                    )}
-                    {p.alive && (p.money ?? 0) > 0 && (
-                      <div style={{ fontSize: 8, color: "#5fc98a44", fontFamily: "Consolas, monospace" }}>
-                        ${p.money}
-                      </div>
-                    )}
+                  <div className="text-right min-w-[42px]">
+                    <div className="text-[10px] font-mono" style={{ color: p.alive ? "var(--color-warn)" : "var(--color-text-faint)" }}>{p.alive ? `${p.health}hp` : "DEAD"}</div>
+                    {p.alive && (p.armor ?? 0) > 0 && <div className="text-[8px] font-mono text-warn/35">{p.armor}ap</div>}
+                    {p.alive && (p.money ?? 0) > 0 && <div className="text-[8px] font-mono text-ok/30">${p.money}</div>}
                   </div>
                 </div>
               );
               })}
             </div>
-            <div style={{ textAlign: "center", marginTop: 12, fontSize: 9, color: "#333" }}>
-              Tab or tap to close
-            </div>
+            <div className="text-center mt-3 text-[9px] text-border">Tab or tap to close</div>
           </div>
         </div>
       )}
@@ -1937,57 +1700,28 @@ function RadarCanvas() {
           ? Math.max(0, hud.bomb.defuseEnd - interpolatedCurtime)
           : null;
         return (
-          <div className="radar-bombbanner" style={{
-            position: "absolute", top: 40, left: "50%", transform: "translateX(-50%)", zIndex: 15,
-            padding: "4px 20px 6px", pointerEvents: "none",
-            background: "rgba(224,60,60,0.15)", border: "1px solid rgba(224,60,60,0.3)",
-            borderRadius: 2, fontFamily: "Tahoma, sans-serif",
-            animation: "bombPulse 1s ease-in-out infinite alternate",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-            minWidth: 200,
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 11, fontWeight: "bold", color: "#e03c3c", letterSpacing: 2 }}>
+          <div className="radar-bombbanner absolute top-10 left-1/2 -translate-x-1/2 z-[15] px-5 py-1 pb-1.5 pointer-events-none bg-bad/15 border border-bad/30 rounded-sm font-ui flex flex-col items-center gap-1 min-w-[200px]" style={{ animation: "bombPulse 1s ease-in-out infinite alternate" }}>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-bold text-bad tracking-[2px]">
                 BOMB PLANTED{hud.bomb.site ? ` ${hud.bomb.site}` : ""}
               </span>
               {remaining != null && remaining > 0 && (
-                <span style={{
-                  fontSize: 14, fontWeight: "bold",
-                  color: remaining < 10 ? "#e03c3c" : "#e0b04b",
-                  fontFamily: "Consolas, monospace",
-                }}>
-                  {remaining.toFixed(1)}s
-                </span>
+                <span className={`text-sm font-bold font-mono ${remaining < 10 ? "text-bad" : "text-warn"}`}>{remaining.toFixed(1)}s</span>
               )}
               {defuseRemaining != null && (
-                <span style={{
-                  fontSize: 10, fontFamily: "Consolas, monospace",
-                  color: "#5fc98a", letterSpacing: 1,
-                }}>
-                  DEF {defuseRemaining.toFixed(1)}s
-                </span>
+                <span className="text-[10px] font-mono text-ok tracking-wide">DEF {defuseRemaining.toFixed(1)}s</span>
               )}
             </div>
             {remaining != null && remaining > 0 && (
-              <div style={{
-                width: "100%", height: 3, background: "rgba(224,60,60,0.15)",
-                borderRadius: 1, overflow: "hidden", position: "relative",
-              }}>
-                <div style={{
-                  width: `${Math.min(remaining / (hud.bomb.timerLength && hud.bomb.timerLength > 0 ? hud.bomb.timerLength : 40) * 100, 100)}%`, height: "100%",
-                  background: remaining < 10
-                    ? "linear-gradient(90deg, #e03c3c, #ff4444)"
-                    : "linear-gradient(90deg, #e0b04b, #e0656a)",
-                  borderRadius: 1,
-                  transition: "width 0.2s linear",
+              <div className="w-full h-[3px] bg-bad/15 rounded-sm overflow-hidden relative">
+                <div className="h-full rounded-sm transition-[width] duration-200 ease-linear" style={{
+                  width: `${Math.min(remaining / (hud.bomb.timerLength && hud.bomb.timerLength > 0 ? hud.bomb.timerLength : 40) * 100, 100)}%`,
+                  background: remaining < 10 ? "linear-gradient(90deg, var(--color-bad), #ff4444)" : "linear-gradient(90deg, var(--color-warn), var(--color-bad))",
                 }} />
                 {defuseRemaining != null && remaining != null && remaining > 0 && (
-                  <div style={{
-                    position: "absolute", top: 0, left: 0,
-                    width: `${Math.min(defuseRemaining / remaining * 100, 100)}%`, height: "100%",
-                    background: defuseRemaining <= remaining ? "#5fc98a" : "#e0b04b",
-                    borderRadius: 1,
-                    transition: "width 0.2s linear",
+                  <div className="absolute top-0 left-0 h-full rounded-sm transition-[width] duration-200 ease-linear" style={{
+                    width: `${Math.min(defuseRemaining / remaining * 100, 100)}%`,
+                    background: defuseRemaining <= remaining ? "var(--color-ok)" : "var(--color-warn)",
                   }} />
                 )}
               </div>
@@ -1997,94 +1731,52 @@ function RadarCanvas() {
       })()}
 
       {/* Zoom controls (bottom-right) */}
-      <div style={{
-        position: "absolute", bottom: 28, right: 12, zIndex: 10,
-        fontFamily: "Consolas, monospace", fontSize: 10,
-        display: "flex", alignItems: "center", gap: 6,
-      }}>
+      <div className="absolute bottom-7 right-3 z-10 font-mono text-[10px] flex items-center gap-1.5">
         <button
           aria-label="Zoom out"
-          onClick={() => {
-            zoomRef.current = Math.max(zoomRef.current / 1.3, 0.4);
-            setZoomDisplay(Math.round(zoomRef.current * 100));
-          }}
-          style={{
-            background: "none", border: "1px solid #ffffff15", borderRadius: 2,
-            color: "#ffffff33", fontSize: 14, width: 22, height: 22, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
-          }}
-        >
-          -
-        </button>
-        <span style={{ color: "#ffffff22", minWidth: 32, textAlign: "center", pointerEvents: "none" }}>
-          {zoomDisplay}%
-        </span>
+          onClick={() => { zoomRef.current = Math.max(zoomRef.current / 1.3, 0.4); setZoomDisplay(Math.round(zoomRef.current * 100)); }}
+          className="bg-transparent border border-white/10 rounded-sm text-white/20 text-sm w-[22px] h-[22px] cursor-pointer flex items-center justify-center p-0 hover:border-white/25 hover:text-white/40 transition-colors"
+        >-</button>
+        <span className="text-white/15 min-w-[32px] text-center pointer-events-none">{zoomDisplay}%</span>
         <button
           aria-label="Zoom in"
-          onClick={() => {
-            zoomRef.current = Math.min(zoomRef.current * 1.3, 4.0);
-            setZoomDisplay(Math.round(zoomRef.current * 100));
-          }}
-          style={{
-            background: "none", border: "1px solid #ffffff15", borderRadius: 2,
-            color: "#ffffff33", fontSize: 14, width: 22, height: 22, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
-          }}
-        >
-          +
-        </button>
+          onClick={() => { zoomRef.current = Math.min(zoomRef.current * 1.3, 4.0); setZoomDisplay(Math.round(zoomRef.current * 100)); }}
+          className="bg-transparent border border-white/10 rounded-sm text-white/20 text-sm w-[22px] h-[22px] cursor-pointer flex items-center justify-center p-0 hover:border-white/25 hover:text-white/40 transition-colors"
+        >+</button>
       </div>
 
       {/* Bottom bar */}
-      <div style={{
-        position: "absolute", bottom: 8, left: 0, right: 0,
-        textAlign: "center", pointerEvents: "none", zIndex: 10,
-        color: "#ffffff15", fontSize: 10, letterSpacing: 2,
-        fontFamily: "Tahoma, sans-serif",
-      }}>
+      <div className="absolute bottom-2 left-0 right-0 text-center pointer-events-none z-10 text-white/10 text-[10px] tracking-[2px] font-ui">
         gamesense.cloud
         {(hud.map === "DE_NUKE" || hud.map === "DE_VERTIGO") && (
-          <span style={{ color: showLower ? "#e0b04b44" : "#4a9eff44", marginLeft: 12, cursor: "pointer", pointerEvents: "auto" }}
-            onClick={() => setShowLower(v => !v)}>
+          <span className={`ml-3 cursor-pointer pointer-events-auto ${showLower ? "text-warn/25" : "text-blue-400/25"}`} onClick={() => setShowLower(v => !v)}>
             [N] {showLower ? "LOWER" : "UPPER"}
           </span>
         )}
-        {!showDebug && <span style={{ color: "#ffffff0a", marginLeft: 12 }}>[D] debug &middot; [F] follow &middot; [?] help</span>}
+        {!showDebug && <span className="ml-3 text-white/5">[D] debug &middot; [F] follow &middot; [?] help</span>}
       </div>
 
       {/* Flash overlay when local player is flashed */}
       {flashOverlay > 0 && (
-        <div style={{
-          position: "absolute", inset: 0, zIndex: 25,
-          background: `rgba(255,255,255,${flashOverlay.toFixed(2)})`,
-          pointerEvents: "none",
-          transition: "background 0.15s ease-out",
-        }} />
+        <div className="absolute inset-0 z-[25] pointer-events-none transition-[background] duration-150 ease-out" style={{ background: `rgba(255,255,255,${flashOverlay.toFixed(2)})` }} />
       )}
 
       {/* Kill feed (top-left, below HUD bar) */}
       {killFeed.length > 0 && hud.status === "live" && !showScoreboard && (
-        <div style={{
-          position: "absolute", top: 44, left: 8, zIndex: 12,
-          pointerEvents: "none", fontFamily: "Tahoma, sans-serif",
-        }}>
+        <div className="absolute top-11 left-2 z-[12] pointer-events-none font-ui">
           {killFeed.map((k, i) => {
             const age = Date.now() - k.time;
             const opacity = age > 6000 ? Math.max(0, 1 - (age - 6000) / 2000) : 1;
-            const killerColor = k.killerTeam === 3 ? "#4a9eff" : k.killerTeam === 2 ? "#e0b04b" : "#aaa";
-            const victimColor = k.victimTeam === 3 ? "#4a9eff" : k.victimTeam === 2 ? "#e0b04b" : "#aaa";
+            const killerColor = k.killerTeam === 3 ? "#4a9eff" : k.killerTeam === 2 ? "var(--color-warn)" : "var(--color-text-muted)";
+            const victimColor = k.victimTeam === 3 ? "#4a9eff" : k.victimTeam === 2 ? "var(--color-warn)" : "var(--color-text-muted)";
             const weaponClean = k.weapon.replace("weapon_", "");
             return (
-              <div key={`${k.killer}-${k.victim}-${k.time}-${i}`} style={{
-                fontSize: 10, marginBottom: 2, opacity,
-                display: "flex", alignItems: "center", gap: 3,
-                background: "rgba(10,14,20,0.6)", padding: "1px 6px", borderRadius: 3,
-              }}>
-                <span style={{ color: killerColor, fontWeight: 600 }}>{k.killer}</span>
-                <span style={{ color: "#666", fontSize: 8 }}>{weaponClean}</span>
-                {k.headshot && <span style={{ color: "#e0656a", fontSize: 8 }} title="Headshot">HS</span>}
-                <span style={{ color: "#e0656a", fontSize: 9 }}>&#x2192;</span>
-                <span style={{ color: victimColor, fontWeight: 600 }}>{k.victim}</span>
+              <div key={`${k.killer}-${k.victim}-${k.time}-${i}`} className="text-[10px] mb-0.5 flex items-center gap-1 bg-bg/60 px-1.5 py-px rounded" style={{ opacity }}>
+                <span className="font-semibold" style={{ color: killerColor }}>{k.killer}</span>
+                <span className="text-[8px] text-text-muted">{weaponClean}</span>
+                {k.headshot && <span className="text-[8px] text-bad" title="Headshot">HS</span>}
+                <span className="text-[9px] text-bad">&#x2192;</span>
+                <span className="font-semibold" style={{ color: victimColor }}>{k.victim}</span>
               </div>
             );
           })}
@@ -2093,22 +1785,9 @@ function RadarCanvas() {
 
       {/* Help overlay */}
       {showHelp && (
-        <div
-          onClick={() => setShowHelp(false)}
-          style={{
-            position: "absolute", inset: 0, zIndex: 30,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: "rgba(10,14,20,0.9)", cursor: "pointer",
-          }}
-        >
-          <div style={{
-            background: "#111418", border: "1px solid #1e1e1e", borderRadius: 4,
-            padding: "20px 28px", fontFamily: "Tahoma, Verdana, sans-serif",
-            minWidth: 260, maxWidth: 340,
-          }}>
-            <div style={{ fontSize: 13, color: "#8e6ff7", fontWeight: "bold", marginBottom: 14, letterSpacing: 1 }}>
-              KEYBOARD SHORTCUTS
-            </div>
+        <div onClick={() => setShowHelp(false)} className="absolute inset-0 z-30 flex items-center justify-center bg-bg/90 backdrop-blur-sm cursor-pointer">
+          <div className="gb rounded p-5 font-ui min-w-[260px] max-w-[340px]">
+            <div className="text-[13px] text-accent font-bold mb-3.5 tracking-wide">KEYBOARD SHORTCUTS</div>
             {[
               { key: "Tab", desc: "Scoreboard" },
               { key: "D", desc: "Debug overlay" },
@@ -2120,54 +1799,36 @@ function RadarCanvas() {
               { key: "R", desc: "Reset zoom & pan" },
               { key: "H / ?", desc: "This help" },
             ].map(s => (
-              <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-                <span style={{
-                  fontSize: 10, color: "#dcdcdc", fontFamily: "Consolas, monospace",
-                  background: "#1a1a1a", border: "1px solid #333", borderRadius: 3,
-                  padding: "2px 8px", minWidth: 50, textAlign: "center",
-                }}>
-                  {s.key}
-                </span>
-                <span style={{ fontSize: 11, color: "#888" }}>{s.desc}</span>
+              <div key={s.key} className="flex items-center gap-3 mb-1.5">
+                <span className="text-[10px] text-text font-mono bg-surface-2 border border-frame rounded px-2 py-0.5 min-w-[50px] text-center">{s.key}</span>
+                <span className="text-[11px] text-text-muted">{s.desc}</span>
               </div>
             ))}
-            <div style={{ marginTop: 12, borderTop: "1px solid #1e1e1e", paddingTop: 10 }}>
+            <div className="mt-3 border-t border-border pt-2.5">
               {[
                 { key: "Scroll", desc: "Zoom in/out" },
                 { key: "Drag", desc: "Pan the map" },
                 { key: "Dbl-click", desc: "Reset view" },
                 { key: "Hover", desc: "Player tooltip" },
               ].map(s => (
-                <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
-                  <span style={{
-                    fontSize: 9, color: "#999", fontFamily: "Consolas, monospace",
-                    minWidth: 60,
-                  }}>
-                    {s.key}
-                  </span>
-                  <span style={{ fontSize: 10, color: "#555" }}>{s.desc}</span>
+                <div key={s.key} className="flex items-center gap-3 mb-1">
+                  <span className="text-[9px] text-text-muted font-mono min-w-[60px]">{s.key}</span>
+                  <span className="text-[10px] text-text-faint">{s.desc}</span>
                 </div>
               ))}
             </div>
-            <div style={{ textAlign: "center", marginTop: 12, fontSize: 9, color: "#333" }}>
-              Click or press H to close
-            </div>
+            <div className="text-center mt-3 text-[9px] text-border">Click or press H to close</div>
           </div>
         </div>
       )}
 
       {/* Mode indicators */}
       {hud.status === "live" && (
-        <div style={{
-          position: "absolute", bottom: 44, right: 12, zIndex: 10,
-          pointerEvents: "none", fontFamily: "Consolas, monospace",
-          fontSize: 9, letterSpacing: 1,
-          display: "flex", gap: 8,
-        }}>
-          {followMode && <span style={{ color: "#8e6ff744" }}>FOLLOW</span>}
-          {!showNames && <span style={{ color: "#e0656a44" }}>NAMES OFF</span>}
-          {!showHealth && <span style={{ color: "#e0656a44" }}>HP OFF</span>}
-          {!showVelocity && <span style={{ color: "#e0656a44" }}>VEL OFF</span>}
+        <div className="absolute bottom-11 right-3 z-10 pointer-events-none font-mono text-[9px] tracking-wide flex gap-2">
+          {followMode && <span className="text-accent/25">FOLLOW</span>}
+          {!showNames && <span className="text-bad/25">NAMES OFF</span>}
+          {!showHealth && <span className="text-bad/25">HP OFF</span>}
+          {!showVelocity && <span className="text-bad/25">VEL OFF</span>}
         </div>
       )}
 
@@ -2184,74 +1845,55 @@ function RadarCanvas() {
           ? Math.max(4, vh - ttH - 4)
           : hoveredPlayer.sy - 8;
         return (
-        <div style={{
-          position: "absolute",
-          left: ttLeft,
-          top: ttTop,
-          zIndex: 30,
-          pointerEvents: "none",
-          background: "rgba(17,20,24,0.95)",
-          border: "1px solid #2a2a2a",
-          borderRadius: 3,
-          padding: "8px 12px",
-          fontFamily: "Tahoma, Verdana, sans-serif",
-          minWidth: 120,
-          maxWidth: 200,
-        }}>
-          <div style={{
-            fontSize: 11, fontWeight: "bold", marginBottom: 4,
-            color: hoveredPlayer.isLocal ? "#a086ff" : hoveredPlayer.player.enemy ? "#e0656a" : "#4a9eff",
-          }}>
+        <div className="absolute z-30 pointer-events-none bg-surface/95 border border-border rounded px-3 py-2 font-ui min-w-[120px] max-w-[200px] backdrop-blur-sm" style={{ left: ttLeft, top: ttTop }}>
+          <div className="text-[11px] font-bold mb-1" style={{ color: hoveredPlayer.isLocal ? "var(--color-accent)" : hoveredPlayer.player.enemy ? "var(--color-bad)" : "#4a9eff" }}>
             {hoveredPlayer.player.name || "Unknown"}
-            {hoveredPlayer.isLocal && <span style={{ color: "#666", fontWeight: "normal", marginLeft: 4, fontSize: 9 }}>YOU</span>}
+            {hoveredPlayer.isLocal && <span className="text-text-faint font-normal ml-1 text-[9px]">YOU</span>}
           </div>
-          <div style={{ display: "flex", gap: 12, fontSize: 10 }}>
+          <div className="flex gap-3 text-[10px]">
             <div>
-              <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>HP</div>
-              <div style={{
-                color: (hoveredPlayer.player.health ?? 0) > 60 ? "#5fc98a" : (hoveredPlayer.player.health ?? 0) > 25 ? "#e0b04b" : "#e0656a",
-                fontFamily: "Consolas, monospace",
-              }}>
+              <div className="text-text-faint text-[8px] mb-px">HP</div>
+              <div className="font-mono" style={{ color: (hoveredPlayer.player.health ?? 0) > 60 ? "var(--color-ok)" : (hoveredPlayer.player.health ?? 0) > 25 ? "var(--color-warn)" : "var(--color-bad)" }}>
                 {hoveredPlayer.player.health}
               </div>
             </div>
             {(hoveredPlayer.player.armor ?? 0) > 0 && (
               <div>
-                <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>AP</div>
-                <div style={{ color: "#4a9eff88", fontFamily: "Consolas, monospace" }}>{hoveredPlayer.player.armor}</div>
+                <div className="text-text-faint text-[8px] mb-px">AP</div>
+                <div className="font-mono text-[#4a9eff88]">{hoveredPlayer.player.armor}</div>
               </div>
             )}
             {(hoveredPlayer.player.money ?? 0) > 0 && (
               <div>
-                <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>$</div>
-                <div style={{ color: "#5fc98a88", fontFamily: "Consolas, monospace" }}>${hoveredPlayer.player.money}</div>
+                <div className="text-text-faint text-[8px] mb-px">$</div>
+                <div className="font-mono text-ok/50">${hoveredPlayer.player.money}</div>
               </div>
             )}
           </div>
           {(hoveredPlayer.player.kills != null || hoveredPlayer.player.deaths != null) && (
-            <div style={{ display: "flex", gap: 12, fontSize: 10, marginTop: 4 }}>
+            <div className="flex gap-3 text-[10px] mt-1">
               <div>
-                <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>K</div>
-                <div style={{ color: "#dcdcdc", fontFamily: "Consolas, monospace" }}>{hoveredPlayer.player.kills ?? 0}</div>
+                <div className="text-text-faint text-[8px] mb-px">K</div>
+                <div className="text-text font-mono">{hoveredPlayer.player.kills ?? 0}</div>
               </div>
               <div>
-                <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>D</div>
-                <div style={{ color: "#dcdcdc", fontFamily: "Consolas, monospace" }}>{hoveredPlayer.player.deaths ?? 0}</div>
+                <div className="text-text-faint text-[8px] mb-px">D</div>
+                <div className="text-text font-mono">{hoveredPlayer.player.deaths ?? 0}</div>
               </div>
               <div>
-                <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>A</div>
-                <div style={{ color: "#dcdcdc", fontFamily: "Consolas, monospace" }}>{hoveredPlayer.player.assists ?? 0}</div>
+                <div className="text-text-faint text-[8px] mb-px">A</div>
+                <div className="text-text font-mono">{hoveredPlayer.player.assists ?? 0}</div>
               </div>
               {(hoveredPlayer.player.mvps ?? 0) > 0 && (
                 <div>
-                  <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>MVP</div>
-                  <div style={{ color: "#e0b04b", fontFamily: "Consolas, monospace" }}>★{hoveredPlayer.player.mvps}</div>
+                  <div className="text-text-faint text-[8px] mb-px">MVP</div>
+                  <div className="text-warn font-mono">★{hoveredPlayer.player.mvps}</div>
                 </div>
               )}
               {hoveredPlayer.player.ping != null && hoveredPlayer.player.ping > 0 && (
                 <div>
-                  <div style={{ color: "#555", fontSize: 8, marginBottom: 1 }}>PING</div>
-                  <div style={{ color: hoveredPlayer.player.ping < 80 ? "#5fc98a" : hoveredPlayer.player.ping < 150 ? "#e0b04b" : "#e0656a", fontFamily: "Consolas, monospace" }}>
+                  <div className="text-text-faint text-[8px] mb-px">PING</div>
+                  <div className="font-mono" style={{ color: hoveredPlayer.player.ping < 80 ? "var(--color-ok)" : hoveredPlayer.player.ping < 150 ? "var(--color-warn)" : "var(--color-bad)" }}>
                     {hoveredPlayer.player.ping}
                   </div>
                 </div>
@@ -2259,21 +1901,21 @@ function RadarCanvas() {
             </div>
           )}
           {hoveredPlayer.player.weapon && (
-            <div style={{ marginTop: 4, fontSize: 9, color: weaponColor(hoveredPlayer.player.weapon) }}>
+            <div className="mt-1 text-[9px]" style={{ color: weaponColor(hoveredPlayer.player.weapon) }}>
               {weaponDisplayName(hoveredPlayer.player.weapon)}
-              {hoveredPlayer.player.scoped && <span style={{ color: "#e0656a88", marginLeft: 4 }}>SCOPED</span>}
+              {hoveredPlayer.player.scoped && <span className="text-bad/50 ml-1">SCOPED</span>}
             </div>
           )}
-          <div style={{ marginTop: 3, display: "flex", gap: 6, fontSize: 8, color: "#444" }}>
+          <div className="mt-0.5 flex gap-1.5 text-[8px] text-border">
             {hoveredPlayer.player.helmet && <span>Helmet</span>}
-            {hoveredPlayer.player.defuser && <span style={{ color: "#5fc98a55" }}>Defuser</span>}
-            {hoveredPlayer.player.defusing && <span style={{ color: "#5fc98a" }}>DEFUSING</span>}
+            {hoveredPlayer.player.defuser && <span className="text-ok/30">Defuser</span>}
+            {hoveredPlayer.player.defusing && <span className="text-ok">DEFUSING</span>}
           </div>
         </div>
         );
       })()}
 
-      <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
+      <canvas ref={canvasRef} className="block w-full h-full" />
     </div>
   );
 }
@@ -2281,11 +1923,7 @@ function RadarCanvas() {
 export default function RadarPage() {
   return (
     <Suspense fallback={
-      <div style={{
-        flex: 1, background: "#0a0e14",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        color: "#808080", fontFamily: "Tahoma, sans-serif", fontSize: 13,
-      }}>
+      <div className="flex-1 bg-bg flex items-center justify-center text-text-muted font-ui text-[13px]">
         Loading radar...
       </div>
     }>
