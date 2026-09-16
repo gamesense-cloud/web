@@ -597,20 +597,17 @@ end)`}</Example>
         {/* ───────────── ui ───────────── */}
         <Section id="ui" title="ui">
           <p>
-            Tab / Group / Widget hierarchy for building script configuration UIs.
+            Group / Widget hierarchy for building script configuration UIs.
             Values persist automatically across script reloads.
           </p>
 
-          <Fn name="ui.Tab" args='name: string' ret="tab">
-            Create a named tab. Returns a tab handle.
+          <Fn name="ui.Group" args='name: string, panel: string' ret="group">
+            Create a named control group. <code className="text-text-faint">panel</code> is <code className="text-text-faint">&quot;A&quot;</code> (left column) or <code className="text-text-faint">&quot;B&quot;</code> (right column).
           </Fn>
           <Fn name="ui.GetValue" args="id: string" ret="value">Get a control&apos;s current value by its ID.</Fn>
           <Fn name="ui.SetValue" args="id: string, value">Set a control&apos;s value by its ID.</Fn>
-
-          <div className="mt-3">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">tab:Group(name [, panel]) → group</h4>
-            <p className="text-xs mb-2">Create a named group within a tab. Optional <code className="text-text-faint">panel</code> is <code className="text-text-faint">&quot;A&quot;</code> or <code className="text-text-faint">&quot;B&quot;</code> — controls which column of the Script Items tab the group&apos;s widgets appear in. Defaults to <code className="text-text-faint">&quot;A&quot;</code>.</p>
-          </div>
+          <Fn name="ui.SetVisible" args="control, visible: boolean">Show or hide a control dynamically.</Fn>
+          <Fn name="ui.IsMenuOpen" args="" ret="boolean">Returns true if the overlay menu is currently open.</Fn>
 
           <div className="mt-1">
             <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Group Widgets</h4>
@@ -638,9 +635,8 @@ end)`}</Example>
               <code className="text-text-faint">.label</code>
             </p>
           </div>
-          <Example title="Example — full UI setup">{`local tab = ui.Tab("Aim Helper")
-local g = tab:Group("Settings", "A")       -- panel A (left column)
-local info = tab:Group("Visuals", "B")     -- panel B (right column)
+          <Example title="Example — full UI setup">{`local g    = ui.Group("Settings", "A")   -- panel A (left column)
+local info = ui.Group("Visuals", "B")    -- panel B (right column)
 
 local enabled = g:Checkbox("Enabled", true)
 local fov     = g:SliderFloat("FOV", 1.0, 30.0, 5.0)
@@ -894,7 +890,6 @@ end)`}</Example>
           <Fn name="cheat.Unload" args="">Queue the calling script for unload.</Fn>
           <Fn name="cheat.Reload" args="">Queue the calling script for reload.</Fn>
           <Fn name="cheat.Log" args="text: string">Write to the internal journal.</Fn>
-          <Fn name="cheat.SetClantag" args="tag: string">Set the player&apos;s clan tag via console command.</Fn>
           <Fn name="cheat.Notify" args="text: string">Show a notification message.</Fn>
           <Fn name="cheat.GetTimestamp" args="" ret="string">
             Local time as <code className="text-text-faint">&quot;YYYY-MM-DD HH:MM:SS&quot;</code>.
@@ -1797,9 +1792,8 @@ end)`}</Example>
 
           <div className="border border-border rounded-lg p-5 bg-surface">
             <h3 className="text-sm font-bold mb-3">ESP Script</h3>
-            <LuaCode className="p-4">{`-- Create a UI tab with controls
-local tab = ui.Tab("My Script")
-local grp = tab:Group("Settings")
+            <LuaCode className="p-4">{`-- Create UI controls
+local grp = ui.Group("Settings", "A")
 local enabled = grp:Checkbox("Enable ESP", true)
 local color = grp:ColorPicker("Box Color", {1, 0, 0, 1})
 
@@ -1823,8 +1817,7 @@ end)`}</LuaCode>
 
           <div className="border border-border rounded-lg p-5 bg-surface">
             <h3 className="text-sm font-bold mb-3">HUD Overlay with Stats</h3>
-            <LuaCode className="p-4">{`local tab = ui.Tab("HUD")
-local g   = tab:Group("Display")
+            <LuaCode className="p-4">{`local g   = ui.Group("Display", "A")
 local showSpeed = g:Checkbox("Show Speed", true)
 local showClock = g:Checkbox("Show Clock", true)
 
