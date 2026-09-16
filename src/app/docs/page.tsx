@@ -213,6 +213,7 @@ const NAV = [
   { id: "anim", label: "anim" },
   { id: "net", label: "net" },
   { id: "sound", label: "sound" },
+  { id: "trace", label: "trace" },
   { id: "types", label: "Types" },
   { id: "scripts", label: "Scripts" },
 ];
@@ -403,6 +404,39 @@ end`}</Example>
           </Fn>
           <Fn name="entity.IsOnScreen" args="x, y, z" ret="boolean">
             Check if a world position is within screen bounds.
+          </Fn>
+          <Fn name="entity.GetWeaponType" args="ent" ret="string">
+            Weapon type: &quot;knife&quot;, &quot;pistol&quot;, &quot;smg&quot;, &quot;rifle&quot;, &quot;shotgun&quot;, &quot;sniper&quot;, &quot;lmg&quot;, &quot;grenade&quot;, etc.
+          </Fn>
+          <Fn name="entity.GetWeaponMaxSpeed" args="ent" ret="number">
+            Maximum movement speed with current weapon (units/sec). Returns 250 on failure.
+          </Fn>
+          <Fn name="entity.GetWeaponDefIndex" args="ent" ret="integer">
+            Item definition index of the active weapon (e.g. 7=AK-47, 9=AWP, 40=SSG 08).
+          </Fn>
+          <Fn name="entity.IsGun" args="ent" ret="boolean">
+            True if the active weapon is a firearm (pistol, SMG, rifle, shotgun, sniper, LMG).
+          </Fn>
+          <Fn name="entity.GetWeaponDamage" args="ent" ret="number">
+            Base damage of the active weapon from weapon vdata.
+          </Fn>
+          <Fn name="entity.GetWeaponPenetration" args="ent" ret="number">
+            Penetration power of the active weapon (higher = more wall penetration).
+          </Fn>
+          <Fn name="entity.GetWeaponRange" args="ent" ret="number">
+            Maximum effective range of the active weapon in units.
+          </Fn>
+          <Fn name="entity.GetWeaponArmorRatio" args="ent" ret="number">
+            Armor penetration ratio of the active weapon (0–1, higher = more damage through armor).
+          </Fn>
+          <Fn name="entity.GetObserverMode" args="ent" ret="integer">
+            Observer mode: 0=none, 1=deathcam, 2=freezecam, 3=fixed, 4=first-person, 5=chase, 6=roaming.
+          </Fn>
+          <Fn name="entity.GetObserverTarget" args="ent" ret="integer | nil">
+            Index of the entity being spectated, or nil.
+          </Fn>
+          <Fn name="entity.GetSpectators" args="ent" ret="table">
+            Returns a table of player indices currently spectating this entity.
           </Fn>
           <Example title="Example — iterate enemies and draw boxes">{`hooks.Add("Paint", "esp_boxes", function()
   for _, ply in ipairs(entity.GetPlayers()) do
@@ -934,6 +968,15 @@ cheat.Notify("Script loaded!")`}</Example>
           <Fn name="math.RCSCompensate" args="aimP, aimY, punchP, punchY, scale?" ret="pitch, yaw">
             Apply recoil compensation. Default scale is 2.0.
           </Fn>
+          <Fn name="math.ApproachAngles" args="fromP, fromY, toP, toY, speed" ret="pitch, yaw">
+            Move from current angles toward target angles by at most <code className="text-text-faint">speed</code> degrees per call. Handles angle wrapping.
+          </Fn>
+          <Fn name="math.RemapVal" args="val, inMin, inMax, outMin, outMax" ret="number">
+            Linearly remap a value from [inMin, inMax] to [outMin, outMax]. No clamping.
+          </Fn>
+          <Fn name="math.RemapValClamped" args="val, inMin, inMax, outMin, outMax" ret="number">
+            Same as RemapVal but clamps the result to [outMin, outMax].
+          </Fn>
           <Example title="Example — CalcAngle + GetFov">{`local me = entity.GetLocalPlayer()
 local target = entity.GetPlayers()[1]
 if me and target then
@@ -1230,6 +1273,47 @@ end)`}</Example>
           <Fn name="sound.StopAll" args="">Stop all playing sounds (executes <code className="text-text-faint">stopsound</code>).</Fn>
         </Section>
 
+        {/* ───────────── trace ───────────── */}
+        <Section id="trace" title="trace">
+          <p>Ray casting, visibility checks, and autowall damage calculation using the CS2 trace system.</p>
+          <Fn name="trace.Line" args="startX, startY, startZ, endX, endY, endZ [, skipEntity]" ret="fraction, hitX, hitY, hitZ, entity|nil, hitgroup, hitbox">
+            Cast a ray between two points. Returns the hit fraction (0–1), impact position, hit entity (or nil), hitgroup, and hitbox index.
+          </Fn>
+          <Fn name="trace.IsVisible" args="startX, startY, startZ, endX, endY, endZ [, skipEntity]" ret="boolean">
+            Check if a straight line between two points is unobstructed.
+          </Fn>
+          <Fn name="trace.IsEntityVisible" args="fromEntity, toEntity [, hitbox]" ret="boolean">
+            Check if one entity can see another&apos;s hitbox. Default hitbox is 6 (head).
+          </Fn>
+          <Fn name="trace.GetDamage" args="fromEntity, toEntity [, hitbox]" ret="damage, isVisible, canWallbang">
+            Calculate the damage from one entity to another&apos;s hitbox, accounting for weapon penetration, distance falloff, armor, and hitgroup multipliers. Returns 0 damage if not hittable.
+          </Fn>
+          <Fn name="trace.GetBestHitbox" args="fromEntity, toEntity [, minDamage]" ret="hitbox, damage, isVisible">
+            Find the highest-damage hitbox on the target. Checks head, chest, stomach, neck, pelvis and returns the one dealing the most damage (visible or through walls). Returns -1 if no hitbox meets the minimum damage threshold.
+          </Fn>
+          <Fn name="trace.CanHit" args="fromEntity, toEntity [, hitbox]" ret="boolean">
+            Quick check: can we deal any damage to this entity&apos;s hitbox — either directly or through walls?
+          </Fn>
+
+          <Example title="Visibility check before aiming">{`local me = engine.GetLocalPlayer()
+local eyeX, eyeY, eyeZ = entity.GetEyePosition(me)
+
+for _, idx in ipairs(entity.GetPlayers()) do
+    if entity.IsEnemy(idx) and entity.IsAlive(idx) then
+        if trace.IsEntityVisible(me, idx, 6) then
+            cheat.Log(entity.GetName(idx) .. " head is visible")
+        end
+    end
+end`}</Example>
+
+          <Example title="Best hitbox with autowall">{`local me = engine.GetLocalPlayer()
+local hb, dmg, vis = trace.GetBestHitbox(me, targetIdx, 10)
+if hb >= 0 then
+    local label = vis and "visible" or "wallbang"
+    cheat.Log("Best hitbox: " .. hb .. " for " .. dmg .. " dmg (" .. label .. ")")
+end`}</Example>
+        </Section>
+
         {/* ───────────── types ───────────── */}
         <Section id="types" title="Types">
           <p>
@@ -1351,6 +1435,50 @@ events.On("paint", function()
   else
     renderer.Circle(cx, cy, s, c)
   end
+end)`}</LuaCode>
+          </div>
+          <div className="border border-border rounded-lg p-5 bg-surface">
+            <h3 className="text-sm font-bold mb-3">Aim Lock with Autowall</h3>
+            <LuaCode className="p-4">{`-- Hold ALT to lock onto the closest enemy with trace-based targeting
+local tab = ui.Tab("Aimlock")
+local g = tab:Child("aim", "Settings", 0, 0, 6, 6)
+local fov    = g:Slider("fov", "FOV", 1, 180, 15)
+local smooth = g:Slider("smooth", "Smooth", 1, 50, 5)
+local minDmg = g:Slider("mindmg", "Min Damage", 1, 100, 10)
+
+events.On("frame", function()
+  if not engine.IsInGame() or not input.IsKeyDown(0x12) then return end
+  local me = engine.GetLocalPlayer()
+  if not me or not entity.IsAlive(me) then return end
+
+  local eyeX, eyeY, eyeZ = entity.GetEyePosition(me)
+  local vp, vy = engine.GetViewAngles()
+  local bestFov, bestIdx, bestHb = fov:Get(), nil, -1
+
+  for _, idx in ipairs(entity.GetPlayers()) do
+    if entity.IsEnemy(idx) and entity.IsAlive(idx) then
+      local hb, dmg = trace.GetBestHitbox(me, idx, minDmg:Get())
+      if hb >= 0 then
+        local tx, ty, tz = entity.GetHitboxPosition(idx, hb)
+        local ap, ay = math.CalcAngle(eyeX, eyeY, eyeZ, tx, ty, tz)
+        local f = math.GetFov(vp, vy, ap, ay)
+        if f < bestFov then bestFov, bestIdx, bestHb = f, idx, hb end
+      end
+    end
+  end
+
+  if bestIdx then
+    local tx, ty, tz = entity.GetHitboxPosition(bestIdx, bestHb)
+    local ap, ay = math.CalcAngle(eyeX, eyeY, eyeZ, tx, ty, tz)
+    local np, ny = math.SmoothAngle(vp, vy, ap, ay, smooth:Get())
+    engine.SetViewAngles(np, ny, 0)
+  end
+end)
+
+events.On("paint", function()
+  local sw, sh = engine.GetScreenSize()
+  local r = (fov:Get() / 90) * (sw / 2)
+  renderer.Circle(sw/2, sh/2, r, 255, 255, 255, 120)
 end)`}</LuaCode>
           </div>
         </section>
