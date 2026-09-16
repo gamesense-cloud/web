@@ -214,7 +214,7 @@ const NAV = [
   { id: "net", label: "net" },
   { id: "sound", label: "sound" },
   { id: "types", label: "Types" },
-  { id: "quickstart", label: "Quick Start" },
+  { id: "scripts", label: "Scripts" },
 ];
 
 /* ── page ──────────────────────────────────────────────────────────── */
@@ -288,6 +288,10 @@ export default function Docs() {
             Current round phase: <code className="text-accent">&quot;live&quot;</code>, <code className="text-accent">&quot;freezetime&quot;</code>, or <code className="text-accent">&quot;over&quot;</code>.
             Updated automatically from game events (round_start, round_freeze_end, round_end).
           </Fn>
+          <Example title="Example — log game state">{`if engine.IsInGame() then
+  local w, h = engine.GetScreenSize()
+  print(engine.GetMapName() .. " | " .. w .. "x" .. h .. " | " .. engine.GetRoundPhase())
+end`}</Example>
         </Section>
 
         {/* ───────────── entity ───────────── */}
@@ -388,21 +392,6 @@ export default function Docs() {
           <Fn name="entity.GetEntityFromHandle" args="handle: integer" ret="entity | nil">
             Resolve an entity handle (e.g. from GetPropInt on m_hActiveWeapon or m_hOwnerEntity) to an entity pointer. Returns nil if the handle is invalid.
           </Fn>
-          <Example title="Example — iterate enemies">{`local players = entity.GetPlayers()
-for _, ply in ipairs(players) do
-  if entity.IsEnemy(ply) and entity.IsAlive(ply) then
-    local name = entity.GetName(ply)
-    local hp   = entity.GetHealth(ply)
-    local x, y, z = entity.GetPosition(ply)
-    print(name .. " has " .. hp .. "hp at " .. x .. ", " .. y)
-  end
-end`}</Example>
-          <Example title="Example — read custom netvar">{`local ent = entity.GetByIndex(1)
-if ent then
-  local kills = entity.GetPropInt(ent, "CCSPlayerController", "m_iKills")
-  local ping  = entity.GetPropInt(ent, "CCSPlayerController", "m_iPing")
-  print("Kills: " .. kills .. "  Ping: " .. ping)
-end`}</Example>
           <Fn name="entity.SetEntityGlow" args="entity, r, g, b, a?, glowType?" ret="">
             Apply a colored glow effect (0-255 color values, optional alpha and glow type).
           </Fn>
@@ -415,6 +404,17 @@ end`}</Example>
           <Fn name="entity.IsOnScreen" args="x, y, z" ret="boolean">
             Check if a world position is within screen bounds.
           </Fn>
+          <Example title="Example — iterate enemies and draw boxes">{`hooks.Add("Paint", "esp_boxes", function()
+  for _, ply in ipairs(entity.GetPlayers()) do
+    if entity.IsEnemy(ply) and entity.IsAlive(ply) then
+      local x, y, w, h = entity.GetBoundingBox(ply)
+      if x then
+        renderer.Rect(x, y, w, h, Color(255, 0, 0))
+        renderer.Text(x, y - 12, entity.GetName(ply), Color(255, 255, 255))
+      end
+    end
+  end
+end)`}</Example>
         </Section>
 
         {/* ───────────── renderer ───────────── */}
@@ -495,22 +495,12 @@ end`}</Example>
           <Fn name="renderer.WorldToScreen" args="x, y, z" ret="sx, sy | nil">
             Project world position to screen. Returns two numbers or nil if behind camera.
           </Fn>
-          <Example title="Example — draw crosshair + info">{`events.On("paint", function()
+          <Example title="Example — crosshair + watermark">{`events.On("paint", function()
   local w, h = renderer.ScreenSize()
   local cx, cy = w / 2, h / 2
-
-  -- crosshair
   renderer.Line(cx - 8, cy, cx + 8, cy, Color(0, 255, 0, 200))
   renderer.Line(cx, cy - 8, cx, cy + 8, Color(0, 255, 0, 200))
-
-  -- velocity display
-  local me = entity.GetLocalPlayer()
-  if me then
-    local vx, vy, vz = entity.GetVelocity(me)
-    local speed = math.floor(math.sqrt(vx*vx + vy*vy))
-    renderer.Text(cx, cy + 20, speed .. " u/s",
-      Color(255, 255, 255, 180), 14, "mono")
-  end
+  renderer.Text(10, 10, "gamesense.cloud", Color(100, 200, 255), 14, "strong")
 end)`}</Example>
         </Section>
 
@@ -591,6 +581,18 @@ end)`}</Example>
           <Fn name="input.has_flag" args="value: integer, flag: integer" ret="boolean">
             Check if a bit flag is set in a value.
           </Fn>
+          <Example title="Example — key toggle + button flags">{`local enabled = false
+events.On("key", function(key, down)
+  if key == input.KEY_X and down then
+    enabled = not enabled
+  end
+end)
+
+events.On("createmove", function(cmd)
+  if enabled and input.has_flag(cmd.buttons, input.IN_JUMP) then
+    cmd.buttons = input.bor(cmd.buttons, input.IN_DUCK)
+  end
+end)`}</Example>
         </Section>
 
         {/* ───────────── ui ───────────── */}
@@ -658,50 +660,12 @@ end)`}</Example>
               <code className="text-text-faint">.label</code>
             </p>
           </div>
-          <Example title="Example — group-based UI (scripts page)">{`local g    = ui.Group("Settings", "A")   -- panel A (left column)
-local info = ui.Group("Visuals", "B")    -- panel B (right column)
+          <Example title="Example — tab, child group, checkbox, slider, button">{`local tab = ui.Tab("My Script")
+local g = tab:Child("main", "Settings", 0, 0, 20, 20)
 
 local enabled = g:Checkbox("Enabled", true)
-local fov     = g:SliderFloat("FOV", 1.0, 30.0, 5.0)
-local style   = g:Combo("Style", {"Circle", "Cross", "Dot"}, 1)
-local hotkey  = g:Keybind("Toggle Key", input.KEY_X)
-
-local color   = info:ColorPicker("Color", {1, 0, 0, 1})
-info:Separator("Info")
-local status = info:Label("Status: idle")
-
-enabled:OnChange(function(val)
-  status:Set(val and "Status: active" or "Status: idle")
-end)
-
-g:Button("Reset Defaults", function()
-  fov:Set(5.0)
-  style:Set(1)
-  color:Set({1, 0, 0, 1})
-end)`}</Example>
-          <Example title="Example — custom tab with grid layout">{`-- Custom tabs appear after the core tabs in the menu
-local tab = ui.Tab("My Script")
-
--- Children are placed on a 0-20 grid (gx, gy, gw, gh)
-local left  = tab:Child("left",  "Settings", 0, 0, 10, 20)
-local right = tab:Child("right", "Options",  10, 0, 10, 20)
-
-local enabled = left:Checkbox("Enabled", true)
-local speed   = left:SliderFloat("Speed", 0, 10, 5.0)
-left:Button("Apply", function() cheat.Notify("Applied!") end)
-
-local mode = right:Combo("Mode", {"Fast", "Slow"}, 1)
-local configs = right:Listbox("Config", ui.ListConfigs())
-
--- Save / load configs
-right:Button("Save", function()
-  ui.Save("my_config")
-  cheat.Notify("Saved!")
-end)
-right:Button("Load", function()
-  local ok, err = ui.Load(configs:Get())
-  if ok then cheat.Notify("Loaded!") end
-end)`}</Example>
+local speed   = g:SliderFloat("Speed", 0, 10, 5.0)
+g:Button("Apply", function() cheat.Notify("Applied!") end)`}</Example>
         </Section>
 
         {/* ───────────── events ───────────── */}
@@ -798,27 +762,18 @@ end)`}</Example>
               </div>
             ))}
           </div>
-          <Example title="Example — track kills">{`local myKills = 0
+          <Example title="Example — track kills with player_death">{`local kills = 0
 
--- CS2 game events pass a single table with named fields
 events.On("player_death", function(e)
   local me = entity.GetLocalPlayer()
   if me and e.attacker == entity.GetIndex(me) then
-    myKills = myKills + 1
-    cheat.Notify("Kill #" .. myKills .. " with " .. e.weapon .. "!")
-    system.PlaySound("scripts/ding.wav")
+    kills = kills + 1
+    cheat.Notify("Kill #" .. kills .. " with " .. e.weapon)
   end
 end)
 
 events.On("round_start", function(e)
-  myKills = 0
-end)
-
--- Platform events pass individual arguments
-events.On("key", function(key, down)
-  if key == input.KEY_H and down then
-    cheat.Notify("Kills this round: " .. myKills)
-  end
+  kills = 0
 end)`}</Example>
         </Section>
 
@@ -853,19 +808,11 @@ end)`}</Example>
               ))}
             </div>
           </div>
-          <Example title="Example — hooks.Add vs events.On">{`-- hooks.Add uses named IDs (can replace/remove by name)
-hooks.Add("Paint", "my_watermark", function()
+          <Example title="Example — paint watermark, then remove">{`hooks.Add("Paint", "watermark", function()
   renderer.Text(10, 10, "gamesense.cloud", Color(100, 200, 255), 16)
 end)
 
--- remove later by name
-hooks.Remove("Paint", "my_watermark")
-
--- events.On uses numeric handles
-local h = events.On("paint", function()
-  renderer.Text(10, 10, "hello", Color(255,255,255))
-end)
-events.Off(h)  -- remove by handle`}</Example>
+hooks.Remove("Paint", "watermark")`}</Example>
         </Section>
 
         {/* ───────────── http ───────────── */}
@@ -885,22 +832,12 @@ events.Off(h)  -- remove by handle`}</Example>
           <Fn name="http.Request" args="{url, method, body, content_type}" ret="{status, body, ok, error}">
             Full-featured request. Returns a result table with status code, body, ok boolean, and optional error.
           </Fn>
-          <Example title="Example — fetch & post JSON">{`-- simple GET
-local body, err = http.Get("https://api.example.com/data")
-if body then
-  local data = json.Decode(body)
-  print("Got " .. #data .. " items")
-end
-
--- POST JSON (non-blocking via timer)
-timer.After(0, function()
-  local payload = json.Encode({ name = cheat.GetUsername() })
-  local res = http.Request({
-    url = "https://api.example.com/submit",
-    method = "POST",
-    body = payload,
-  })
-  if res.ok then print("Submitted!") end
+          <Example title="Example — simple GET">{`timer.After(0, function()
+  local body, err = http.Get("https://api.example.com/data")
+  if body then
+    local data = json.Decode(body)
+    print("Got " .. #data .. " items")
+  end
 end)`}</Example>
         </Section>
 
@@ -928,6 +865,13 @@ end)`}</Example>
             Returns <code className="text-text-faint">{'{ active, pushCount, failCount, avgLatency, playerCount, uptime }'}</code> with
             live radar statistics. Works whether radar is active or not.
           </Fn>
+          <Example title="Example — log, warn, notify">{`cheat.Log("[" .. cheat.GetTimestamp() .. "] script loaded")
+
+if not cheat.IsRadarActive() then
+  cheat.Log("warning: radar is not running")
+end
+
+cheat.Notify("Script loaded!")`}</Example>
         </Section>
 
         {/* ───────────── system ───────────── */}
@@ -990,6 +934,15 @@ end)`}</Example>
           <Fn name="math.RCSCompensate" args="aimP, aimY, punchP, punchY, scale?" ret="pitch, yaw">
             Apply recoil compensation. Default scale is 2.0.
           </Fn>
+          <Example title="Example — CalcAngle + GetFov">{`local me = entity.GetLocalPlayer()
+local target = entity.GetPlayers()[1]
+if me and target then
+  local mx, my, mz = entity.GetEyePosition(me)
+  local tx, ty, tz = entity.GetEyePosition(target)
+  local aimP, aimY = math.CalcAngle(mx, my, mz, tx, ty, tz)
+  local viewP, viewY = engine.GetViewAngles()
+  print("FOV to target: " .. math.GetFov(viewP, viewY, aimP, aimY))
+end`}</Example>
         </Section>
 
         {/* ───────────── json ───────────── */}
@@ -1023,19 +976,14 @@ end)`}</Example>
           <Fn name="store.clear" args="">Delete all keys for this script.</Fn>
           <Fn name="store.keys" args="" ret="table">Return all stored keys as a sequential table.</Fn>
           <Fn name="store.save" args="">Force an immediate write to disk.</Fn>
-          <Example title="Example — persistent settings">{`-- load saved config or use defaults
-local config = store.get("config") or {
-  enabled = true,
-  color = {255, 0, 0, 255},
-  key = input.KEY_H,
-}
+          <Example title="Example — persistent toggle">{`local enabled = store.get("enabled")
+if enabled == nil then enabled = true end
 
--- update and save on change
 events.On("key", function(key, down)
   if key == input.F2 and down then
-    config.enabled = not config.enabled
-    store.set("config", config)
-    cheat.Notify("Toggled: " .. tostring(config.enabled))
+    enabled = not enabled
+    store.set("enabled", enabled)
+    cheat.Notify("Toggled: " .. tostring(enabled))
   end
 end)`}</Example>
         </Section>
@@ -1179,6 +1127,9 @@ ffi.C.MessageBoxA(0, "Hello from Lua!", "gscloud", 0)`}</Example>
           <Fn name="cvar.Find" args="name: string" ret="userdata | nil">
             Get raw ConVar pointer for advanced use.
           </Fn>
+          <Example title="Example — read/write volume">{`local vol = cvar.GetFloat("volume")
+print("Current volume: " .. vol)
+cvar.SetFloat("volume", 0.5)`}</Example>
         </Section>
 
         {/* ───────────── memory ───────────── */}
@@ -1262,6 +1213,11 @@ end`}</Example>
           <Fn name="net.GetInSequence" args="" ret="integer">Incoming sequence number.</Fn>
           <Fn name="net.GetOutSequence" args="" ret="integer">Outgoing sequence number.</Fn>
           <Fn name="net.IsConnected" args="" ret="boolean">Whether a net channel exists.</Fn>
+          <Example title="Example — display ping and loss">{`events.On("paint", function()
+  local ping = math.floor(net.GetLatency() * 1000)
+  local loss = math.floor(net.GetIncomingLoss() * 100)
+  renderer.Text(10, 30, ping .. "ms  " .. loss .. "% loss", Color(255, 255, 255))
+end)`}</Example>
         </Section>
 
         {/* ───────────── sound ───────────── */}
@@ -1322,31 +1278,28 @@ end`}</Example>
           </div>
         </Section>
 
-        {/* ───────────── quick start ───────────── */}
-        <section id="quickstart" className="scroll-mt-28 mt-16 mb-8 space-y-6">
+        {/* ───────────── premade scripts ───────────── */}
+        <section id="scripts" className="scroll-mt-28 mt-16 mb-8 space-y-6">
           <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="text-accent">Quick Start</span> Examples
+            <span className="text-accent">Premade</span> Scripts
           </h2>
 
           <div className="border border-border rounded-lg p-5 bg-surface">
-            <h3 className="text-sm font-bold mb-3">ESP Script</h3>
-            <LuaCode className="p-4">{`-- Create UI controls
-local grp = ui.Group("Settings", "A")
-local enabled = grp:Checkbox("Enable ESP", true)
-local color = grp:ColorPicker("Box Color", {1, 0, 0, 1})
+            <h3 className="text-sm font-bold mb-3">Simple ESP</h3>
+            <LuaCode className="p-4">{`local g = ui.Group("ESP", "A")
+local enabled = g:Checkbox("Enabled", true)
 
--- Draw ESP boxes on paint
-hooks.Add("Paint", "my_esp", function()
+hooks.Add("Paint", "simple_esp", function()
   if not enabled:Get() then return end
-
-  local players = entity.GetPlayers()
-  for _, ply in ipairs(players) do
+  for _, ply in ipairs(entity.GetPlayers()) do
     if entity.IsEnemy(ply) and entity.IsAlive(ply) then
       local x, y, w, h = entity.GetBoundingBox(ply)
       if x then
-        renderer.Rect(x, y, w, h, color:Get())
-        local name = entity.GetName(ply)
-        renderer.Text(x, y - 12, name, {255,255,255,255}, 11)
+        renderer.Rect(x, y, w, h, Color(255, 60, 60))
+        renderer.Text(x, y - 14, entity.GetName(ply), Color(255, 255, 255), 11)
+
+        local hp = entity.GetHealth(ply) / 100
+        renderer.RectFilled(x - 6, y + h * (1 - hp), 3, h * hp, Color(80, 220, 80))
       end
     end
   end
@@ -1354,12 +1307,8 @@ end)`}</LuaCode>
           </div>
 
           <div className="border border-border rounded-lg p-5 bg-surface">
-            <h3 className="text-sm font-bold mb-3">HUD Overlay with Stats</h3>
-            <LuaCode className="p-4">{`local g   = ui.Group("Display", "A")
-local showSpeed = g:Checkbox("Show Speed", true)
-local showClock = g:Checkbox("Show Clock", true)
-
-local kills = 0
+            <h3 className="text-sm font-bold mb-3">Kill Counter + Speedometer</h3>
+            <LuaCode className="p-4">{`local kills = 0
 
 events.On("player_death", function(e)
   local me = entity.GetLocalPlayer()
@@ -1367,90 +1316,41 @@ events.On("player_death", function(e)
     kills = kills + 1
   end
 end)
-
-events.On("round_start", function(e)
-  kills = 0
-end)
+events.On("round_start", function() kills = 0 end)
 
 events.On("paint", function()
-  local w, h = renderer.ScreenSize()
-  local y = 60
+  local w = renderer.ScreenSize()
+  renderer.Text(w - 120, 20, "Kills: " .. kills, Color(255, 80, 80), 14, "strong")
 
-  -- kill counter
-  renderer.RectFilled(w - 140, y, 130, 28, Color(0, 0, 0, 150), 4)
-  renderer.Text(w - 130, y + 6, "Kills: " .. kills,
-    Color(255, 80, 80), 14, "strong")
-  y = y + 34
-
-  -- speedometer
-  if showSpeed:Get() then
-    local me = entity.GetLocalPlayer()
-    if me then
-      local vx, vy = entity.GetVelocity(me)
-      local speed = math.floor(math.sqrt(vx*vx + vy*vy))
-      renderer.RectFilled(w - 140, y, 130, 28, Color(0, 0, 0, 150), 4)
-      renderer.Text(w - 130, y + 6, speed .. " u/s",
-        Color(200, 220, 255), 14, "mono")
-      y = y + 34
-    end
-  end
-
-  -- clock
-  if showClock:Get() then
-    renderer.RectFilled(w - 140, y, 130, 28, Color(0, 0, 0, 150), 4)
-    renderer.Text(w - 130, y + 6, cheat.GetTimestamp(),
-      Color(180, 180, 180), 11, "mono")
+  local me = entity.GetLocalPlayer()
+  if me then
+    local vx, vy = entity.GetVelocity(me)
+    local speed = math.floor(math.sqrt(vx * vx + vy * vy))
+    renderer.Text(w - 120, 40, speed .. " u/s", Color(200, 220, 255), 14, "mono")
   end
 end)`}</LuaCode>
           </div>
 
           <div className="border border-border rounded-lg p-5 bg-surface">
-            <h3 className="text-sm font-bold mb-3">Bunny Hop + Air Strafe</h3>
-            <LuaCode className="p-4">{`-- auto bhop with air strafe optimization
-events.On("createmove", function(cmd)
-  movement.AutoBhop(cmd)
+            <h3 className="text-sm font-bold mb-3">Custom Crosshair</h3>
+            <LuaCode className="p-4">{`local g = ui.Group("Crosshair", "A")
+local style = g:Combo("Style", {"Dot", "Cross", "Circle"}, 1)
+local color = g:ColorPicker("Color", {0, 1, 0, 1})
+local size  = g:SliderInt("Size", 2, 20, 8)
 
-  local me = entity.GetLocalPlayer()
-  if me and not movement.IsOnGround(me) then
-    local _, yaw = engine.GetViewAngles()
-    movement.StrafeOptimize(cmd, yaw)
-  end
-end)
-
--- speedometer HUD
 events.On("paint", function()
-  local me = entity.GetLocalPlayer()
-  if not me then return end
-  local speed = math.floor(movement.GetSpeed(me))
   local w, h = renderer.ScreenSize()
-  local color = speed > 300 and Color(100, 255, 100) or Color(200, 200, 200)
-  renderer.Text(w/2, h - 50, speed .. " u/s", color, 18, "mono")
-end)`}</LuaCode>
-          </div>
+  local cx, cy, s = w / 2, h / 2, size:Get()
+  local c = color:Get()
 
-          <div className="border border-border rounded-lg p-5 bg-surface">
-            <h3 className="text-sm font-bold mb-3">Skin Changer</h3>
-            <LuaCode className="p-4">{`local tab = ui.Tab("Skins")
-local g = tab:Child("skins", "Weapon Skins", 0, 0, 20, 20)
-local paintKit = g:SliderInt("Paint Kit", 1, 1200, 344)
-local wear = g:SliderFloat("Wear", 0.0, 1.0, 0.001)
-local seed = g:SliderInt("Seed", 0, 1000, 0)
-local stattrak = g:SliderInt("StatTrak", -1, 99999, -1)
-
-events.On("frame_stage", function(stage)
-  if stage ~= 5 then return end
-  local me = entity.GetLocalPlayer()
-  if not me then return end
-  local weapon = entity.GetWeapon(me)
-  if not weapon then return end
-
-  skin.SetPaintKit(weapon, paintKit:Get())
-  skin.SetWear(weapon, wear:Get())
-  skin.SetSeed(weapon, seed:Get())
-  if stattrak:Get() >= 0 then
-    skin.SetStatTrak(weapon, stattrak:Get())
+  if style:Get() == 1 then
+    renderer.CircleFilled(cx, cy, 2, c)
+  elseif style:Get() == 2 then
+    renderer.Line(cx - s, cy, cx + s, cy, c)
+    renderer.Line(cx, cy - s, cx, cy + s, c)
+  else
+    renderer.Circle(cx, cy, s, c)
   end
-  skin.ForceUpdate()
 end)`}</LuaCode>
           </div>
         </section>
