@@ -199,7 +199,6 @@ const NAV = [
   { id: "ui", label: "ui" },
   { id: "events", label: "events" },
   { id: "hooks", label: "hooks" },
-  { id: "esp", label: "esp" },
   { id: "http", label: "http" },
   { id: "cheat", label: "cheat" },
   { id: "system", label: "system" },
@@ -208,20 +207,12 @@ const NAV = [
   { id: "store", label: "store" },
   { id: "file", label: "file" },
   { id: "timer", label: "timer" },
-  { id: "log", label: "log" },
   { id: "ffi", label: "ffi" },
   { id: "cvar", label: "cvar" },
-  { id: "chams", label: "chams" },
-  { id: "world", label: "world" },
   { id: "memory", label: "memory" },
   { id: "anim", label: "anim" },
   { id: "net", label: "net" },
   { id: "sound", label: "sound" },
-  { id: "particle", label: "particle" },
-  { id: "skin", label: "skin" },
-  { id: "movement", label: "movement" },
-  { id: "config", label: "config" },
-  { id: "antiaim", label: "antiaim" },
   { id: "types", label: "Types" },
   { id: "quickstart", label: "Quick Start" },
 ];
@@ -877,28 +868,6 @@ end)
 events.Off(h)  -- remove by handle`}</Example>
         </Section>
 
-        {/* ───────────── esp ───────────── */}
-        <Section id="esp" title="esp">
-          <p>
-            ESP override and custom element system. Store per-entity overrides, custom text,
-            and custom bars that a renderer can consume.
-          </p>
-          <Fn name="esp.Override" args="entity_index, property, value">
-            Set a per-entity property override. Pass nil as value to clear. Supports string, number, color, and boolean values.
-          </Fn>
-          <Fn name="esp.CustomText" args="entity_index, position, text [, color]">
-            Add custom text to an entity. Position is a string like <code className="text-text-faint">&quot;top&quot;</code> or <code className="text-text-faint">&quot;bottom&quot;</code>. Cleared every frame — re-add in your paint handler.
-          </Fn>
-          <Fn name="esp.CustomBar" args="entity_index, position, value [, color]">
-            Add a custom bar (0.0–1.0) to an entity. Cleared every frame — re-add in your paint handler.
-          </Fn>
-          <Fn name="esp.GetOverride" args="entity_index, property" ret="value | nil">
-            Read a previously set override.
-          </Fn>
-          <Fn name="esp.Clear" args="">Clear all stored ESP data for all entities.</Fn>
-          <Fn name="esp.ClearEntity" args="entity_index">Clear ESP data for one entity.</Fn>
-        </Section>
-
         {/* ───────────── http ───────────── */}
         <Section id="http" title="http">
           <p>
@@ -938,9 +907,6 @@ end)`}</Example>
         {/* ───────────── cheat ───────────── */}
         <Section id="cheat" title="cheat">
           <p>Cheat identity, control, and utility functions.</p>
-          <Fn name="cheat.GetCheatName" args="" ret="string">Returns <code className="text-accent">&quot;gamesense.cloud&quot;</code>.</Fn>
-          <Fn name="cheat.GetVersion" args="" ret="string">Build version string.</Fn>
-          <Fn name="cheat.GetUsername" args="" ret="string">Current username.</Fn>
           <Fn name="cheat.IsLoaded" args="" ret="boolean">Always returns true.</Fn>
           <Fn name="cheat.Unload" args="">Queue the calling script for unload.</Fn>
           <Fn name="cheat.Reload" args="">Queue the calling script for reload.</Fn>
@@ -1124,26 +1090,6 @@ timer.NextFrame(function()
 end)`}</Example>
         </Section>
 
-        {/* ───────────── log ───────────── */}
-        <Section id="log" title="log">
-          <p>
-            Logging API. <code className="text-accent">print()</code> is redirected to{" "}
-            <code className="text-text-faint">log.info</code>, so standard Lua prints appear in
-            the console.
-          </p>
-          <Fn name="log.debug" args="...">Log at debug level. Arguments are joined with tabs.</Fn>
-          <Fn name="log.info" args="...">Log at info level.</Fn>
-          <Fn name="log.warn" args="...">Log at warning level.</Fn>
-          <Fn name="log.error" args="...">Log at error level.</Fn>
-          <Fn name="log.write" args='level: string, ...'>
-            Log at a runtime-selected level. Level must be{" "}
-            <code className="text-text-faint">&quot;debug&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;info&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;warn&quot;</code>, or{" "}
-            <code className="text-text-faint">&quot;error&quot;</code>.
-          </Fn>
-        </Section>
-
         {/* ───────────── ffi ───────────── */}
         <Section id="ffi" title="ffi">
           <p>
@@ -1233,78 +1179,6 @@ ffi.C.MessageBoxA(0, "Hello from Lua!", "gscloud", 0)`}</Example>
           <Fn name="cvar.Find" args="name: string" ret="userdata | nil">
             Get raw ConVar pointer for advanced use.
           </Fn>
-        </Section>
-
-        {/* ───────────── chams ───────────── */}
-        <Section id="chams" title="chams">
-          <p>
-            Player model material override system. Renders custom materials on player models with
-            support for 11 material types and separate visible/occluded (through-wall) passes.
-          </p>
-          <Fn name="chams.Enable" args="enabled: boolean">Enable or disable the chams system.</Fn>
-          <Fn name="chams.SetColor" args='target: string, r, g, b, a'>
-            Set color for a target. Target is one of:{" "}
-            <code className="text-text-faint">&quot;enemy_visible&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;enemy_occluded&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;team_visible&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;team_occluded&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;local_visible&quot;</code>.
-            RGBA values are 0.0–1.0.
-          </Fn>
-          <Fn name="chams.SetMaterial" args="type: string">
-            Set the material type:{" "}
-            <code className="text-text-faint">&quot;flat&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;matte&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;metallic&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;glow&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;bloom&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;electric&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;liquid&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;hologram&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;outlines&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;distortion&quot;</code>,{" "}
-            <code className="text-text-faint">&quot;pearl&quot;</code>.
-          </Fn>
-          <Fn name="chams.GetConfig" args="" ret="table">Current chams configuration table.</Fn>
-          <Fn name="chams.IsReady" args="" ret="boolean">Whether KV3 materials have been initialized.</Fn>
-          <Fn name="chams.SetTeamEnabled" args="enabled: boolean">Toggle chams on teammates.</Fn>
-          <Fn name="chams.SetOccludedEnabled" args="enabled: boolean">Toggle the occluded (through-wall) pass for enemies.</Fn>
-          <Fn name="chams.SetLocalEnabled" args="enabled: boolean">Toggle chams on the local player model.</Fn>
-          <Example title="Example — glow chams on enemies">{`chams.Enable(true)
-chams.SetMaterial("glow")
-chams.SetColor("enemy_visible", 1.0, 0.2, 0.2, 1.0)
-chams.SetColor("enemy_occluded", 1.0, 0.8, 0.0, 0.6)
-chams.SetOccludedEnabled(true)
-
--- optional: team chams
-chams.SetTeamEnabled(true)
-chams.SetColor("team_visible", 0.2, 0.5, 1.0, 1.0)`}</Example>
-        </Section>
-
-        {/* ───────────── world ───────────── */}
-        <Section id="world" title="world">
-          <p>
-            World modulation — override fog, ambient lighting, skybox, night mode,
-            color correction, and prop transparency.
-          </p>
-          <Fn name="world.SetNightMode" args="enabled: boolean">Toggle dark environment override.</Fn>
-          <Fn name="world.SetFog" args="enabled, r, g, b, start, end_dist, density">
-            Override fog parameters. Colors are 0–255, distances in world units, density 0.0–1.0.
-          </Fn>
-          <Fn name="world.SetAmbient" args="r, g, b">Set ambient lighting color (0.0–1.0).</Fn>
-          <Fn name="world.SetSkybox" args="name: string">Change the skybox material name.</Fn>
-          <Fn name="world.SetColorCorrection" args="brightness, contrast, saturation">
-            Post-processing adjustments. All values are floats, 1.0 = default.
-          </Fn>
-          <Fn name="world.SetPropTransparency" args="alpha: number">World prop opacity (0.0–1.0). 0 = invisible.</Fn>
-          <Fn name="world.Apply" args="">Force-apply all overrides to the current map.</Fn>
-          <Fn name="world.Reset" args="">Reset all world overrides to game defaults.</Fn>
-          <Fn name="world.GetConfig" args="" ret="table">Current world configuration table.</Fn>
-          <Example title="Example — night mode with custom fog">{`world.SetNightMode(true)
-world.SetFog(true, 20, 20, 40, 0, 800, 0.6)
-world.SetAmbient(0.05, 0.05, 0.15)
-world.SetColorCorrection(0.8, 1.2, 0.5)
-world.Apply()`}</Example>
         </Section>
 
         {/* ───────────── memory ───────────── */}
@@ -1398,200 +1272,6 @@ end`}</Example>
             Play with a specific volume (0.0–1.0).
           </Fn>
           <Fn name="sound.StopAll" args="">Stop all playing sounds (executes <code className="text-text-faint">stopsound</code>).</Fn>
-        </Section>
-
-        {/* ───────────── particle ───────────── */}
-        <Section id="particle" title="particle">
-          <p>Particle effect creation and management.</p>
-          <Fn name="particle.Create" args="name: string, entity" ret="handle">
-            Create a particle effect attached to an entity. Returns a particle handle.
-          </Fn>
-          <Fn name="particle.GetManager" args="" ret="userdata">
-            Get the particle system manager pointer.
-          </Fn>
-        </Section>
-
-        {/* ───────────── skin ───────────── */}
-        <Section id="skin" title="skin">
-          <p>
-            Weapon skin manipulation via <code className="text-text-faint">CEconItemView</code>.
-            Modify paint kits, seeds, wear, and StatTrak values on weapons.
-          </p>
-          <Fn name="skin.SetPaintKit" args="weapon, id: integer">Set the skin paint kit ID.</Fn>
-          <Fn name="skin.SetSeed" args="weapon, seed: integer">Set the pattern seed.</Fn>
-          <Fn name="skin.SetWear" args="weapon, wear: number">Set wear value (0.0 = factory new, 1.0 = battle-scarred).</Fn>
-          <Fn name="skin.SetStatTrak" args="weapon, kills: integer">Set the StatTrak kill counter.</Fn>
-          <Fn name="skin.GetPaintKit" args="weapon" ret="integer">Read current paint kit ID.</Fn>
-          <Fn name="skin.GetWear" args="weapon" ret="number">Read current wear value.</Fn>
-          <Fn name="skin.ForceUpdate" args="">
-            Regenerate all weapon visuals (calls <code className="text-text-faint">RegenerateWeaponSkins</code>).
-          </Fn>
-          <Example title="Example — skin changer">{`events.On("frame_stage", function(stage)
-  if stage ~= 5 then return end
-  local me = entity.GetLocalPlayer()
-  if not me then return end
-  local weapon = entity.GetWeapon(me)
-  if not weapon then return end
-
-  skin.SetPaintKit(weapon, 344)  -- Howl
-  skin.SetSeed(weapon, 0)
-  skin.SetWear(weapon, 0.001)    -- factory new
-  skin.SetStatTrak(weapon, 1337)
-  skin.ForceUpdate()
-end)`}</Example>
-        </Section>
-
-        {/* ───────────── movement ───────────── */}
-        <Section id="movement" title="movement">
-          <p>
-            Movement helpers — bunny hop, air strafing, speed queries, and direct command manipulation.
-            Works with the <code className="text-accent">createmove</code> event&apos;s cmd parameter.
-          </p>
-          <Fn name="movement.GetSpeed" args="ent" ret="number">2D velocity magnitude (XY plane).</Fn>
-          <Fn name="movement.GetSpeed3D" args="ent" ret="number">3D velocity magnitude.</Fn>
-          <Fn name="movement.IsOnGround" args="ent" ret="boolean">
-            True when <code className="text-text-faint">FL_ONGROUND</code> flag is set.
-          </Fn>
-          <Fn name="movement.IsCrouching" args="ent" ret="boolean">
-            True when <code className="text-text-faint">FL_DUCKING</code> flag is set.
-          </Fn>
-          <Fn name="movement.GetMoveType" args="ent" ret="integer">Movement type enum value.</Fn>
-          <Fn name="movement.AutoBhop" args="cmd">
-            Automatic bunny-hop — sets <code className="text-text-faint">IN_JUMP</code> when on ground,
-            clears it when airborne.
-          </Fn>
-          <Fn name="movement.StrafeOptimize" args="cmd, viewYaw: number">
-            Air strafe optimizer — adjusts sidemove based on velocity direction.
-          </Fn>
-          <Fn name="movement.GetFallVelocity" args="ent" ret="number">Vertical velocity component (Z).</Fn>
-          <Fn name="movement.CorrectMovement" args="cmd, oldYaw: number, newYaw: number">
-            Rotate forwardmove/sidemove to match new view angles after an angle change.
-          </Fn>
-          <Fn name="movement.GetMaxSpeed" args="ent" ret="number">
-            Max speed from <code className="text-text-faint">m_flMaxSpeed</code> (default 250).
-          </Fn>
-          <Fn name="movement.SetForwardMove" args="cmd, val: number">Write forwardmove to the command.</Fn>
-          <Fn name="movement.SetSideMove" args="cmd, val: number">Write sidemove to the command.</Fn>
-          <Fn name="movement.GetForwardMove" args="cmd" ret="number">Read forwardmove from the command.</Fn>
-          <Fn name="movement.GetSideMove" args="cmd" ret="number">Read sidemove from the command.</Fn>
-          <Example title="Example — bhop + air strafe">{`events.On("createmove", function(cmd)
-  movement.AutoBhop(cmd)
-
-  local me = entity.GetLocalPlayer()
-  if me and not movement.IsOnGround(me) then
-    local _, yaw = engine.GetViewAngles()
-    movement.StrafeOptimize(cmd, yaw)
-  end
-end)
-
--- show speed on screen
-events.On("paint", function()
-  local me = entity.GetLocalPlayer()
-  if not me then return end
-  local speed = math.floor(movement.GetSpeed(me))
-  local w, h = renderer.ScreenSize()
-  renderer.Text(w/2, h - 60, speed .. " u/s",
-    Color(200, 220, 255), 16, "mono")
-end)`}</Example>
-        </Section>
-
-        {/* ───────────── config ───────────── */}
-        <Section id="config" title="config">
-          <p>
-            Configuration save/load system. Files are stored in the scripts/configs directory.
-            Path traversal (<code className="text-text-faint">..</code>) is blocked.
-          </p>
-          <Fn name="config.Save" args="filename: string, data: string" ret="boolean">
-            Save a string to a config file. Returns true on success. Typically used with{" "}
-            <code className="text-text-faint">json.Encode()</code>.
-          </Fn>
-          <Fn name="config.Load" args="filename: string" ret="string | nil">
-            Load a config file as a string. Returns nil if not found.
-          </Fn>
-          <Fn name="config.Exists" args="filename: string" ret="boolean">Check if a config file exists.</Fn>
-          <Fn name="config.Delete" args="filename: string" ret="boolean">Delete a config file.</Fn>
-          <Fn name="config.List" args="" ret="table">List all config filenames as a sequential table.</Fn>
-          <Fn name="config.GetPath" args="" ret="string">Return the config directory path.</Fn>
-          <Example title="Example — save/load settings">{`local settings = {
-  aimFov = 5.0,
-  espEnabled = true,
-  chamsColor = {1, 0, 0, 1},
-}
-
--- save
-local ok = config.Save("my_cfg.json", json.Encode(settings, true))
-if ok then cheat.Notify("Config saved!") end
-
--- load
-local raw = config.Load("my_cfg.json")
-if raw then
-  settings = json.Decode(raw)
-  cheat.Notify("Config loaded!")
-end
-
--- list all configs
-for _, name in ipairs(config.List()) do
-  print("Config: " .. name)
-end`}</Example>
-        </Section>
-
-        {/* ───────────── antiaim ───────────── */}
-        <Section id="antiaim" title="antiaim">
-          <p>
-            Anti-aim angle manipulation for HvH. Supports desync, jitter, real/fake angle separation,
-            and freestanding (face away from target).
-          </p>
-          <Fn name="antiaim.Enable" args="enabled: boolean">Toggle anti-aim processing.</Fn>
-          <Fn name="antiaim.IsEnabled" args="" ret="boolean">Whether anti-aim is active.</Fn>
-          <Fn name="antiaim.SetRealAngles" args="pitch, yaw">Set the &quot;real&quot; server-side angles.</Fn>
-          <Fn name="antiaim.GetRealAngles" args="" ret="pitch, yaw">Read current real angles.</Fn>
-          <Fn name="antiaim.SetFakeAngles" args="pitch, yaw">Set the &quot;fake&quot; client-side angles.</Fn>
-          <Fn name="antiaim.GetFakeAngles" args="" ret="pitch, yaw">Read current fake angles.</Fn>
-          <Fn name="antiaim.SetDesync" args="enabled: boolean">Toggle desync (real/fake angle split).</Fn>
-          <Fn name="antiaim.SetDesyncAmount" args="degrees: number">
-            Desync offset in degrees (clamped to [-58, 58]).
-          </Fn>
-          <Fn name="antiaim.GetDesyncAmount" args="" ret="number">Current desync amount.</Fn>
-          <Fn name="antiaim.SetJitter" args="enabled: boolean">Toggle yaw jitter.</Fn>
-          <Fn name="antiaim.SetJitterRange" args="degrees: number">Jitter range in degrees.</Fn>
-          <Fn name="antiaim.Apply" args="cmd">
-            Apply the configured anti-aim to the command&apos;s view angles. Call inside{" "}
-            <code className="text-accent">createmove</code>.
-          </Fn>
-          <Fn name="antiaim.GetAtTarget" args="targetX, targetY, myX, myY" ret="number">
-            Calculate yaw facing away from a target position (freestanding).
-          </Fn>
-          <Fn name="antiaim.GetConfig" args="" ret="table">Current anti-aim configuration table.</Fn>
-          <Fn name="antiaim.Reset" args="">Reset all anti-aim settings to defaults.</Fn>
-          <Example title="Example — desync anti-aim">{`antiaim.Enable(true)
-antiaim.SetDesync(true)
-antiaim.SetDesyncAmount(58)
-antiaim.SetJitter(true)
-antiaim.SetJitterRange(30)
-
-events.On("createmove", function(cmd)
-  local me = entity.GetLocalPlayer()
-  if not me then return end
-
-  -- freestand: face away from nearest enemy
-  local ex, ey, ez = entity.GetEyePosition(me)
-  local nearest, nearDist = nil, 99999
-  for _, ply in ipairs(entity.GetPlayers()) do
-    if entity.IsEnemy(ply) and entity.IsAlive(ply) then
-      local px, py, pz = entity.GetPosition(ply)
-      local d = aimbot.GetDistance(ex, ey, ez, px, py, pz)
-      if d < nearDist then nearDist = d; nearest = ply end
-    end
-  end
-
-  if nearest then
-    local px, py = entity.GetPosition(nearest)
-    local yaw = antiaim.GetAtTarget(px, py, ex, ey)
-    antiaim.SetRealAngles(-89, yaw) -- down pitch
-  end
-
-  antiaim.Apply(cmd)
-end)`}</Example>
         </Section>
 
         {/* ───────────── types ───────────── */}
