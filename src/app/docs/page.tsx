@@ -192,7 +192,6 @@ function Example({ title, children }: { title: string; children: string }) {
 /* ── nav data ──────────────────────────────────────────────────────── */
 
 const NAV = [
-  { id: "globals", label: "globals" },
   { id: "engine", label: "engine" },
   { id: "entity", label: "entity" },
   { id: "renderer", label: "renderer" },
@@ -212,21 +211,16 @@ const NAV = [
   { id: "log", label: "log" },
   { id: "ffi", label: "ffi" },
   { id: "cvar", label: "cvar" },
-  { id: "trace", label: "trace" },
-  { id: "panorama", label: "panorama" },
   { id: "chams", label: "chams" },
   { id: "world", label: "world" },
-  { id: "materials", label: "materials" },
+  { id: "memory", label: "memory" },
   { id: "anim", label: "anim" },
   { id: "net", label: "net" },
   { id: "sound", label: "sound" },
   { id: "particle", label: "particle" },
   { id: "skin", label: "skin" },
   { id: "movement", label: "movement" },
-  { id: "aimbot", label: "aimbot" },
-  { id: "visuals", label: "visuals" },
   { id: "config", label: "config" },
-  { id: "bit", label: "bit" },
   { id: "antiaim", label: "antiaim" },
   { id: "types", label: "Types" },
   { id: "quickstart", label: "Quick Start" },
@@ -270,30 +264,6 @@ export default function Docs() {
           the Starline convention — global tables with PascalCase function names. Entity
           functions transparently resolve controllers to pawns for CS2 compatibility.
         </p>
-
-        {/* ───────────── globals ───────────── */}
-        <Section id="globals" title="globals">
-          <p>Timing and frame information from the Source 2 engine global variables.</p>
-          <Fn name="globals.RealTime" args="" ret="number">
-            Seconds since engine start (wall-clock time). Falls back to platform timer when not in-game.
-          </Fn>
-          <Fn name="globals.CurTime" args="" ret="number">
-            Current server time in seconds. Pauses during loading screens.
-          </Fn>
-          <Fn name="globals.FrameTime" args="" ret="number">
-            Time elapsed since the previous frame (delta time). Useful for frame-rate-independent logic.
-          </Fn>
-          <Fn name="globals.FrameCount" args="" ret="integer">Frame counter since engine start.</Fn>
-          <Fn name="globals.TickCount" args="" ret="integer">Current server tick number.</Fn>
-          <Fn name="globals.TickInterval" args="" ret="number">
-            Seconds per tick (e.g. 1/64 for 64-tick). Returns 1/64 as fallback.
-          </Fn>
-          <Fn name="globals.MaxPlayers" args="" ret="integer">Maximum player slots (typically 64).</Fn>
-          <Fn name="globals.MapName" args="" ret="string">
-            Current map name (e.g. <code className="text-accent">&quot;de_dust2&quot;</code>). Empty string when not connected.
-          </Fn>
-          <Fn name="globals.IsConnected" args="" ret="boolean">Whether the client is connected to a server.</Fn>
-        </Section>
 
         {/* ───────────── engine ───────────── */}
         <Section id="engine" title="engine">
@@ -442,6 +412,18 @@ if ent then
   local ping  = entity.GetPropInt(ent, "CCSPlayerController", "m_iPing")
   print("Kills: " .. kills .. "  Ping: " .. ping)
 end`}</Example>
+          <Fn name="entity.SetEntityGlow" args="entity, r, g, b, a?, glowType?" ret="">
+            Apply a colored glow effect (0-255 color values, optional alpha and glow type).
+          </Fn>
+          <Fn name="entity.RemoveEntityGlow" args="entity" ret="">
+            Remove glow effect from an entity.
+          </Fn>
+          <Fn name="entity.SetEntityColor" args="entity, r, g, b, a?" ret="">
+            Set the render color of an entity (0-255 values).
+          </Fn>
+          <Fn name="entity.IsOnScreen" args="x, y, z" ret="boolean">
+            Check if a world position is within screen bounds.
+          </Fn>
         </Section>
 
         {/* ───────────── renderer ───────────── */}
@@ -592,6 +574,32 @@ end)`}</Example>
               <code className="text-text-faint">CAPS_LOCK</code>
             </p>
           </div>
+          <div className="mt-4">
+            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Button Constants</h4>
+            <p className="text-xs">
+              <code className="text-text-faint">IN_ATTACK</code>,{" "}
+              <code className="text-text-faint">IN_JUMP</code>,{" "}
+              <code className="text-text-faint">IN_DUCK</code>,{" "}
+              <code className="text-text-faint">IN_FORWARD</code>,{" "}
+              <code className="text-text-faint">IN_BACK</code>,{" "}
+              <code className="text-text-faint">IN_USE</code>,{" "}
+              <code className="text-text-faint">IN_MOVELEFT</code>,{" "}
+              <code className="text-text-faint">IN_MOVERIGHT</code>,{" "}
+              <code className="text-text-faint">IN_ATTACK2</code>,{" "}
+              <code className="text-text-faint">IN_RELOAD</code>,{" "}
+              <code className="text-text-faint">IN_SPEED</code>,{" "}
+              <code className="text-text-faint">IN_WALK</code>
+            </p>
+          </div>
+          <Fn name="input.band" args="a: integer, b: integer" ret="integer">Bitwise AND.</Fn>
+          <Fn name="input.bor" args="a: integer, b: integer" ret="integer">Bitwise OR.</Fn>
+          <Fn name="input.bxor" args="a: integer, b: integer" ret="integer">Bitwise XOR.</Fn>
+          <Fn name="input.bnot" args="a: integer" ret="integer">Bitwise NOT.</Fn>
+          <Fn name="input.lshift" args="a: integer, n: integer" ret="integer">Left shift.</Fn>
+          <Fn name="input.rshift" args="a: integer, n: integer" ret="integer">Right shift (unsigned).</Fn>
+          <Fn name="input.has_flag" args="value: integer, flag: integer" ret="boolean">
+            Check if a bit flag is set in a value.
+          </Fn>
         </Section>
 
         {/* ───────────── ui ───────────── */}
@@ -601,6 +609,9 @@ end)`}</Example>
             Values persist automatically across script reloads.
           </p>
 
+          <Fn name="ui.Tab" args='name: string' ret="tab">
+            Create a custom tab that appears after the core menu tabs. Returns a tab handle.
+          </Fn>
           <Fn name="ui.Group" args='name: string, panel: string' ret="group">
             Create a named control group. <code className="text-text-faint">panel</code> is <code className="text-text-faint">&quot;A&quot;</code> (left column) or <code className="text-text-faint">&quot;B&quot;</code> (right column).
           </Fn>
@@ -608,6 +619,26 @@ end)`}</Example>
           <Fn name="ui.SetValue" args="id: string, value">Set a control&apos;s value by its ID.</Fn>
           <Fn name="ui.SetVisible" args="control, visible: boolean">Show or hide a control dynamically.</Fn>
           <Fn name="ui.IsMenuOpen" args="" ret="boolean">Returns true if the overlay menu is currently open.</Fn>
+          <Fn name="ui.Save" args="name: string" ret="boolean">
+            Save all script controls to a JSON config file. Creates the folder{" "}
+            <code className="text-text-faint">Documents/gscloud/scripts configs/&lt;script&gt;/&lt;name&gt;.json</code>.
+          </Fn>
+          <Fn name="ui.Load" args="name: string" ret="ok, error?">
+            Load control values from a saved config. Returns <code className="text-text-faint">true</code> on success, or{" "}
+            <code className="text-text-faint">false, error</code> on failure.
+          </Fn>
+          <Fn name="ui.ListConfigs" args="" ret="table">
+            List available config names for this script as a sequential table of strings.
+          </Fn>
+
+          <div className="mt-1">
+            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Tab Handle</h4>
+            <Fn name="tab:Child" args="id, title, gx, gy, gw, gh" ret="group">
+              Create a child region inside a custom tab. Positioned on a 0–20 grid.{" "}
+              <code className="text-text-faint">gx, gy</code> = position,{" "}
+              <code className="text-text-faint">gw, gh</code> = size. Returns a group handle for adding widgets.
+            </Fn>
+          </div>
 
           <div className="mt-1">
             <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Group Widgets</h4>
@@ -620,6 +651,7 @@ end)`}</Example>
             <Fn name="group:ColorPicker" args="label [, default: {r,g,b,a}]" ret="control">RGBA color picker (0–1 range).</Fn>
             <Fn name="group:Textbox" args="label [, default: string]" ret="control">Text input field.</Fn>
             <Fn name="group:Keybind" args="label [, default_key]" ret="control">Key binding selector.</Fn>
+            <Fn name="group:Listbox" args='label, items: table [, default_index]' ret="control">Visible selection list. Index is 1-based.</Fn>
             <Fn name="group:Label" args="text" ret="control">Static text label.</Fn>
             <Fn name="group:Separator" args="[text]" ret="control">Visual divider. Optional text becomes a section heading.</Fn>
           </div>
@@ -635,7 +667,7 @@ end)`}</Example>
               <code className="text-text-faint">.label</code>
             </p>
           </div>
-          <Example title="Example — full UI setup">{`local g    = ui.Group("Settings", "A")   -- panel A (left column)
+          <Example title="Example — group-based UI (scripts page)">{`local g    = ui.Group("Settings", "A")   -- panel A (left column)
 local info = ui.Group("Visuals", "B")    -- panel B (right column)
 
 local enabled = g:Checkbox("Enabled", true)
@@ -655,6 +687,29 @@ g:Button("Reset Defaults", function()
   fov:Set(5.0)
   style:Set(1)
   color:Set({1, 0, 0, 1})
+end)`}</Example>
+          <Example title="Example — custom tab with grid layout">{`-- Custom tabs appear after the core tabs in the menu
+local tab = ui.Tab("My Script")
+
+-- Children are placed on a 0-20 grid (gx, gy, gw, gh)
+local left  = tab:Child("left",  "Settings", 0, 0, 10, 20)
+local right = tab:Child("right", "Options",  10, 0, 10, 20)
+
+local enabled = left:Checkbox("Enabled", true)
+local speed   = left:SliderFloat("Speed", 0, 10, 5.0)
+left:Button("Apply", function() cheat.Notify("Applied!") end)
+
+local mode = right:Combo("Mode", {"Fast", "Slow"}, 1)
+local configs = right:Listbox("Config", ui.ListConfigs())
+
+-- Save / load configs
+right:Button("Save", function()
+  ui.Save("my_config")
+  cheat.Notify("Saved!")
+end)
+right:Button("Load", function()
+  local ok, err = ui.Load(configs:Get())
+  if ok then cheat.Notify("Loaded!") end
 end)`}</Example>
         </Section>
 
@@ -948,6 +1003,27 @@ end)`}</Example>
           <Fn name="math.Clamp" args="value, min, max" ret="number">
             Clamp value to [min, max].
           </Fn>
+          <Fn name="math.CalcAngle" args="srcX, srcY, srcZ, dstX, dstY, dstZ" ret="pitch, yaw">
+            Calculate aim angles from source position to destination position.
+          </Fn>
+          <Fn name="math.GetFov" args="viewPitch, viewYaw, aimPitch, aimYaw" ret="number">
+            Calculate the FOV (angular distance) between view angles and aim angles.
+          </Fn>
+          <Fn name="math.NormalizeAngles" args="pitch, yaw" ret="pitch, yaw">
+            Clamp pitch to [-89, 89] and normalize yaw to [-180, 180].
+          </Fn>
+          <Fn name="math.SmoothAngle" args="curP, curY, targetP, targetY, smooth" ret="pitch, yaw">
+            Smoothly interpolate from current angles to target angles by a smoothing factor.
+          </Fn>
+          <Fn name="math.ExtrapolatePosition" args="x, y, z, vx, vy, vz, ticks" ret="x, y, z">
+            Predict a future position based on velocity and tick count.
+          </Fn>
+          <Fn name="math.GetBestTarget" args="localX, localY, localZ, viewPitch, viewYaw, maxFov" ret="integer | nil">
+            Find the enemy player with the lowest FOV within maxFov. Returns entity index or nil.
+          </Fn>
+          <Fn name="math.RCSCompensate" args="aimP, aimY, punchP, punchY, scale?" ret="pitch, yaw">
+            Apply recoil compensation. Default scale is 2.0.
+          </Fn>
         </Section>
 
         {/* ───────────── json ───────────── */}
@@ -1159,39 +1235,6 @@ ffi.C.MessageBoxA(0, "Hello from Lua!", "gscloud", 0)`}</Example>
           </Fn>
         </Section>
 
-        {/* ───────────── trace ───────────── */}
-        <Section id="trace" title="trace" badge="stub">
-          <p>
-            Ray tracing queries. Currently returns default results (no hit, fraction 1.0).
-            The API signature is stable — implementations will be added when the engine
-            trace interface is hooked.
-          </p>
-          <Fn name="trace.Line" args="from_x, from_y, from_z, to_x, to_y, to_z [, skip_ent, mask]" ret="TraceResult">
-            Cast a ray between two points.
-          </Fn>
-          <Fn name="trace.Hull" args="from_x, from_y, from_z, to_x, to_y, to_z [, mins, maxs, skip_ent, mask]" ret="TraceResult">
-            Cast a swept box between two points.
-          </Fn>
-          <Fn name="trace.Bullet" args="from_ent, to_ent" ret="{damage, hit}">
-            Simulate a bullet trace between two entities.
-          </Fn>
-          <div className="mt-2">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">TraceResult</h4>
-            <p className="text-xs">
-              <code className="text-text-faint">{`{ fraction, hit, entity, hitpos = {x,y,z}, normal = {x,y,z} }`}</code>
-            </p>
-          </div>
-        </Section>
-
-        {/* ───────────── panorama ───────────── */}
-        <Section id="panorama" title="panorama" badge="stub">
-          <p>Panorama UI scripting bridge. Currently a no-op — requires hooking the Panorama JS engine.</p>
-          <Fn name="panorama.Execute" args="code: string">Execute Panorama JavaScript code.</Fn>
-          <Fn name="panorama.Listen" args="event: string, callback: function" ret="handle: integer">
-            Listen for a Panorama event. Currently returns 0.
-          </Fn>
-        </Section>
-
         {/* ───────────── chams ───────────── */}
         <Section id="chams" title="chams">
           <p>
@@ -1264,39 +1307,39 @@ world.SetColorCorrection(0.8, 1.2, 0.5)
 world.Apply()`}</Example>
         </Section>
 
-        {/* ───────────── materials ───────────── */}
-        <Section id="materials" title="materials">
+        {/* ───────────── memory ───────────── */}
+        <Section id="memory" title="memory">
           <p>
             Low-level memory access primitives. SEH-protected reads/writes, pattern scanning,
             module enumeration, and virtual function calls. For advanced users building custom features.
           </p>
-          <Fn name="materials.ReadByte" args="addr: integer" ret="integer">SEH-safe byte read.</Fn>
-          <Fn name="materials.ReadInt" args="addr: integer" ret="integer">SEH-safe 32-bit int read.</Fn>
-          <Fn name="materials.ReadFloat" args="addr: integer" ret="number">SEH-safe float read.</Fn>
-          <Fn name="materials.ReadPointer" args="addr: integer" ret="integer">SEH-safe 64-bit pointer read.</Fn>
-          <Fn name="materials.WriteByte" args="addr: integer, val: integer">SEH-safe byte write.</Fn>
-          <Fn name="materials.WriteInt" args="addr: integer, val: integer">SEH-safe 32-bit int write.</Fn>
-          <Fn name="materials.WriteFloat" args="addr: integer, val: number">SEH-safe float write.</Fn>
-          <Fn name="materials.WritePointer" args="addr: integer, val: integer">SEH-safe 64-bit pointer write.</Fn>
-          <Fn name="materials.PatternScan" args="module: string, pattern: string" ret="integer">
+          <Fn name="memory.ReadByte" args="addr: integer" ret="integer">SEH-safe byte read.</Fn>
+          <Fn name="memory.ReadInt" args="addr: integer" ret="integer">SEH-safe 32-bit int read.</Fn>
+          <Fn name="memory.ReadFloat" args="addr: integer" ret="number">SEH-safe float read.</Fn>
+          <Fn name="memory.ReadPointer" args="addr: integer" ret="integer">SEH-safe 64-bit pointer read.</Fn>
+          <Fn name="memory.WriteByte" args="addr: integer, val: integer">SEH-safe byte write.</Fn>
+          <Fn name="memory.WriteInt" args="addr: integer, val: integer">SEH-safe 32-bit int write.</Fn>
+          <Fn name="memory.WriteFloat" args="addr: integer, val: number">SEH-safe float write.</Fn>
+          <Fn name="memory.WritePointer" args="addr: integer, val: integer">SEH-safe 64-bit pointer write.</Fn>
+          <Fn name="memory.PatternScan" args="module: string, pattern: string" ret="integer">
             Scan a DLL for a byte pattern. Returns the address or 0 on failure.
           </Fn>
-          <Fn name="materials.GetModuleHandle" args="name: string" ret="integer">Module base address.</Fn>
-          <Fn name="materials.GetModuleSize" args="name: string" ret="integer">Module image size in bytes.</Fn>
-          <Fn name="materials.GetExport" args="module: string, name: string" ret="integer">
+          <Fn name="memory.GetModuleHandle" args="name: string" ret="integer">Module base address.</Fn>
+          <Fn name="memory.GetModuleSize" args="name: string" ret="integer">Module image size in bytes.</Fn>
+          <Fn name="memory.GetExport" args="module: string, name: string" ret="integer">
             Resolve an exported function address.
           </Fn>
-          <Fn name="materials.CallVFunc" args="obj: integer, index: integer, ..." ret="integer">
+          <Fn name="memory.CallVFunc" args="obj: integer, index: integer, ..." ret="integer">
             Call a virtual function by vtable index.
           </Fn>
-          <Fn name="materials.ResolveRelative" args="addr, offset, instrSize" ret="integer">
+          <Fn name="memory.ResolveRelative" args="addr, offset, instrSize" ret="integer">
             Resolve a RIP-relative address (common in x64 code).
           </Fn>
-          <Example title="Example — pattern scan + read">{`local base = materials.GetModuleHandle("client.dll")
-local addr = materials.PatternScan("client.dll", "48 8B 05 ?? ?? ?? ?? 48 85 C0 74")
+          <Example title="Example — pattern scan + read">{`local base = memory.GetModuleHandle("client.dll")
+local addr = memory.PatternScan("client.dll", "48 8B 05 ?? ?? ?? ?? 48 85 C0 74")
 if addr ~= 0 then
-  local resolved = materials.ResolveRelative(addr, 3, 7)
-  local ptr = materials.ReadPointer(resolved)
+  local resolved = memory.ResolveRelative(addr, 3, 7)
+  local ptr = memory.ReadPointer(resolved)
   print("Found: " .. string.format("0x%X", ptr))
 end`}</Example>
         </Section>
@@ -1452,119 +1495,6 @@ events.On("paint", function()
 end)`}</Example>
         </Section>
 
-        {/* ───────────── aimbot ───────────── */}
-        <Section id="aimbot" title="aimbot">
-          <p>
-            Aim calculation utilities — angle math, FOV checks, smoothing, recoil compensation,
-            and distance functions. Build your own aim logic with these building blocks.
-          </p>
-          <Fn name="aimbot.CalcAngle" args="sx, sy, sz, dx, dy, dz" ret="pitch, yaw">
-            Calculate the angles from source position to destination position.
-          </Fn>
-          <Fn name="aimbot.GetFOV" args="myPitch, myYaw, targetPitch, targetYaw" ret="number">
-            Angular distance in degrees between two view directions.
-          </Fn>
-          <Fn name="aimbot.SmoothAngle" args="curPitch, curYaw, tgtPitch, tgtYaw, factor" ret="pitch, yaw">
-            Interpolate towards target angles. Factor 1.0 = instant, higher = slower.
-          </Fn>
-          <Fn name="aimbot.NormalizeAngle" args="pitch, yaw" ret="pitch, yaw">
-            Clamp pitch to [-89, 89] and yaw to [-180, 180].
-          </Fn>
-          <Fn name="aimbot.GetDistance" args="x1, y1, z1, x2, y2, z2" ret="number">3D distance between points.</Fn>
-          <Fn name="aimbot.GetDistance2D" args="x1, y1, x2, y2" ret="number">2D distance between points.</Fn>
-          <Fn name="aimbot.GetRCS" args="" ret="pitch, yaw">
-            Recoil compensation values (2x <code className="text-text-faint">m_aimPunchAngle</code>).
-            Subtract from your aim angles for RCS.
-          </Fn>
-          <Fn name="aimbot.GetPunchAngle" args="" ret="pitch, yaw, roll">
-            Raw aim punch angle vector.
-          </Fn>
-          <Fn name="aimbot.AngleDelta" args="a: number, b: number" ret="number">
-            Shortest angular distance between two angles.
-          </Fn>
-          <Fn name="aimbot.VectorToAngle" args="x, y, z" ret="pitch, yaw">Direction vector to Euler angles.</Fn>
-          <Fn name="aimbot.AngleToVector" args="pitch, yaw" ret="x, y, z">Euler angles to direction vector.</Fn>
-          <Fn name="aimbot.GetShotsFired" args="" ret="integer">
-            Number of shots fired in current burst (<code className="text-text-faint">m_iShotsFired</code>).
-          </Fn>
-          <Fn name="aimbot.IsVisible" args="sx, sy, sz, dx, dy, dz" ret="boolean">
-            Basic visibility check (trace). Returns true as fallback if trace unavailable.
-          </Fn>
-          <Example title="Example — smooth aim at nearest enemy head">{`events.On("createmove", function(cmd)
-  if not input.IsKeyDown(input.MOUSE_RIGHT) then return end
-
-  local me = entity.GetLocalPlayer()
-  if not me then return end
-  local ex, ey, ez = entity.GetEyePosition(me)
-  local myP, myY = engine.GetViewAngles()
-
-  local bestFOV = 5.0  -- max FOV
-  local bestP, bestY = myP, myY
-
-  for _, ply in ipairs(entity.GetPlayers()) do
-    if entity.IsEnemy(ply) and entity.IsAlive(ply) then
-      local hx, hy, hz = entity.GetHitboxPosition(ply, 6) -- head
-      local tp, ty = aimbot.CalcAngle(ex, ey, ez, hx, hy, hz)
-      local fov = aimbot.GetFOV(myP, myY, tp, ty)
-      if fov < bestFOV then
-        bestFOV = fov
-        bestP, bestY = tp, ty
-      end
-    end
-  end
-
-  if bestFOV < 5.0 then
-    -- apply RCS
-    local rp, ry = aimbot.GetRCS()
-    bestP = bestP - rp
-    bestY = bestY - ry
-    -- smooth
-    bestP, bestY = aimbot.SmoothAngle(myP, myY, bestP, bestY, 3.0)
-    engine.SetViewAngles(bestP, bestY, 0)
-  end
-end)`}</Example>
-        </Section>
-
-        {/* ───────────── visuals ───────────── */}
-        <Section id="visuals" title="visuals">
-          <p>
-            Visual effect helpers — smoke/flash removal, scope overlay, third person,
-            visual recoil suppression, and FOV override.
-          </p>
-          <Fn name="visuals.SetRemoveSmoke" args="enabled: boolean">Toggle smoke grenade removal.</Fn>
-          <Fn name="visuals.GetRemoveSmoke" args="" ret="boolean">Whether smoke removal is active.</Fn>
-          <Fn name="visuals.SetRemoveFlash" args="enabled: boolean">Toggle flashbang removal.</Fn>
-          <Fn name="visuals.SetFlashMaxAlpha" args="alpha: number">
-            Maximum flash alpha (0.0 = fully removed). Only applies when flash removal is enabled.
-          </Fn>
-          <Fn name="visuals.ApplyFlash" args="">
-            Apply the flash override. Call this in your <code className="text-accent">frame_stage</code> handler.
-          </Fn>
-          <Fn name="visuals.SetNoScopeOverlay" args="enabled: boolean">Remove the sniper scope overlay.</Fn>
-          <Fn name="visuals.SetThirdPerson" args="enabled: boolean">Toggle third-person camera.</Fn>
-          <Fn name="visuals.SetThirdPersonDist" args="dist: number">Third-person camera distance (default 150).</Fn>
-          <Fn name="visuals.SetNoVisualRecoil" args="enabled: boolean">Suppress visual punch (screen shake on fire).</Fn>
-          <Fn name="visuals.ApplyNoRecoil" args="">
-            Zero the visual punch angles. Call in <code className="text-accent">frame_stage</code>.
-          </Fn>
-          <Fn name="visuals.GetConfig" args="" ret="table">Current visuals configuration table.</Fn>
-          <Fn name="visuals.Reset" args="">Reset all visual overrides to defaults.</Fn>
-          <Fn name="visuals.GetFOV" args="" ret="integer">Read the current desired FOV.</Fn>
-          <Fn name="visuals.SetFOV" args="fov: integer">Override field of view (e.g. 120 for wide).</Fn>
-          <Example title="Example — no flash + wide FOV">{`visuals.SetRemoveFlash(true)
-visuals.SetFlashMaxAlpha(0.0)
-visuals.SetNoScopeOverlay(true)
-visuals.SetNoVisualRecoil(true)
-visuals.SetFOV(110)
-
-events.On("frame_stage", function(stage)
-  if stage == 5 then
-    visuals.ApplyFlash()
-    visuals.ApplyNoRecoil()
-  end
-end)`}</Example>
-        </Section>
-
         {/* ───────────── config ───────────── */}
         <Section id="config" title="config">
           <p>
@@ -1603,78 +1533,6 @@ end
 for _, name in ipairs(config.List()) do
   print("Config: " .. name)
 end`}</Example>
-        </Section>
-
-        {/* ───────────── bit ───────────── */}
-        <Section id="bit" title="bit">
-          <p>
-            Bitwise operations and CS2 engine constants. Use these for button flags,
-            entity flags, team numbers, and hitbox IDs.
-          </p>
-          <Fn name="bit.band" args="a, b" ret="integer">Bitwise AND.</Fn>
-          <Fn name="bit.bor" args="a, b" ret="integer">Bitwise OR.</Fn>
-          <Fn name="bit.bxor" args="a, b" ret="integer">Bitwise XOR.</Fn>
-          <Fn name="bit.bnot" args="a" ret="integer">Bitwise NOT.</Fn>
-          <Fn name="bit.lshift" args="a, n" ret="integer">Left shift by n bits.</Fn>
-          <Fn name="bit.rshift" args="a, n" ret="integer">Unsigned right shift by n bits.</Fn>
-          <Fn name="bit.test" args="flags, bit" ret="boolean">Test whether a bit/mask is set in flags.</Fn>
-
-          <div className="mt-3">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Button Constants (IN_*)</h4>
-            <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-xs mt-1">
-              {["IN_ATTACK", "IN_JUMP", "IN_DUCK", "IN_FORWARD", "IN_BACK", "IN_USE",
-                "IN_CANCEL", "IN_LEFT", "IN_RIGHT", "IN_MOVELEFT", "IN_MOVERIGHT",
-                "IN_ATTACK2", "IN_RUN", "IN_RELOAD", "IN_ALT1", "IN_ALT2", "IN_SCORE",
-                "IN_SPEED", "IN_WALK", "IN_ZOOM", "IN_WEAPON1", "IN_WEAPON2",
-                "IN_BULLRUSH", "IN_GRENADE1", "IN_GRENADE2", "IN_LOOKSPIN",
-              ].map(c => <code key={c} className="text-text-faint">bit.{c}</code>)}
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Entity Flags</h4>
-            <p className="text-xs">
-              <code className="text-text-faint">FL_ONGROUND</code>,{" "}
-              <code className="text-text-faint">FL_DUCKING</code>,{" "}
-              <code className="text-text-faint">FL_FROZEN</code>,{" "}
-              <code className="text-text-faint">FL_ATCONTROLS</code>,{" "}
-              <code className="text-text-faint">FL_FLY</code>
-            </p>
-          </div>
-
-          <div className="mt-3">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Teams &amp; Hitboxes</h4>
-            <p className="text-xs">
-              Teams:{" "}
-              <code className="text-text-faint">TEAM_NONE</code> (0),{" "}
-              <code className="text-text-faint">TEAM_SPECTATOR</code> (1),{" "}
-              <code className="text-text-faint">TEAM_T</code> (2),{" "}
-              <code className="text-text-faint">TEAM_CT</code> (3)
-            </p>
-            <p className="text-xs mt-1">
-              Hitboxes:{" "}
-              <code className="text-text-faint">HITBOX_HEAD</code> (6),{" "}
-              <code className="text-text-faint">HITBOX_NECK</code> (5),{" "}
-              <code className="text-text-faint">HITBOX_CHEST</code> (4),{" "}
-              <code className="text-text-faint">HITBOX_STOMACH</code> (3),{" "}
-              <code className="text-text-faint">HITBOX_PELVIS</code> (0)
-            </p>
-          </div>
-          <Example title="Example — check flags with bit ops">{`events.On("createmove", function(cmd)
-  local me = entity.GetLocalPlayer()
-  if not me then return end
-  local flags = entity.GetFlags(me)
-
-  if bit.test(flags, bit.FL_ONGROUND) then
-    print("On ground")
-  end
-
-  -- check if jumping
-  local buttons = 0 -- from cmd
-  if bit.test(buttons, bit.IN_JUMP) then
-    print("Jumping!")
-  end
-end)`}</Example>
         </Section>
 
         {/* ───────────── antiaim ───────────── */}
@@ -1893,7 +1751,7 @@ end)`}</LuaCode>
           <div className="border border-border rounded-lg p-5 bg-surface">
             <h3 className="text-sm font-bold mb-3">Skin Changer</h3>
             <LuaCode className="p-4">{`local tab = ui.Tab("Skins")
-local g = tab:Group("Weapon Skins")
+local g = tab:Child("skins", "Weapon Skins", 0, 0, 20, 20)
 local paintKit = g:SliderInt("Paint Kit", 1, 1200, 344)
 local wear = g:SliderFloat("Wear", 0.0, 1.0, 0.001)
 local seed = g:SliderInt("Seed", 0, 1000, 0)
