@@ -198,7 +198,6 @@ const NAV = [
   { id: "input", label: "input" },
   { id: "ui", label: "ui" },
   { id: "events", label: "events" },
-  { id: "hooks", label: "hooks" },
   { id: "http", label: "http" },
   { id: "cheat", label: "cheat" },
   { id: "system", label: "system" },
@@ -438,7 +437,7 @@ end`}</Example>
           <Fn name="entity.GetSpectators" args="ent" ret="table">
             Returns a table of player indices currently spectating this entity.
           </Fn>
-          <Example title="Example — iterate enemies and draw boxes">{`hooks.Add("Paint", "esp_boxes", function()
+          <Example title="Example — iterate enemies and draw boxes">{`events.Add("Paint", "esp_boxes", function()
   for _, ply in ipairs(entity.GetPlayers()) do
     if entity.IsEnemy(ply) and entity.IsAlive(ply) then
       local x, y, w, h = entity.GetBoundingBox(ply)
@@ -796,6 +795,13 @@ g:Button("Apply", function() cheat.Notify("Applied!") end)`}</Example>
               </div>
             ))}
           </div>
+          <Fn name="events.Add" args="hookName, uniqueId, callback">
+            Named subscription. Re-registering with the same hookName + uniqueId replaces the previous callback.
+            Accepts both PascalCase (<code className="text-text-faint">Paint</code>) and snake_case (<code className="text-text-faint">paint</code>) event names.
+          </Fn>
+          <Fn name="events.Remove" args="hookName, uniqueId">
+            Remove a named subscription.
+          </Fn>
           <Example title="Example — track kills with player_death">{`local kills = 0
 
 events.On("player_death", function(e)
@@ -809,44 +815,11 @@ end)
 events.On("round_start", function(e)
   kills = 0
 end)`}</Example>
-        </Section>
-
-        {/* ───────────── hooks ───────────── */}
-        <Section id="hooks" title="hooks">
-          <p>
-            Named hook management — bridges hook names to the event system. Supports
-            both PascalCase and snake_case hook names.
-          </p>
-          <Fn name="hooks.Add" args="hookName, uniqueId, callback">
-            Register a callback for a hook. Re-registering with the same hookName + uniqueId replaces the previous callback.
-          </Fn>
-          <Fn name="hooks.Remove" args="hookName, uniqueId">
-            Remove a previously registered hook callback.
-          </Fn>
-          <div className="mt-2">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Supported Hooks</h4>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs mt-1">
-              {[
-                "CreateMove", "Movement", "FrameStageNotify", "Paint / Draw",
-                "Frame", "Key", "Resize", "Focus", "Unload",
-                "RoundStart", "RoundEnd", "FreezeTimeEnd", "RoundMVP",
-                "BeginNewMatch", "AnnouncePhaseEnd",
-                "PlayerDeath", "PlayerHurt", "PlayerSpawn", "PlayerDisconnect",
-                "ItemPurchase", "WeaponFire", "BulletImpact",
-                "BombPlanted", "BombDefused", "BombExploded",
-                "FlashbangDetonate", "SmokegrenadeDetonate", "HEGrenadeDetonate",
-                "InfernoStartBurn", "InfernoExpire", "DecoyStarted",
-                "VoteSetup", "EdgeBug", "JumpBug", "PixelSurf",
-              ].map((h) => (
-                <code key={h} className="text-text-faint">{h}</code>
-              ))}
-            </div>
-          </div>
-          <Example title="Example — paint watermark, then remove">{`hooks.Add("Paint", "watermark", function()
+          <Example title="Example — named subscription (add then remove)">{`events.Add("Paint", "watermark", function()
   renderer.Text(10, 10, "gamesense.cloud", Color(100, 200, 255), 16)
 end)
 
-hooks.Remove("Paint", "watermark")`}</Example>
+events.Remove("Paint", "watermark")`}</Example>
         </Section>
 
         {/* ───────────── http ───────────── */}
@@ -1373,7 +1346,7 @@ end`}</Example>
             <LuaCode className="p-4">{`local g = ui.Group("ESP", "A")
 local enabled = g:Checkbox("Enabled", true)
 
-hooks.Add("Paint", "simple_esp", function()
+events.Add("Paint", "simple_esp", function()
   if not enabled:Get() then return end
   for _, ply in ipairs(entity.GetPlayers()) do
     if entity.IsEnemy(ply) and entity.IsAlive(ply) then
@@ -1442,9 +1415,9 @@ end)`}</LuaCode>
             <LuaCode className="p-4">{`-- Hold ALT to lock onto the closest enemy with trace-based targeting
 local tab = ui.Tab("Aimlock")
 local g = tab:Child("aim", "Settings", 0, 0, 6, 6)
-local fov    = g:Slider("fov", "FOV", 1, 180, 15)
-local smooth = g:Slider("smooth", "Smooth", 1, 50, 5)
-local minDmg = g:Slider("mindmg", "Min Damage", 1, 100, 10)
+local fov    = g:SliderInt("FOV", 1, 180, 15)
+local smooth = g:SliderInt("Smooth", 1, 50, 5)
+local minDmg = g:SliderInt("Min Damage", 1, 100, 10)
 
 events.On("frame", function()
   if not engine.IsInGame() or not input.IsKeyDown(0x12) then return end
@@ -1478,7 +1451,7 @@ end)
 events.On("paint", function()
   local sw, sh = engine.GetScreenSize()
   local r = (fov:Get() / 90) * (sw / 2)
-  renderer.Circle(sw/2, sh/2, r, 255, 255, 255, 120)
+  renderer.Circle(sw/2, sh/2, r, {255, 255, 255, 120})
 end)`}</LuaCode>
           </div>
         </section>
