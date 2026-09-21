@@ -196,6 +196,7 @@ const NAV = [
   { id: "entity", label: "entity" },
   { id: "renderer", label: "renderer" },
   { id: "input", label: "input" },
+  { id: "bit", label: "bit" },
   { id: "ui", label: "ui" },
   { id: "events", label: "events" },
   { id: "http", label: "http" },
@@ -287,6 +288,20 @@ export default function Docs() {
           <Fn name="engine.GetRoundPhase" args="" ret="string">
             Current round phase: <code className="text-accent">&quot;live&quot;</code>, <code className="text-accent">&quot;freezetime&quot;</code>, or <code className="text-accent">&quot;over&quot;</code>.
             Updated automatically from game events (round_start, round_freeze_end, round_end).
+          </Fn>
+          <Fn name="engine.ForceButtons" args="flags: integer">
+            Force movement button flags for one tick (e.g. <code className="text-text-faint">input.IN_JUMP</code>).
+          </Fn>
+          <Fn name="engine.GetButtonState" args="" ret="integer">
+            Current button state as IN_* flags bitmask.
+          </Fn>
+          <Fn name="engine.GetGameMode" args="" ret="string">
+            Current game mode: <code className="text-accent">&quot;competitive&quot;</code>, <code className="text-accent">&quot;casual&quot;</code>, <code className="text-accent">&quot;deathmatch&quot;</code>, <code className="text-accent">&quot;wingman&quot;</code>, etc.
+          </Fn>
+          <Fn name="engine.IsWarmup" args="" ret="boolean">Whether the game is in warmup phase.</Fn>
+          <Fn name="engine.GetBombPlanted" args="" ret="boolean">Whether the bomb is currently planted.</Fn>
+          <Fn name="engine.GetGlobalVars" args="" ret="table">
+            Returns a table with global engine variables: <code className="text-text-faint">realtime</code>, <code className="text-text-faint">curtime</code>, <code className="text-text-faint">frametime</code>, <code className="text-text-faint">tickcount</code>, <code className="text-text-faint">tickinterval</code>, <code className="text-text-faint">maxclients</code>.
           </Fn>
           <Example title="Example — log game state">{`if engine.IsInGame() then
   local w, h = engine.GetScreenSize()
@@ -391,6 +406,32 @@ end`}</Example>
           </Fn>
           <Fn name="entity.GetEntityFromHandle" args="handle: integer" ret="entity | nil">
             Resolve an entity handle (e.g. from GetPropInt on m_hActiveWeapon or m_hOwnerEntity) to an entity pointer. Returns nil if the handle is invalid.
+          </Fn>
+          <Fn name="entity.SetPropInt" args="ent, class: string, field: string, value: integer">
+            Write an integer schema field.
+          </Fn>
+          <Fn name="entity.SetPropFloat" args="ent, class: string, field: string, value: number">
+            Write a float schema field.
+          </Fn>
+          <Fn name="entity.SetPropBool" args="ent, class: string, field: string, value: boolean">
+            Write a boolean schema field.
+          </Fn>
+          <Fn name="entity.SetPropVec3" args="ent, class: string, field: string, x, y, z">
+            Write a Vector schema field.
+          </Fn>
+          <Fn name="entity.GetAddress" args="ent" ret="integer">Raw pointer address of the entity.</Fn>
+          <Fn name="entity.GetSceneNode" args="ent" ret="userdata | nil">
+            Get the CGameSceneNode pointer for the entity.
+          </Fn>
+          <Fn name="entity.GetBoneCount" args="ent" ret="integer">Number of bones in the entity&apos;s model.</Fn>
+          <Fn name="entity.GetClassName" args="ent" ret="string">Entity class name (e.g. <code className="text-text-faint">&quot;C_CSPlayerPawn&quot;</code>).</Fn>
+          <Fn name="entity.IsDefusing" args="ent" ret="boolean">Whether the player is defusing the bomb.</Fn>
+          <Fn name="entity.IsPlanting" args="ent" ret="boolean">Whether the player is planting the bomb.</Fn>
+          <Fn name="entity.GetAllPlayers" args="" ret="table">
+            Returns a table of all player entries with <code className="text-text-faint">pawn</code>, <code className="text-text-faint">controller</code>, <code className="text-text-faint">alive</code>, <code className="text-text-faint">team</code>, <code className="text-text-faint">name</code> fields.
+          </Fn>
+          <Fn name="entity.GetGrenades" args="" ret="table">
+            Returns a table of active grenade/projectile entities.
           </Fn>
           <Fn name="entity.SetEntityGlow" args="entity, r, g, b, a?, glowType?" ret="">
             Apply a colored glow effect (0-255 color values, optional alpha and glow type).
@@ -605,15 +646,6 @@ end)`}</Example>
               <code className="text-text-faint">IN_WALK</code>
             </p>
           </div>
-          <Fn name="input.band" args="a: integer, b: integer" ret="integer">Bitwise AND.</Fn>
-          <Fn name="input.bor" args="a: integer, b: integer" ret="integer">Bitwise OR.</Fn>
-          <Fn name="input.bxor" args="a: integer, b: integer" ret="integer">Bitwise XOR.</Fn>
-          <Fn name="input.bnot" args="a: integer" ret="integer">Bitwise NOT.</Fn>
-          <Fn name="input.lshift" args="a: integer, n: integer" ret="integer">Left shift.</Fn>
-          <Fn name="input.rshift" args="a: integer, n: integer" ret="integer">Right shift (unsigned).</Fn>
-          <Fn name="input.has_flag" args="value: integer, flag: integer" ret="boolean">
-            Check if a bit flag is set in a value.
-          </Fn>
           <Example title="Example — key toggle + button flags">{`local enabled = false
 events.On("key", function(key, down)
   if key == input.KEY_X and down then
@@ -622,10 +654,32 @@ events.On("key", function(key, down)
 end)
 
 events.On("createmove", function(cmd)
-  if enabled and input.has_flag(cmd.buttons, input.IN_JUMP) then
-    cmd.buttons = input.bor(cmd.buttons, input.IN_DUCK)
+  if enabled and bit.has_flag(cmd.buttons, input.IN_JUMP) then
+    cmd.buttons = bit.bor(cmd.buttons, input.IN_DUCK)
   end
 end)`}</Example>
+        </Section>
+
+        {/* ───────────── bit ───────────── */}
+        <Section id="bit" title="bit">
+          <p>
+            Bitwise operations. Standalone global module — accessed via{" "}
+            <code className="text-accent">bit.band()</code> etc.
+          </p>
+          <Fn name="bit.band" args="a: integer, b: integer" ret="integer">Bitwise AND.</Fn>
+          <Fn name="bit.bor" args="a: integer, b: integer" ret="integer">Bitwise OR.</Fn>
+          <Fn name="bit.bxor" args="a: integer, b: integer" ret="integer">Bitwise XOR.</Fn>
+          <Fn name="bit.bnot" args="a: integer" ret="integer">Bitwise NOT.</Fn>
+          <Fn name="bit.lshift" args="a: integer, n: integer" ret="integer">Left shift.</Fn>
+          <Fn name="bit.rshift" args="a: integer, n: integer" ret="integer">Right shift (unsigned).</Fn>
+          <Fn name="bit.has_flag" args="value: integer, flag: integer" ret="boolean">
+            Check if a bit flag is set in a value.
+          </Fn>
+          <Example title="Example — check player flags">{`local flags = entity.GetFlags(me)
+if bit.has_flag(flags, 1) then
+  print("Player is crouching")
+end
+local combined = bit.bor(0xF0, 0x0F) -- 0xFF`}</Example>
         </Section>
 
         {/* ───────────── ui ───────────── */}
@@ -855,6 +909,8 @@ end)`}</Example>
           <Fn name="cheat.Unload" args="">Queue the calling script for unload.</Fn>
           <Fn name="cheat.Reload" args="">Queue the calling script for reload.</Fn>
           <Fn name="cheat.Log" args="text: string">Write to the internal journal.</Fn>
+          <Fn name="cheat.Warn" args="text: string">Write a warning to the journal.</Fn>
+          <Fn name="cheat.Error" args="text: string">Write an error to the journal.</Fn>
           <Fn name="cheat.Notify" args="text: string">Show a notification message.</Fn>
           <Fn name="cheat.GetTimestamp" args="" ret="string">
             Local time as <code className="text-text-faint">&quot;YYYY-MM-DD HH:MM:SS&quot;</code>.
@@ -992,6 +1048,15 @@ end`}</Example>
           <Fn name="store.clear" args="">Delete all keys for this script.</Fn>
           <Fn name="store.keys" args="" ret="table">Return all stored keys as a sequential table.</Fn>
           <Fn name="store.save" args="">Force an immediate write to disk.</Fn>
+          <p className="text-xs">
+            Aliases: <code className="text-text-faint">store.Get</code>,{" "}
+            <code className="text-text-faint">store.Set</code>,{" "}
+            <code className="text-text-faint">store.Has</code>,{" "}
+            <code className="text-text-faint">store.Remove</code>,{" "}
+            <code className="text-text-faint">store.Clear</code>,{" "}
+            <code className="text-text-faint">store.Keys</code>,{" "}
+            <code className="text-text-faint">store.Save</code>
+          </p>
           <Example title="Example — persistent toggle">{`local enabled = store.get("enabled")
 if enabled == nil then enabled = true end
 
@@ -1200,10 +1265,8 @@ end`}</Example>
           <Fn name="anim.GetBoneCount" args="ent" ret="integer">Number of bones in the model.</Fn>
           <Fn name="anim.GetModelName" args="ent" ret="string">Model file path string.</Fn>
           <Fn name="anim.SetBonePosition" args="ent, boneIndex: integer, x, y, z">Write a bone position.</Fn>
-          <Fn name="anim.GetSequence" args="ent" ret="integer">Current animation sequence index.</Fn>
-          <Fn name="anim.SetSequence" args="ent, seq: integer">Set the animation sequence.</Fn>
-          <Fn name="anim.GetCycle" args="ent" ret="number">Animation cycle progress (0.0–1.0).</Fn>
-          <Fn name="anim.SetCycle" args="ent, cycle: number">Set animation cycle (0.0–1.0).</Fn>
+          <Fn name="anim.GetAnimSequence" args="ent" ret="integer">Current animation sequence index.</Fn>
+          <Fn name="anim.GetAnimCycle" args="ent" ret="number">Animation cycle progress (0.0–1.0).</Fn>
           <Fn name="anim.GetAbsOrigin" args="ent" ret="x, y, z">Absolute origin from the scene node.</Fn>
           <Fn name="anim.GetAbsRotation" args="ent" ret="pitch, yaw, roll">Absolute rotation from the scene node.</Fn>
           <Example title="Example — read head bone">{`local me = entity.GetLocalPlayer()
