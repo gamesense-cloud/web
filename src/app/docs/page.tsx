@@ -742,7 +742,7 @@ end)`}</Example>
             Local time as <code className="text-text-faint">&quot;YYYY-MM-DD HH:MM:SS&quot;</code>.
           </Fn>
           <Fn name="cheat.FindExport" args="module: string, export: string" ret="userdata | nil">
-            Find a DLL export by module and name. Returns a lightuserdata pointer.
+            Find an export by module and name. Returns a lightuserdata pointer.
           </Fn>
           <Fn name="cheat.IsRadarActive" args="" ret="boolean">
             Whether the web radar is currently streaming data.
@@ -974,7 +974,7 @@ end)`}</Example>
             Fill a cdata buffer with a byte value (default 0).
           </Fn>
           <Fn name="ffi.load" args="library: string" ret="table">
-            Load a DLL and return a table whose fields resolve to exports on access.
+            Load a module and return a table whose fields resolve to exports on access.
           </Fn>
           <Fn name="ffi.typeof" args="cdata" ret="string">
             Returns the C type name of a cdata object as a string.
@@ -1011,7 +1011,7 @@ local buf = ffi.new("char[260]")
 ffi.C.GetModuleFileNameA(0, buf, 260)
 print("Exe: " .. ffi.string(buf))
 
--- load a DLL and call an export
+-- load a module and call an export
 local ntdll = ffi.load("ntdll")
 local ticks = ntdll.NtGetTickCount()
 print("Ticks: " .. ticks)
@@ -1054,7 +1054,7 @@ cvar.SetFloat("volume", 0.5)`}</Example>
           <Fn name="memory.WriteFloat" args="addr: integer, val: number">SEH-safe float write.</Fn>
           <Fn name="memory.WritePointer" args="addr: integer, val: integer">SEH-safe 64-bit pointer write.</Fn>
           <Fn name="memory.PatternScan" args="module: string, pattern: string" ret="integer">
-            Scan a DLL for a byte pattern. Returns the address or 0 on failure.
+            Scan a module for a byte pattern. Returns the address or 0 on failure.
           </Fn>
           <Fn name="memory.GetModuleHandle" args="name: string" ret="integer">Module base address.</Fn>
           <Fn name="memory.GetModuleSize" args="name: string" ret="integer">Module image size in bytes.</Fn>

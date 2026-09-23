@@ -1,7 +1,7 @@
 // Radar model, map table and canvas drawing for /web-radar.
 //
-// The payload types mirror what the DLL pushes to /api/radar/push. Fields marked
-// "planned" are not sent yet: the page uses them as soon as the DLL does, and
+// The payload types mirror what the client pushes to /api/radar/push. Fields marked
+// "planned" are not sent yet: the page uses them as soon as the client does, and
 // until then infers the same thing from positions (see NadeTracker, Walls).
 
 export type NadeType = "smoke" | "flash" | "he" | "molotov" | "decoy";
@@ -145,7 +145,7 @@ export interface Loadout {
   nades: NadeType[];
   knife: boolean; zeus: boolean; c4: boolean;
   held?: string;
-  full: boolean;   // true when the DLL sent the whole inventory, false when only the held weapon is known
+  full: boolean;   // true when the client sent the whole inventory, false when only the held weapon is known
 }
 
 export const NADE_ORDER: NadeType[] = ["flash", "smoke", "he", "molotov", "decoy"];
@@ -242,9 +242,10 @@ export class NadeTracker {
         else if (tr.type === "flash") this.bursts.push({ ...base, type: "flash", t1: now + 500 });
       }
     }
+    // kept a little past their end: the page draws them up to half a second late
     for (const [key, tr] of this.tracks)
-      if (tr.gone && now - (tr.pts[tr.pts.length - 1]?.t ?? tr.gone) > TRACER_MS && now - tr.gone > 400) this.tracks.delete(key);
-    this.bursts = this.bursts.filter((b) => b.t1 > now);
+      if (tr.gone && now - (tr.pts[tr.pts.length - 1]?.t ?? tr.gone) > TRACER_MS + 600 && now - tr.gone > 1000) this.tracks.delete(key);
+    this.bursts = this.bursts.filter((b) => b.t1 + 600 > now);
   }
 
   // Without the planned entity id, follow each nade by the nearest one of its kind.
@@ -401,13 +402,18 @@ export function drawBomb(
 
 // ----------------------------------------------------------------- nades
 
+// `now` is the render time, which trails the data a little so that flights,
+// tracers and effects can be eased between frames.
 export function drawNades(ctx: CanvasRenderingContext2D, v: View, tracker: NadeTracker, now: number, alpha: (z: number) => number) {
+  const over = (t: number) => t > 0 && t <= now;
+
   // smokes and fires under everything else
   for (const tr of tracker.tracks.values()) {
-    if (!tr.landed || tr.gone || tr.until <= now) continue;
+    if (!over(tr.landed) || over(tr.gone) || tr.until <= now) continue;
     area(ctx, v, tr.type, tr.x, tr.y, tr.radius, tr.landed, tr.until, now, alpha(tr.z));
   }
   for (const b of tracker.bursts) {
+    if (b.t0 > now || b.t1 <= now) continue;
     ctx.globalAlpha = alpha(b.z);
     if (b.type === "molotov") area(ctx, v, "molotov", b.x, b.y, b.radius, b.t0, b.t1, now, alpha(b.z));
     else burst(ctx, v, b, now);
@@ -417,20 +423,31 @@ export function drawNades(ctx: CanvasRenderingContext2D, v: View, tracker: NadeT
   for (const tr of tracker.tracks.values()) {
     const a = alpha(tr.z);
     const n = NADES[tr.type];
-    // tracer: only the recent path, fading with age
-    for (let i = 1; i < tr.pts.length; i++) {
-      const p0 = tr.pts[i - 1], p1 = tr.pts[i];
+    const pts = tr.pts;
+    let last = -1;
+    for (let i = 0; i < pts.length; i++) if (pts[i].t <= now) last = i;
+    if (last < 0) continue; // not thrown yet, as of the render time
+    const next = pts[last + 1];
+    const f = next ? (now - pts[last].t) / (next.t - pts[last].t) : 0;
+    const head = next
+      ? { x: pts[last].x + (next.x - pts[last].x) * f, y: pts[last].y + (next.y - pts[last].y) * f, t: now }
+      : pts[last];
+
+    // tracer: the path so far, fading with age
+    ctx.lineWidth = 1.75;
+    for (let i = 1; i <= last + 1; i++) {
+      const p0 = pts[i - 1], p1 = i <= last ? pts[i] : head;
+      if (i > last && !next) break;
       const fade = 1 - (now - p1.t) / TRACER_MS;
       if (fade <= 0) continue;
       const [x0, y0] = toScreen(v, p0.x, p0.y);
       const [x1, y1] = toScreen(v, p1.x, p1.y);
       ctx.strokeStyle = `rgba(${n.rgb},${(0.8 * fade * a).toFixed(3)})`;
-      ctx.lineWidth = 1.75;
       ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
     }
-    if (tr.landed || tr.gone) continue;
+    if (over(tr.landed) || over(tr.gone)) continue;
     // in flight: the grenade's own icon, over a soft glow in its colour
-    const [x, y] = toScreen(v, tr.x, tr.y);
+    const [x, y] = toScreen(v, head.x, head.y);
     ctx.globalAlpha = a;
     const glow = ctx.createRadialGradient(x, y, 0, x, y, 11);
     glow.addColorStop(0, `rgba(${n.rgb},0.45)`);

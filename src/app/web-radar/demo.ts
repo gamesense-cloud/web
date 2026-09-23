@@ -1,5 +1,5 @@
 // A scripted 5v5 on Dust II that loops forever, shown on /web-radar when no
-// session is open. It emits the same payload the DLL pushes, including the
+// session is open. It emits the same payload the client pushes, including the
 // planned fields (grenade ids, full inventories, shots), so it doubles as an
 // example of that contract. Routes were computed from the radar image, so the
 // players stay inside corridors.

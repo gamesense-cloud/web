@@ -104,7 +104,7 @@ events.On("paint", function()
 end)`;
 
 export default async function Home() {
-  const [stats, loader, dll] = await Promise.all([
+  const [stats, loader, client] = await Promise.all([
     getStats(),
     getLatestRelease("launcher"),
     getLatestRelease("dll"),
@@ -138,7 +138,7 @@ export default async function Home() {
         <p className="hero-meta rise" style={beat(4)}>
           Windows 10 / 11 · 64-bit
           {loader && ` · loader ${loader.tag_name}`}
-          {dll && ` · DLL updated ${date(dll.published_at)}`}
+          {client && ` · client updated ${date(client.published_at)}`}
         </p>
       </section>
 
@@ -218,7 +218,7 @@ export default async function Home() {
             <div><dt>Game</dt><dd>Counter-Strike 2</dd></div>
             <div><dt>Install</dt><dd>None, single executable</dd></div>
             <div><dt>Loader</dt><dd>{loader ? `${loader.tag_name} · ${date(loader.published_at)}` : "latest release"}</dd></div>
-            <div><dt>DLL</dt><dd>{dll ? `updated ${date(dll.published_at)}` : "fetched on every inject"}</dd></div>
+            <div><dt>Client</dt><dd>{client ? `updated ${date(client.published_at)}` : "fetched on every inject"}</dd></div>
           </dl>
         </div>
         <div className="panel cta">

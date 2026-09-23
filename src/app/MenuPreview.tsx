@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as I from "./icons";
 
-// The example scripts that ship with the DLL (dll/examples), as the menu lists them.
+// The example scripts that ship with the client, as the menu lists them.
 const SCRIPTS = [
   { file: "controls.lua", name: "Controls", desc: "Every control type using the Tab + Child API." },
   { file: "discord_rpc.lua", name: "discord_rpc", desc: "Discord Rich Presence for gamesense.cloud, talking to Discord over named pipes through FFI." },

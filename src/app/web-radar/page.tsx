@@ -17,9 +17,9 @@ const STATUS: Record<Status, { label: string; tone: string; text: string }> = {
   demo:       { label: "Demo",       tone: "accent", text: "" },
   connecting: { label: "Connecting", tone: "",       text: "Connecting to the session…" },
   live:       { label: "Live",       tone: "ok",     text: "" },
-  waiting:    { label: "Waiting",    tone: "warn",   text: "DLL connected, waiting for a match to start…" },
-  stale:      { label: "Stale",      tone: "warn",   text: "The DLL stopped sending data. The session may have ended." },
-  no_session: { label: "No session", tone: "bad",    text: "No active DLL session for this link. The DLL makes a new one each time it starts." },
+  waiting:    { label: "Waiting",    tone: "warn",   text: "Client connected, waiting for a match to start…" },
+  stale:      { label: "Stale",      tone: "warn",   text: "The client stopped sending data. The session may have ended." },
+  no_session: { label: "No session", tone: "bad",    text: "No active client session for this link. The client makes a new one each time it starts." },
   error:      { label: "Error",      tone: "bad",    text: "Could not reach the server." },
 };
 
@@ -57,7 +57,7 @@ function loadPrefs(): Prefs {
 
 // ------------------------------------------------------------------ helpers
 
-// Where a player's view ray meets a wall: the DLL's trace when it sends one,
+// Where a player's view ray meets a wall: the client's in-game trace when it sends one,
 // otherwise a march across the radar image.
 function aimEnd(p: Player, map: MapInfo, walls: Walls | null): [number, number] {
   if (p.aim) return [p.aim[0], p.aim[1]];
@@ -125,10 +125,11 @@ function Radar() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const dataRef = useRef<RadarData | null>(null);
-  const prevRef = useRef(new Map<string, Player>());
   const currRef = useRef(new Map<string, Player>());
-  const frameAt = useRef(0);
-  const span = useRef(200);
+  // Recent frames, so the map can be drawn a moment in the past and eased
+  // between the two frames around that moment, whatever rate they arrive at.
+  const snaps = useRef<{ t: number; players: Map<string, Player> }[]>([]);
+  const net = useRef({ last: 0, interval: 150 });
   const clockRef = useRef({ server: 0, at: 0 });
   const tracker = useRef(new NadeTracker()).current;
   const shots = useRef<Shot[]>([]);
@@ -181,17 +182,21 @@ function Radar() {
     });
   }, []);
 
-  // ---- one frame of data, from the DLL or the demo
+  // ---- one frame of data, from the client or the demo
   const ingest = useCallback((data: RadarData) => {
     const now = performance.now();
-    span.current = frameAt.current ? Math.min(400, Math.max(50, now - frameAt.current)) : 200;
-    frameAt.current = now;
+    if (net.current.last) {
+      const gap = Math.min(1000, now - net.current.last);
+      net.current.interval += (gap - net.current.interval) * 0.1;
+    }
+    net.current.last = now;
 
     const next = new Map<string, Player>();
     if (data.localPlayer) next.set(LOCAL, data.localPlayer);
     data.players?.forEach((p, i) => next.set(keyOf(p, i), p));
-    prevRef.current = currRef.current;
     currRef.current = next;
+    snaps.current.push({ t: now, players: next });
+    while (snaps.current.length > 2 && snaps.current[1].t < now - 1500) snaps.current.shift();
     dataRef.current = data;
     if (data.curtime) clockRef.current = { server: data.curtime, at: now };
 
@@ -216,7 +221,7 @@ function Radar() {
       const [ex, ey] = aimEnd(p, map, mapImg.current.walls);
       shots.current.push({ x: p.x, y: p.y, ex, ey, t: now });
     }
-    shots.current = shots.current.filter((s) => now - s.t < SHOT_MS);
+    shots.current = shots.current.filter((s) => now - s.t < SHOT_MS + 600); // they play out after the render delay
 
     // bomb: remember how long the current defuse takes, and blow it up once
     const bomb = data.bomb;
@@ -300,7 +305,7 @@ function Radar() {
           if (!alive) break;
           setStatus(s);
           if (s === "live") ingest(data);
-          else { dataRef.current = null; currRef.current = new Map(); prevRef.current = new Map(); }
+          else { dataRef.current = null; currRef.current = new Map(); snaps.current = []; }
         } catch {
           if (alive) setStatus("error");
         }
@@ -346,12 +351,20 @@ function Radar() {
       if (!data || !map) { rendered.current = []; return; }
       const { prefs, follow, hover, lower, alertKey } = live.current;
 
-      // players, eased between frames
-      const t = Math.min(1, (now - frameAt.current) / span.current);
-      const players: [string, Player][] = [...currRef.current].map(([k, p]) => {
-        const q = prevRef.current.get(k);
-        return [k, q && q.alive && p.alive ? { ...p, x: lerp(q.x, p.x, t), y: lerp(q.y, p.y, t), yaw: lerpAngle(q.yaw, p.yaw, t) } : p];
-      });
+      // Draw the world ~1.5 update intervals in the past and ease players
+      // between the two frames either side of that moment.
+      const rt = now - Math.min(500, Math.max(60, net.current.interval * 1.5));
+      const S = snaps.current;
+      let ia = 0;
+      for (let i = S.length - 1; i >= 0; i--) if (S[i].t <= rt) { ia = i; break; }
+      const A = S[ia], B = S[Math.min(ia + 1, S.length - 1)];
+      const f = A && B && B.t > A.t ? Math.min(1, Math.max(0, (rt - A.t) / (B.t - A.t))) : 1;
+      const players: [string, Player][] = B ? [...B.players].map(([k, p]) => {
+        const q = A.players.get(k);
+        if (!q) return [k, p];
+        if (!(q.alive && p.alive)) return [k, f < 1 ? q : p];
+        return [k, { ...p, x: lerp(q.x, p.x, f), y: lerp(q.y, p.y, f), z: lerp(q.z, p.z, f), yaw: lerpAngle(q.yaw, p.yaw, f) }];
+      }) : [];
 
       // camera: the whole map (or the wingman part), or a followed player
       const wing = hudRef.current.wingman && wingBox.current.map === data.map ? wingBox.current.box : null;
@@ -376,7 +389,7 @@ function Radar() {
       if (img) drawMap(ctx, v, img, wing ? [wing[0] - 40, wing[1] - 40, wing[2] + 40, wing[3] + 40] : undefined);
 
       const levelAlpha = (z: number) => (!map.lower ? 1 : (z < map.lower.below) === lower ? 1 : 0.28);
-      drawNades(ctx, v, tracker, now, levelAlpha);
+      drawNades(ctx, v, tracker, rt, levelAlpha);
 
       if (prefs.lines) {
         for (const [key, p] of players) {
@@ -414,7 +427,7 @@ function Radar() {
         ctx.beginPath(); ctx.arc(x, y, Math.max(1, R), 0, Math.PI * 2); ctx.fill();
       }
 
-      drawShots(ctx, v, shots.current, now);
+      drawShots(ctx, v, shots.current, rt);
 
       const order = [...players].sort(([ka, a], [kb, b]) =>
         Number(a.alive) - Number(b.alive) || Number(ka === follow || ka === LOCAL) - Number(kb === follow || kb === LOCAL));
@@ -625,7 +638,7 @@ function Radar() {
                 <span className="badge accent">Demo</span><b>This is a simulated match</b>
                 <button type="button" className="push text-text-faint hover:text-text" aria-label="Hide" onClick={() => setConnect(false)}><I.Close size={12} /></button>
               </div>
-              <p>Start a radar from the DLL (<b>Web</b> in the menu → <b>Start Web Radar</b>), then paste the link or session ID.</p>
+              <p>Start a radar from the client (<b>Web</b> in the menu → <b>Start Web Radar</b>), then paste the link or session ID.</p>
               <div className="flex gap-2">
                 <input className="field flex-1 font-mono" placeholder="Session link or ID" aria-label="Session link or ID" value={sessionInput} onChange={(e) => setSessionInput(e.target.value)} />
                 <button type="submit" className="btn primary">Connect</button>
