@@ -128,7 +128,7 @@ function Radar() {
   const currRef = useRef(new Map<string, Player>());
   // Recent frames, so the map can be drawn a moment in the past and eased
   // between the two frames around that moment, whatever rate they arrive at.
-  const snaps = useRef<{ t: number; players: Map<string, Player> }[]>([]);
+  const snaps = useRef<{ t: number; players: Map<string, Player>; bomb?: Bomb }[]>([]);
   const net = useRef({ last: 0, interval: 150 });
   const clockRef = useRef({ server: 0, at: 0 });
   const tracker = useRef(new NadeTracker()).current;
@@ -195,7 +195,7 @@ function Radar() {
     if (data.localPlayer) next.set(LOCAL, data.localPlayer);
     data.players?.forEach((p, i) => next.set(keyOf(p, i), p));
     currRef.current = next;
-    snaps.current.push({ t: now, players: next });
+    snaps.current.push({ t: now, players: next, bomb: data.bomb });
     while (snaps.current.length > 2 && snaps.current[1].t < now - 1500) snaps.current.shift();
     dataRef.current = data;
     if (data.curtime) clockRef.current = { server: data.curtime, at: now };
@@ -403,8 +403,13 @@ function Radar() {
         }
       }
 
-      const bomb = data.bomb;
-      if (bomb && !bomb.exploded) {
+      // A carried bomb rides on its carrier's marker; a loose one is eased like the players.
+      const carried = players.some(([, p]) => p.alive && p.hasBomb);
+      const bA = A?.bomb, bB = B?.bomb;
+      const bomb = bA && bB && !bA.planted && !bB.planted
+        ? { ...bB, x: lerp(bA.x, bB.x, f), y: lerp(bA.y, bB.y, f), z: lerp(bA.z, bB.z, f) }
+        : bB;
+      if (bomb && !bomb.exploded && (bomb.planted || !carried)) {
         const cur = clockRef.current.server + (now - clockRef.current.at) / 1000;
         const remaining = bomb.planted && bomb.blowTime ? Math.max(0, bomb.blowTime - cur) : undefined;
         const defuseLeft = bomb.defuseEnd && bomb.defuseEnd > cur ? bomb.defuseEnd - cur : undefined;
