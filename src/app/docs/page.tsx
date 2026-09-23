@@ -1,142 +1,20 @@
-import Link from "next/link";
+import LuaCode from "../LuaCode";
+
 export const metadata = { title: "Lua API Docs — gamesense.cloud" };
-
-/* ── lua syntax highlighting ──────────────────────────────────────────── */
-
-const LUA_KEYWORDS = new Set([
-  "and", "break", "do", "else", "elseif", "end", "for", "function",
-  "if", "in", "local", "nil", "not", "or", "repeat", "return",
-  "then", "until", "while", "true", "false",
-]);
-
-const LUA_BUILTINS = new Set([
-  "ipairs", "pairs", "print", "tostring", "tonumber", "type",
-  "require", "pcall", "xpcall", "select", "unpack", "error",
-  "setmetatable", "getmetatable", "rawget", "rawset", "next",
-  "assert", "string", "table", "math", "Color",
-]);
-
-function highlightLua(code: string): React.ReactNode[] {
-  const tokens: React.ReactNode[] = [];
-  let i = 0;
-  let key = 0;
-
-  while (i < code.length) {
-    // Multi-line comments: --[[ ... ]]
-    if (code[i] === "-" && code[i + 1] === "-" && code[i + 2] === "[" && code[i + 3] === "[") {
-      const end = code.indexOf("]]", i + 4);
-      const slice = end === -1 ? code.slice(i) : code.slice(i, end + 2);
-      tokens.push(<span key={key++} className="text-[#6a9955]">{slice}</span>);
-      i += slice.length;
-      continue;
-    }
-
-    // Single-line comments: -- ...
-    if (code[i] === "-" && code[i + 1] === "-") {
-      const end = code.indexOf("\n", i);
-      const slice = end === -1 ? code.slice(i) : code.slice(i, end);
-      tokens.push(<span key={key++} className="text-[#6a9955]">{slice}</span>);
-      i += slice.length;
-      continue;
-    }
-
-    // Strings: "..." or '...'
-    if (code[i] === '"' || code[i] === "'") {
-      const quote = code[i];
-      let j = i + 1;
-      while (j < code.length && code[j] !== quote) {
-        if (code[j] === "\\") j++;
-        j++;
-      }
-      const slice = code.slice(i, j + 1);
-      tokens.push(<span key={key++} className="text-[#ce9178]">{slice}</span>);
-      i = j + 1;
-      continue;
-    }
-
-    // Multi-line strings: [[ ... ]]
-    if (code[i] === "[" && code[i + 1] === "[") {
-      const end = code.indexOf("]]", i + 2);
-      const slice = end === -1 ? code.slice(i) : code.slice(i, end + 2);
-      tokens.push(<span key={key++} className="text-[#ce9178]">{slice}</span>);
-      i += slice.length;
-      continue;
-    }
-
-    // Numbers
-    if (/[0-9]/.test(code[i]) && (i === 0 || /[\s(,{=+\-*/<>~%[]/.test(code[i - 1]))) {
-      let j = i;
-      if (code[j] === "0" && (code[j + 1] === "x" || code[j + 1] === "X")) {
-        j += 2;
-        while (j < code.length && /[0-9a-fA-F]/.test(code[j])) j++;
-      } else {
-        while (j < code.length && /[0-9.]/.test(code[j])) j++;
-      }
-      tokens.push(<span key={key++} className="text-[#b5cea8]">{code.slice(i, j)}</span>);
-      i = j;
-      continue;
-    }
-
-    // Identifiers and keywords
-    if (/[a-zA-Z_]/.test(code[i])) {
-      let j = i;
-      while (j < code.length && /[a-zA-Z0-9_]/.test(code[j])) j++;
-      const word = code.slice(i, j);
-      if (LUA_KEYWORDS.has(word)) {
-        tokens.push(<span key={key++} className="text-[#c586c0]">{word}</span>);
-      } else if (LUA_BUILTINS.has(word)) {
-        tokens.push(<span key={key++} className="text-[#dcdcaa]">{word}</span>);
-      } else {
-        tokens.push(<span key={key++}>{word}</span>);
-      }
-      i = j;
-      continue;
-    }
-
-    // Operators: .. ~= == <= >= ~=
-    if (code[i] === "." && code[i + 1] === ".") {
-      tokens.push(<span key={key++} className="text-text-faint">{".."}</span>);
-      i += 2;
-      continue;
-    }
-
-    // Everything else (whitespace, punctuation)
-    tokens.push(<span key={key++}>{code[i]}</span>);
-    i++;
-  }
-
-  return tokens;
-}
-
-function LuaCode({ children, className = "" }: { children: string; className?: string }) {
-  return (
-    <pre className={`text-xs font-mono bg-surface-2 rounded border border-border p-3 overflow-x-auto leading-relaxed whitespace-pre ${className}`}>
-      <code>{highlightLua(children)}</code>
-    </pre>
-  );
-}
 
 /* ── tiny helpers ─────────────────────────────────────────────────────── */
 
 function Badge({ children, color = "accent" }: { children: React.ReactNode; color?: string }) {
-  const bg =
-    color === "ok"
-      ? "bg-ok/15 text-ok"
-      : color === "warn"
-        ? "bg-warn/15 text-warn"
-        : color === "bad"
-          ? "bg-bad/15 text-bad"
-          : "bg-accent/15 text-accent";
-  return <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${bg}`}>{children}</span>;
+  return <span className={`badge ${color}`}>{children}</span>;
 }
 
 function Sig({ name, args, ret }: { name: string; args: string; ret?: string }) {
   return (
-    <code className="block text-sm font-mono bg-surface-2 px-3 py-1.5 rounded border border-border mb-2 overflow-x-auto">
+    <code className="sig">
       <span className="text-accent">{name}</span>
-      <span className="text-text-muted">(</span>
-      <span className="text-text">{args}</span>
-      <span className="text-text-muted">)</span>
+      <span className="text-text-faint">(</span>
+      {args}
+      <span className="text-text-faint">)</span>
       {ret && (
         <>
           <span className="text-text-faint"> → </span>
@@ -149,12 +27,12 @@ function Sig({ name, args, ret }: { name: string; args: string; ret?: string }) 
 
 function Section({ id, title, badge, children }: { id: string; title: string; badge?: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-28">
-      <h2 className="text-lg font-bold mt-10 mb-1 flex items-center gap-2">
-        <span className="text-accent">{title}</span>
+    <section id={id} className="panel doc-section">
+      <div className="panel-head">
+        <h2>{title}</h2>
         {badge && <Badge color={badge === "stub" ? "warn" : "ok"}>{badge}</Badge>}
-      </h2>
-      <div className="border-l-2 border-border pl-4 space-y-4 text-sm text-text-muted">{children}</div>
+      </div>
+      <div className="doc-body">{children}</div>
     </section>
   );
 }
@@ -173,89 +51,37 @@ function Fn({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="py-2" data-fn={name} data-desc={desc ?? ""}>
+    <div className="fn" data-fn={name} data-desc={desc ?? ""}>
       <Sig name={name} args={args} ret={ret} />
-      {children && <div className="text-text-muted text-xs leading-relaxed">{children}</div>}
+      {children && <div className="fn-desc">{children}</div>}
     </div>
   );
 }
 
 function Example({ title, children }: { title: string; children: string }) {
   return (
-    <div className="mt-4 mb-2">
-      <h4 className="text-xs font-bold text-accent uppercase tracking-wider mb-2">{title}</h4>
+    <div className="example">
+      <h4 className="label">{title}</h4>
       <LuaCode>{children}</LuaCode>
     </div>
   );
 }
 
-/* ── nav data ──────────────────────────────────────────────────────── */
-
-const NAV = [
-  { id: "engine", label: "engine" },
-  { id: "entity", label: "entity" },
-  { id: "renderer", label: "renderer" },
-  { id: "input", label: "input" },
-  { id: "bit", label: "bit" },
-  { id: "ui", label: "ui" },
-  { id: "events", label: "events" },
-  { id: "http", label: "http" },
-  { id: "cheat", label: "cheat" },
-  { id: "system", label: "system" },
-  { id: "math", label: "math" },
-  { id: "json", label: "json" },
-  { id: "store", label: "store" },
-  { id: "file", label: "file" },
-  { id: "timer", label: "timer" },
-  { id: "ffi", label: "ffi" },
-  { id: "cvar", label: "cvar" },
-  { id: "memory", label: "memory" },
-  { id: "anim", label: "anim" },
-  { id: "net", label: "net" },
-  { id: "sound", label: "sound" },
-  { id: "trace", label: "trace" },
-  { id: "types", label: "Types" },
-  { id: "scripts", label: "Scripts" },
-];
-
 /* ── page ──────────────────────────────────────────────────────────── */
 
 export default function Docs() {
   return (
-    <div className="flex min-h-screen">
-      {/* sidebar nav */}
-      <aside className="hidden lg:block w-52 shrink-0 border-r border-border sticky top-[45px] h-[calc(100vh-45px)] overflow-y-auto py-8 px-4">
-        <Link href="/" className="text-text-muted text-xs hover:text-text transition-colors">
-          &larr; Home
-        </Link>
-        <h3 className="text-xs font-bold uppercase text-text-faint mt-6 mb-3 tracking-wider">Modules</h3>
-        <nav className="space-y-1">
-          {NAV.map((n) => (
-            <a
-              key={n.id}
-              href={`#${n.id}`}
-              data-nav-id={n.id}
-              className="block text-xs py-1 text-text-muted hover:text-accent transition-colors font-mono"
-            >
-              {n.label}
-            </a>
-          ))}
-        </nav>
-      </aside>
-
-      {/* main */}
-      <div className="flex-1 max-w-3xl mx-auto px-6 py-12">
-        <Link href="/" className="text-text-muted text-sm hover:text-text transition-colors lg:hidden">
-          &larr; Back
-        </Link>
-        <h1 className="text-2xl font-bold mt-4">
-          Lua API <span className="text-accent">Reference</span>
-        </h1>
-        <p className="mt-2 text-text-muted text-sm leading-relaxed max-w-xl">
+    <div className="doc">
+      <header className="doc-head">
+        <span className="label">Lua API</span>
+        <h1>Reference</h1>
+        <p>
           Complete reference for the gamesense.cloud Lua scripting API. All modules follow
           the Starline convention — global tables with PascalCase function names. Entity
           functions transparently resolve controllers to pawns for CS2 compatibility.
         </p>
+        <p className="doc-tip">Press <kbd className="kbd">Ctrl K</kbd> to search every function.</p>
+      </header>
 
         {/* ───────────── engine ───────────── */}
         <Section id="engine" title="engine">
@@ -601,7 +427,7 @@ end)`}</Example>
           <Fn name="input.GetMouseDelta" args="" ret="dx, dy">Mouse movement since last frame.</Fn>
 
           <div className="mt-2">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Key Constants</h4>
+            <h4 className="label mb-1">Key Constants</h4>
             <p className="text-xs">
               <code className="text-text-faint">MOUSE_LEFT</code>,{" "}
               <code className="text-text-faint">MOUSE_RIGHT</code>,{" "}
@@ -630,7 +456,7 @@ end)`}</Example>
             </p>
           </div>
           <div className="mt-4">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Button Constants</h4>
+            <h4 className="label mb-1">Button Constants</h4>
             <p className="text-xs">
               <code className="text-text-faint">IN_ATTACK</code>,{" "}
               <code className="text-text-faint">IN_JUMP</code>,{" "}
@@ -712,7 +538,7 @@ local combined = bit.bor(0xF0, 0x0F) -- 0xFF`}</Example>
           </Fn>
 
           <div className="mt-1">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Tab Handle</h4>
+            <h4 className="label mb-1">Tab Handle</h4>
             <Fn name="tab:Child" args="id, title, gx, gy, gw, gh" ret="group">
               Create a child region inside a custom tab. Positioned on a 0–20 grid.{" "}
               <code className="text-text-faint">gx, gy</code> = position,{" "}
@@ -721,7 +547,7 @@ local combined = bit.bor(0xF0, 0x0F) -- 0xFF`}</Example>
           </div>
 
           <div className="mt-1">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Group Widgets</h4>
+            <h4 className="label mb-1">Group Widgets</h4>
             <Fn name="group:Checkbox" args="label, default: boolean" ret="control">Toggle switch.</Fn>
             <Fn name="group:SliderInt" args="label, min, max [, default]" ret="control">Integer slider.</Fn>
             <Fn name="group:SliderFloat" args="label, min, max [, default]" ret="control">Float slider.</Fn>
@@ -737,7 +563,7 @@ local combined = bit.bor(0xF0, 0x0F) -- 0xFF`}</Example>
           </div>
 
           <div className="mt-3">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Control Handle Methods</h4>
+            <h4 className="label mb-1">Control Handle Methods</h4>
             <Fn name="control:Get" args="" ret="value">Read current value.</Fn>
             <Fn name="control:Set" args="value">Write a new value.</Fn>
             <Fn name="control:OnChange" args="callback" ret="self">Register a value-change callback. Returns self for chaining.</Fn>
@@ -768,7 +594,7 @@ g:Button("Apply", function() cheat.Notify("Applied!") end)`}</Example>
             List all declared events with name, summary, arguments, and listener count.
           </Fn>
           <div className="mt-2">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">Constants</h4>
+            <h4 className="label mb-1">Constants</h4>
             <p className="text-xs">
               <code className="text-text-faint">events.BUTTON_FORCE_OFF</code> (0),{" "}
               <code className="text-text-faint">events.BUTTON_TOGGLE</code> (1),{" "}
@@ -776,7 +602,7 @@ g:Button("Apply", function() cheat.Notify("Applied!") end)`}</Example>
             </p>
           </div>
           <div className="mt-4">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-2">Event Reference</h4>
+            <h4 className="label mb-2">Event Reference</h4>
             <p className="text-xs text-text-faint mb-3">
               Platform and engine events pass <strong className="text-text-muted">individual arguments</strong> to callbacks.
               CS2 game events pass a <strong className="text-text-muted">single table</strong> with the listed fields
@@ -1164,16 +990,16 @@ end)`}</Example>
           </Fn>
 
           <div className="mt-3">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">ffi.C</h4>
+            <h4 className="label mb-1">ffi.C</h4>
             <p className="text-xs">
               Auto-resolving table of system library exports. Access any function from kernel32, user32,
               advapi32, ntdll, ws2_32, shell32, gdi32, ole32, msvcrt, winhttp, or crypt32 directly:
             </p>
-            <LuaCode className="p-2 mt-1">{`local result = ffi.C.MessageBoxA(0, "Hello", "Title", 0)`}</LuaCode>
+            <LuaCode>{`local result = ffi.C.MessageBoxA(0, "Hello", "Title", 0)`}</LuaCode>
           </div>
 
           <div className="mt-3">
-            <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-1">CData Object</h4>
+            <h4 className="label mb-1">CData Object</h4>
             <p className="text-xs">
               Indexable buffer with bounds checking. Supports <code className="text-text-faint">[index]</code> read/write
               (0-based), <code className="text-text-faint">#cdata</code> for total size in bytes,
@@ -1399,14 +1225,15 @@ end`}</Example>
         </Section>
 
         {/* ───────────── premade scripts ───────────── */}
-        <section id="scripts" className="scroll-mt-28 mt-16 mb-8 space-y-6">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="text-accent">Premade</span> Scripts
-          </h2>
+        <section id="scripts" className="doc-section doc-scripts">
+          <div className="doc-head">
+            <span className="label">Premade scripts</span>
+            <p>Complete scripts you can drop into your scripts folder and load from the menu.</p>
+          </div>
 
-          <div className="border border-border rounded-lg p-5 bg-surface">
-            <h3 className="text-sm font-bold mb-3">Simple ESP</h3>
-            <LuaCode className="p-4">{`local g = ui.Group("ESP", "A")
+          <div className="panel">
+            <div className="panel-head">Simple ESP</div>
+            <LuaCode flush>{`local g = ui.Group("ESP", "A")
 local enabled = g:Checkbox("Enabled", true)
 
 events.Add("Paint", "simple_esp", function()
@@ -1426,9 +1253,9 @@ events.Add("Paint", "simple_esp", function()
 end)`}</LuaCode>
           </div>
 
-          <div className="border border-border rounded-lg p-5 bg-surface">
-            <h3 className="text-sm font-bold mb-3">Kill Counter + Speedometer</h3>
-            <LuaCode className="p-4">{`local kills = 0
+          <div className="panel">
+            <div className="panel-head">Kill Counter + Speedometer</div>
+            <LuaCode flush>{`local kills = 0
 
 events.On("player_death", function(e)
   local me = entity.GetLocalPlayer()
@@ -1451,9 +1278,9 @@ events.On("paint", function()
 end)`}</LuaCode>
           </div>
 
-          <div className="border border-border rounded-lg p-5 bg-surface">
-            <h3 className="text-sm font-bold mb-3">Custom Crosshair</h3>
-            <LuaCode className="p-4">{`local g = ui.Group("Crosshair", "A")
+          <div className="panel">
+            <div className="panel-head">Custom Crosshair</div>
+            <LuaCode flush>{`local g = ui.Group("Crosshair", "A")
 local style = g:Combo("Style", {"Dot", "Cross", "Circle"}, 1)
 local color = g:ColorPicker("Color", {0, 1, 0, 1})
 local size  = g:SliderInt("Size", 2, 20, 8)
@@ -1473,9 +1300,9 @@ events.On("paint", function()
   end
 end)`}</LuaCode>
           </div>
-          <div className="border border-border rounded-lg p-5 bg-surface">
-            <h3 className="text-sm font-bold mb-3">Aim Lock with Autowall</h3>
-            <LuaCode className="p-4">{`-- Hold ALT to lock onto the closest enemy with trace-based targeting
+          <div className="panel">
+            <div className="panel-head">Aim Lock with Autowall</div>
+            <LuaCode flush>{`-- Hold ALT to lock onto the closest enemy with trace-based targeting
 local tab = ui.Tab("Aimlock")
 local g = tab:Child("aim", "Settings", 0, 0, 6, 6)
 local fov    = g:SliderInt("FOV", 1, 180, 15)
@@ -1518,8 +1345,6 @@ events.On("paint", function()
 end)`}</LuaCode>
           </div>
         </section>
-
-      </div>
     </div>
   );
 }
