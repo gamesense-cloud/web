@@ -247,7 +247,7 @@ export class NadeTracker {
 
       // a smoke billowing or a fire burning, as the client says
       if (g.active && !tr.landed) tr.landed = now;
-      if (tr.landed) tr.until = g.expires != null && curtime != null ? now + (g.expires - curtime) * 1000 : Infinity;
+      if (g.active) tr.until = g.expires != null && curtime != null ? now + (g.expires - curtime) * 1000 : Infinity;
     }
 
     for (const tr of this.tracks.values())
