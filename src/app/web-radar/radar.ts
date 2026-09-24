@@ -273,8 +273,10 @@ export class NadeTracker {
       // Dropped out mid-flight with no blast reported: it went off where last seen.
       if (!tr.landed && tr.pts.length > 1) {
         const base = { x: tr.x, y: tr.y, z: tr.z, t0: now };
-        if (tr.type === "molotov") {
-          // its fire, unless the client reports one or it lands in a smoke
+        // A client that sends entity ids sends the fire entity too, so a molotov that just
+        // vanished only pops: burst in the air, or its fire arrives in the data. Older
+        // clients get a guessed fire, unless one is reported or it lands in a smoke.
+        if (tr.type === "molotov" && !tr.key.startsWith("#")) {
           const burning = [...this.tracks.values()].some((o) =>
             o !== tr && o.type === "molotov" && o.landed && !o.gone && Math.hypot(o.x - tr.x, o.y - tr.y) < 500);
           if (!burning && !this.smoked(tr.x, tr.y, tr.z, now))
