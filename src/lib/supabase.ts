@@ -28,9 +28,12 @@ export function supabaseAdmin(): SupabaseClient {
 // policy in supabase/schema.sql).
 export async function broadcastRadar(session: string, event: string, payload: unknown) {
   const key = required("SUPABASE_SERVICE_ROLE_KEY");
+  // new-style secret keys (sb_secret_...) go in apikey only; legacy JWT keys also as the bearer
+  const headers: Record<string, string> = { apikey: key, "Content-Type": "application/json" };
+  if (!key.startsWith("sb_")) headers.Authorization = `Bearer ${key}`;
   const res = await fetch(`${required("NEXT_PUBLIC_SUPABASE_URL")}/realtime/v1/api/broadcast`, {
     method: "POST",
-    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ messages: [{ topic: `radar:${session}`, event, payload, private: true }] }),
   });
   if (!res.ok) console.error("[radar] broadcast failed:", res.status, (await res.text().catch(() => "")).slice(0, 200));
