@@ -1,8 +1,8 @@
 // Radar model, map table and canvas drawing for /web-radar.
 //
-// The payload types mirror what the client pushes to /api/radar/push. Older clients
-// leave some fields out (aim, weapons, grenade ids); the page then infers the same
-// thing from positions (see NadeTracker, Walls).
+// The payload types mirror what the client pushes to /api/radar/push. Everything on
+// a live radar is what the client reports; the page predicts nothing. Only the demo,
+// which has no client, makes its data up (and marches view lines across the image).
 
 export type NadeType = "smoke" | "flash" | "he" | "molotov" | "decoy";
 
@@ -28,6 +28,7 @@ export interface Bomb {
   planted: boolean;
   site?: string;
   blowTime?: number; defuseEnd?: number; timerLength?: number;
+  defuseLength?: number; // 10 s, or 5 with a kit
   defused?: boolean;
   exploded?: boolean;
 }
@@ -187,52 +188,46 @@ export interface Track {
   key: string; type: NadeType;
   x: number; y: number; z: number;
   pts: TracePoint[];
-  still: number;  // when it stopped moving, 0 while moving
-  landed: number; // when its smoke/fire started, 0 in flight
-  until: number;  // when that effect ends
+  landed: number; // when it went off, or its smoke or fire started; 0 in flight
+  until: number;  // when that smoke or fire ends; Infinity when the client sent no end
   gone: number;   // when it dropped out of the data; only its tracer is left
   radius?: number;
   fires?: [number, number][];
 }
 
-// A one-off blast, or with `fire` a molotov's fire guessed where its grenade vanished
-// (for clients that do not report the fire itself).
-export interface Burst { type: NadeType; x: number; y: number; z: number; t0: number; t1: number; radius?: number; fire?: boolean }
+// A blast the client reported (HE, flash, a molotov bursting in the air, a decoy).
+export interface Burst { type: NadeType; x: number; y: number; z: number; t0: number; t1: number }
 
 const BLAST_MS: Record<NadeType, number> = { he: 700, flash: 500, molotov: 450, decoy: 400, smoke: 0 };
-const GUESS_DELAY = 600; // a guessed fire waits this long for the client's own report of it
 
-const near = (p: { x: number; y: number; z: number }, x: number, y: number, z: number, r: number) =>
-  Math.hypot(p.x - x, p.y - y) < r && Math.abs(p.z - z) < 200;
-
+// Draws what the client reports and nothing else: flights from positions, blasts from
+// `boom`, smokes and fires from `active`, their end from `expires`, and a grenade that
+// drops out of the data is simply gone (the client reports its blast, if it had one).
 export class NadeTracker {
   tracks = new Map<string, Track>();
   bursts: Burst[] = [];
   private seq = 0;
   private byId = new Map<number, string>(); // entity index -> the track following it
-  private firesReported = false; // the client has sent a fire's burning patches: it reports every fire
 
   reset() { this.tracks.clear(); this.bursts = []; this.byId.clear(); }
 
   update(nades: Grenade[], now: number, curtime?: number) {
     const seen = new Set<string>();
     for (const g of nades) {
-      let key: string;
-      if (g.id != null) {
-        // the game reuses entity indices, so a finished or different nade starts a new track
-        const k = this.byId.get(g.id);
-        const old = k ? this.tracks.get(k) : undefined;
-        key = k && old && !old.gone && old.type === g.type ? k : `#${g.id}:${++this.seq}`;
-        this.byId.set(g.id, key);
-      } else key = this.match(g, seen);
+      if (g.id == null) continue;
+      // the game reuses entity indices, so a finished or different nade starts a new track
+      const k = this.byId.get(g.id);
+      const old = k ? this.tracks.get(k) : undefined;
+      const key = k && old && !old.gone && old.type === g.type ? k : `#${g.id}:${++this.seq}`;
+      this.byId.set(g.id, key);
       let tr = this.tracks.get(key);
       if (!tr) {
-        tr = { key, type: g.type, x: g.x, y: g.y, z: g.z, pts: [], still: 0, landed: 0, until: 0, gone: 0 };
+        tr = { key, type: g.type, x: g.x, y: g.y, z: g.z, pts: [], landed: 0, until: 0, gone: 0 };
         this.tracks.set(key, tr);
       }
       seen.add(key);
 
-      // Gone off: the blast plays from the moment it did, and the tracer ends there.
+      // Gone off: the blast plays from the moment the client says it did, the tracer ends there.
       if (g.boom != null) {
         if (!tr.landed) {
           const t0 = curtime != null ? now - Math.min(1000, Math.max(0, (curtime - g.boom) * 1000)) : now;
@@ -245,80 +240,22 @@ export class NadeTracker {
       }
 
       const last = tr.pts[tr.pts.length - 1];
-      if (!tr.landed && (!last || Math.hypot(g.x - last.x, g.y - last.y) > 3)) {
-        tr.pts.push({ x: g.x, y: g.y, t: now });
-        tr.still = 0;
-      } else if (!tr.still) tr.still = now;
+      if (!tr.landed && (!last || Math.hypot(g.x - last.x, g.y - last.y) > 3)) tr.pts.push({ x: g.x, y: g.y, t: now });
       tr.x = g.x; tr.y = g.y; tr.z = g.z;
       if (g.radius) tr.radius = g.radius;
-      if (g.fires) { tr.fires = g.fires; this.firesReported = true; }
+      if (g.fires) tr.fires = g.fires;
 
-      // Smokes and fires sit where they land; for clients that do not send `active`,
-      // a smoke that has stopped moving has popped.
-      const lingers = g.type === "smoke" || g.type === "molotov";
-      if (!tr.landed && (g.active || (g.type === "smoke" && tr.still && now - tr.still > 250))) {
-        tr.landed = now;
-        // a fire the client reports replaces one guessed when its grenade vanished
-        if (g.type === "molotov") this.bursts = this.bursts.filter((b) => !b.fire || Math.hypot(b.x - g.x, b.y - g.y) > 500);
-        if (g.type === "smoke") this.douse(g.x, g.y, g.z, now);
-      }
-      if (tr.landed && lingers) {
-        if (g.expires != null && curtime != null) tr.until = now + (g.expires - curtime) * 1000;
-        else if (!tr.until) tr.until = tr.landed + (NADES[g.type].ms ?? 0);
-      }
+      // a smoke billowing or a fire burning, as the client says
+      if (g.active && !tr.landed) tr.landed = now;
+      if (tr.landed) tr.until = g.expires != null && curtime != null ? now + (g.expires - curtime) * 1000 : Infinity;
     }
 
-    for (const tr of this.tracks.values()) {
-      if (seen.has(tr.key) || tr.gone) continue;
-      tr.gone = now;
-      // Dropped out mid-flight with no blast reported: it went off where last seen.
-      if (!tr.landed && tr.pts.length > 1) {
-        const base = { x: tr.x, y: tr.y, z: tr.z, t0: now };
-        if (tr.type === "molotov" && !this.firesReported) {
-          // A client that has not reported a fire of its own may never: guess one, unless
-          // a reported one is there or it lands in a smoke.
-          const burning = [...this.tracks.values()].some((o) =>
-            o !== tr && o.type === "molotov" && o.landed && !o.gone && Math.hypot(o.x - tr.x, o.y - tr.y) < 500);
-          if (!burning && !this.smoked(tr.x, tr.y, tr.z, now))
-            this.bursts.push({ ...base, t0: now + GUESS_DELAY, t1: now + GUESS_DELAY + NADES.molotov.ms!, type: "molotov", fire: true, radius: tr.radius });
-        } else if (BLAST_MS[tr.type]) {
-          // Once it has, every fire comes in the data, and a molotov that vanishes without
-          // one burst in the air: it only pops.
-          this.bursts.push({ ...base, type: tr.type, t1: now + BLAST_MS[tr.type] });
-        }
-      }
-    }
+    for (const tr of this.tracks.values())
+      if (!seen.has(tr.key) && !tr.gone) tr.gone = now;
     // kept a little past their end: the page draws them up to half a second late
     for (const [key, tr] of this.tracks)
       if (tr.gone && now - (tr.pts[tr.pts.length - 1]?.t ?? tr.gone) > TRACER_MS + 600 && now - tr.gone > 1000) this.tracks.delete(key);
     this.bursts = this.bursts.filter((b) => b.t1 + 600 > now);
-  }
-
-  // A smoke popping on a fire puts it out, as in game. Only fires whose patches the
-  // client does not send: those it does go out patch by patch in the data.
-  private douse(x: number, y: number, z: number, now: number) {
-    const reach = (NADES.smoke.radius ?? 144) + 60;
-    for (const tr of this.tracks.values())
-      if (tr.type === "molotov" && tr.landed && !tr.fires && tr.until > now && near(tr, x, y, z, reach)) tr.until = now + 300;
-    for (const b of this.bursts)
-      if (b.fire && b.t1 > now && near(b, x, y, z, reach)) b.t1 = b.t0 > now ? b.t0 : now + 300;
-  }
-
-  // Whether a fire starting here would be in a smoke that is up.
-  private smoked(x: number, y: number, z: number, now: number) {
-    return [...this.tracks.values()].some((o) =>
-      o.type === "smoke" && o.landed && !o.gone && o.until > now && near(o, x, y, z, NADES.smoke.radius ?? 144));
-  }
-
-  // For clients that send no entity id, follow each nade by the nearest one of its kind.
-  private match(g: Grenade, seen: Set<string>) {
-    let best = "", bestDist = 700;
-    for (const tr of this.tracks.values()) {
-      if (tr.gone || tr.type !== g.type || seen.has(tr.key) || tr.key.startsWith("#")) continue;
-      const d = Math.hypot(g.x - tr.x, g.y - tr.y);
-      if (d < bestDist) { best = tr.key; bestDist = d; }
-    }
-    return best || `~${++this.seq}`;
   }
 }
 
@@ -552,8 +489,7 @@ export function drawNades(ctx: CanvasRenderingContext2D, v: View, tracker: NadeT
   for (const b of tracker.bursts) {
     if (b.t0 > now || b.t1 <= now) continue;
     ctx.globalAlpha = alpha(b.z);
-    if (b.fire) area(ctx, v, "molotov", b.x, b.y, b.radius, b.t0, b.t1, now, alpha(b.z), b.t0 % 997);
-    else burst(ctx, v, b, now);
+    burst(ctx, v, b, now);
   }
   ctx.globalAlpha = 1;
 
@@ -632,7 +568,8 @@ function area(
   if (fire) drawFire(ctx, v, x, y, r, k, now, seed, grow, fires);
   else drawCloud(ctx, x, y, r, k, now, seed);
 
-  // time left, as a draining arc and a number
+  // time left, as a draining arc and a number, when the client sent when it ends
+  if (!Number.isFinite(t1)) return;
   const left = Math.max(0, t1 - now);
   const frac = left / (t1 - t0);
   ctx.strokeStyle = `rgba(${n.rgb},${(0.9 * k).toFixed(3)})`;

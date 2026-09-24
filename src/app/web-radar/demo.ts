@@ -223,6 +223,9 @@ export function demoFrame(ms: number): RadarData {
       grenades.push({ id, type: n.type, x: from[0] + (to[0] - from[0]) * u, y: from[1] + (to[1] - from[1]) * u, z: 0 });
     } else if (LINGER[n.type] && t < land + LINGER[n.type]!) {
       grenades.push({ id, type: n.type, x: to[0], y: to[1], z: 0, active: true, expires: cur(land + LINGER[n.type]!) });
+    } else if (!LINGER[n.type] && t < land + 1.5) {
+      // an HE or flash going off, reported for a moment as the client does
+      grenades.push({ id, type: n.type, x: to[0], y: to[1], z: 0, boom: cur(land) });
     }
   });
 
@@ -232,8 +235,8 @@ export function demoFrame(ms: number): RadarData {
   if (t < BOMB_AT) bomb = { x: carrier[0], y: carrier[1], z: 0, planted: false };
   else {
     bomb = { x: site[0], y: site[1], z: 0, planted: true, site: "A", blowTime: cur(BLOW), timerLength: BOMB_TIMER };
-    if (t >= 54.5 && t < 57.2) bomb.defuseEnd = cur(59.5);
-    else if (t >= retake && t < end) bomb.defuseEnd = cur(retake + 10);
+    if (t >= 54.5 && t < 57.2) { bomb.defuseEnd = cur(59.5); bomb.defuseLength = 5; }
+    else if (t >= retake && t < end) { bomb.defuseEnd = cur(retake + 10); bomb.defuseLength = 10; }
     if (over) { if (odd) bomb.exploded = true; else bomb.defused = true; }
   }
 

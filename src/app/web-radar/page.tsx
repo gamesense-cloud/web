@@ -58,26 +58,27 @@ function loadPrefs(): Prefs {
 
 // ------------------------------------------------------------------ helpers
 
-// Where a player's view ray meets a wall: the client's in-game trace when it sends one,
-// otherwise a march across the radar image.
-function aimEnd(p: Player, map: MapInfo, walls: Walls | null): [number, number] {
+// Where a player's view line meets a wall: the client's in-game trace, and nothing when it
+// sent none. The demo has no client, so there it is marched across the radar image.
+function aimEnd(p: Player, map: MapInfo, demoWalls: Walls | null): [number, number] | null {
   if (p.aim) return [p.aim[0], p.aim[1]];
+  if (!demoWalls) return null;
   const a = (-(p.yaw ?? 0) * Math.PI) / 180;
   const [mx, my] = toRadar(map, p.x, p.y);
-  const d = walls ? walls.cast(mx, my, a) : 1500 / map.scale;
+  const d = demoWalls.cast(mx, my, a);
   return radarToWorld(map, mx + Math.cos(a) * d, my + Math.sin(a) * d);
 }
 
-// The first enemy whose view ray reaches `target` before a wall does.
-function aimingAt(target: Player, others: Player[], map: MapInfo, walls: Walls | null) {
+// The first enemy whose view line reaches `target` before a wall does.
+function aimingAt(target: Player, others: Player[], map: MapInfo, demoWalls: Walls | null) {
   for (const e of others) {
     if (!e.alive || e.dormant || e.yaw == null || e.team === target.team) continue;
     const dx = target.x - e.x, dy = target.y - e.y, dist = Math.hypot(dx, dy);
     if (dist < 1 || dist > 5000) continue;
     const off = Math.abs(((Math.atan2(dy, dx) * 180) / Math.PI - e.yaw + 540) % 360 - 180) * (Math.PI / 180);
     if (off > Math.atan2(36, dist) + 0.015) continue;
-    const [ex, ey] = aimEnd(e, map, walls);
-    if (Math.hypot(ex - e.x, ey - e.y) + 24 < dist) continue;
+    const end = aimEnd(e, map, demoWalls);
+    if (!end || Math.hypot(end[0] - e.x, end[1] - e.y) + 24 < dist) continue;
     return e;
   }
   return null;
@@ -138,7 +139,6 @@ function Radar() {
   const seenKills = useRef(new Set<string>());
   const round = useRef(-1);
   const wingBox = useRef<{ map: string; box: Box | null }>({ map: "", box: null });
-  const defuse = useRef({ end: 0, total: 10 });
   const blastFx = useRef<{ x: number; y: number; t: number } | null>(null);
   const mapImg = useRef<{ src: string; img: HTMLImageElement | null; walls: Walls | null }>({ src: "", img: null, walls: null });
   const rendered = useRef<{ key: string; x: number; y: number }[]>([]);
@@ -219,16 +219,13 @@ function Radar() {
       const last = fired.current.get(k);
       fired.current.set(k, p.fired ?? -1);
       if (last == null || p.fired == null || p.fired <= last || !map || !p.alive) continue;
-      const [ex, ey] = aimEnd(p, map, mapImg.current.walls);
-      shots.current.push({ x: p.x, y: p.y, ex, ey, t: now });
+      const end = aimEnd(p, map, demo ? mapImg.current.walls : null);
+      if (end) shots.current.push({ x: p.x, y: p.y, ex: end[0], ey: end[1], t: now });
     }
     shots.current = shots.current.filter((s) => now - s.t < SHOT_MS + 600); // they play out after the render delay
 
-    // bomb: remember how long the current defuse takes, and blow it up once
+    // bomb: blow it up once
     const bomb = data.bomb;
-    if (bomb?.defuseEnd && data.curtime && bomb.defuseEnd !== defuse.current.end) {
-      defuse.current = { end: bomb.defuseEnd, total: bomb.defuseEnd - data.curtime > 5.5 ? 10 : 5 };
-    }
     if (bomb?.exploded && !blastFx.current) blastFx.current = { x: bomb.x, y: bomb.y, t: now };
 
     // kill feed
@@ -246,9 +243,8 @@ function Radar() {
       return fresh.length || kept.length !== f.length ? [...kept, ...fresh].slice(-6) : f;
     });
 
-    // wingman: fit the part of the map the match actually uses
-    const total = next.size;
-    const wingman = data.mode ? data.mode === "wingman" : total > 0 && total <= 4;
+    // wingman, as the client reports it: fit the part of the map the match actually uses
+    const wingman = data.mode === "wingman";
     if (map && wingman) {
       if (wingBox.current.map !== data.map) wingBox.current = { map: data.map!, box: map.wingman ?? null };
       for (const p of next.values()) {
@@ -269,7 +265,7 @@ function Radar() {
     const target = next.get(targetKey);
     let by: Player | null = null;
     if (map && target?.alive && live.current.prefs.warn)
-      by = aimingAt(target, [...next.values()].filter((p) => p !== target), map, mapImg.current.walls);
+      by = aimingAt(target, [...next.values()].filter((p) => p !== target), map, demo ? mapImg.current.walls : null);
     live.current.alertKey = by ? [...next].find(([, p]) => p === by)?.[0] ?? "" : "";
     setAlert((a) => {
       if (!by || !target) return a ? null : a;
@@ -428,9 +424,10 @@ function Radar() {
       if (prefs.lines) {
         for (const [key, p] of players) {
           if (!p.alive || p.dormant || p.yaw == null) continue;
+          const end = aimEnd(p, map, demo ? mapImg.current.walls : null);
+          if (!end) continue;
           const [x, y] = toScreen(v, p.x, p.y);
-          const [ex, ey] = aimEnd(p, map, mapImg.current.walls);
-          const [x2, y2] = toScreen(v, ex, ey);
+          const [x2, y2] = toScreen(v, end[0], end[1]);
           ctx.globalAlpha = levelAlpha(p.z);
           drawViewLine(ctx, x, y, x2, y2, teamColor(p.team), prefs.warn && key === alertKey);
           ctx.globalAlpha = 1;
@@ -442,7 +439,7 @@ function Radar() {
         const remaining = bomb.planted && bomb.blowTime ? Math.max(0, bomb.blowTime - cur) : undefined;
         const defuseLeft = bomb.defuseEnd && bomb.defuseEnd > cur ? bomb.defuseEnd - cur : undefined;
         ctx.globalAlpha = levelAlpha(bomb.z);
-        drawBomb(ctx, v, bomb, { remaining, total: bomb.timerLength || 40, defuseLeft, defuseTotal: defuse.current.total, now });
+        drawBomb(ctx, v, bomb, { remaining, total: bomb.timerLength || 40, defuseLeft, defuseTotal: bomb.defuseLength, now });
         ctx.globalAlpha = 1;
       }
       const fx = blastFx.current;
