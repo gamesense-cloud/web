@@ -36,8 +36,8 @@ export async function POST(req: Request) {
     }
     const session_id = createHash("sha256").update(key).digest("hex").slice(0, 32);
 
-    // The client paces itself up to 20/s; this only stops a runaway one.
-    if (!rateLimit(`radar:${session_id}`, 300, 10_000).ok) {
+    // The client paces itself up to 32/s; this only stops a runaway one.
+    if (!rateLimit(`radar:${session_id}`, 450, 10_000).ok) {
       return NextResponse.json({ error: "rate_limited" }, { status: 429 });
     }
 

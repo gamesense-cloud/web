@@ -294,38 +294,45 @@ function Radar() {
     return () => clearInterval(id);
   }, [demo, ingest]);
 
-  // Polls at the client's own pace, a little faster so no update waits long, and
-  // skips snapshots it has already seen (or older ones that land late).
+  // Polls at the client's own pace with up to three requests in flight, so the rate
+  // is not bound to one round trip, and skips snapshots it already has (or older
+  // ones that land late).
   useEffect(() => {
     if (demo) return;
-    let alive = true;
-    (async () => {
-      let lastSeq = -1;
-      while (alive) {
-        const started = performance.now();
-        let wait = 1000;
-        try {
-          const res = await fetch(`/api/radar/data?session=${encodeURIComponent(session!)}`, { cache: "no-store" });
-          const data = (await res.json()) as RadarData;
-          const s: Status = !res.ok ? "error" : data.status === "no_session" ? "no_session" : data.status === "stale" ? "stale"
-            : data.status === "paused" ? "paused" : data.status === "waiting" || !data.connected ? "waiting" : "live";
-          if (!alive) break;
+    const url = `/api/radar/data?session=${encodeURIComponent(session!)}`;
+    let alive = true, lastSeq = -1, inFlight = 0, gap = 250, timer = 0;
+    const poll = async () => {
+      inFlight++;
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        const data = (await res.json()) as RadarData;
+        if (!alive) return;
+        const s: Status = !res.ok ? "error" : data.status === "no_session" ? "no_session" : data.status === "stale" ? "stale"
+          : data.status === "paused" ? "paused" : data.status === "waiting" || !data.connected ? "waiting" : "live";
+        if (s === "live") {
+          gap = Math.min(1000, Math.max(25, (data.interval ?? 150) * 0.75));
+          if (data.seq != null && data.seq <= lastSeq) return;
+          if (data.seq != null) lastSeq = data.seq;
           setStatus(s);
-          if (s === "live") {
-            wait = Math.min(1000, Math.max(40, (data.interval ?? 150) * 0.6));
-            if (data.seq == null || data.seq > lastSeq) ingest(data);
-            if (data.seq != null) lastSeq = Math.max(lastSeq, data.seq);
-          } else {
-            dataRef.current = null; currRef.current = new Map(); snaps.current = [];
-            if (s === "paused") wait = 1500;
-          }
-        } catch {
-          if (alive) setStatus("error");
+          ingest(data);
+        } else {
+          gap = s === "paused" ? 1500 : 1000;
+          setStatus(s);
+          dataRef.current = null; currRef.current = new Map(); snaps.current = [];
         }
-        await new Promise((r) => setTimeout(r, Math.max(0, wait - (performance.now() - started))));
+      } catch {
+        if (alive) setStatus("error");
+      } finally {
+        inFlight--;
       }
-    })();
-    return () => { alive = false; };
+    };
+    const tick = () => {
+      if (!alive) return;
+      if (inFlight < 3) void poll();
+      timer = window.setTimeout(tick, gap);
+    };
+    tick();
+    return () => { alive = false; clearTimeout(timer); };
   }, [demo, session, ingest]);
 
   // ---- radar image and its walls, per map and level
