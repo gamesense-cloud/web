@@ -575,6 +575,11 @@ local combined = bit.bor(0xF0, 0x0F) -- 0xFF`}</Example>
             <Fn name="tab:Group" args="name: string" ret="group">
               Add an auto-laid-out group to the tab. Controls are placed into the tab&apos;s shorter column automatically. Returns a group handle.
             </Fn>
+            <Fn name="tab:SubTab" args="name: string" ret="subtab">
+              Register a subtab button inside the tab. When a tab has subtabs, a button bar
+              appears at the top and only the active subtab&apos;s children are shown. Returns a subtab handle
+              with the same <code className="text-text-faint">:Child</code> and <code className="text-text-faint">:Group</code> methods as a tab handle.
+            </Fn>
           </div>
 
           <div className="mt-1">
@@ -591,6 +596,10 @@ local combined = bit.bor(0xF0, 0x0F) -- 0xFF`}</Example>
             <Fn name="group:Listbox" args='label, items: table [, default_index]' ret="control">Visible selection list. Index is 1-based.</Fn>
             <Fn name="group:Label" args="text" ret="control">Static text label.</Fn>
             <Fn name="group:Separator" args="[text]" ret="control">Visual divider. Optional text becomes a section heading.</Fn>
+            <Fn name="group:CheckboxKeybind" args="label, default: boolean [, default_key: integer]" ret="control">
+              Checkbox with an inline keybind capsule on the same row. Use <code className="text-text-faint">:Get()</code> for
+              the toggle value and <code className="text-text-faint">:GetKey()</code> for the bound key code.
+            </Fn>
           </div>
 
           <div className="mt-3">
@@ -600,6 +609,7 @@ local combined = bit.bor(0xF0, 0x0F) -- 0xFF`}</Example>
             <Fn name="control:OnChange" args="callback" ret="self">Register a value-change callback. Returns self for chaining.</Fn>
             <Fn name="control:SetTooltip" args="text: string" ret="self">Set a hover tooltip on the control. Pass nil or empty string to clear. Returns self for chaining.</Fn>
             <Fn name="control:SetVisible" args="visible: boolean" ret="self">Show or hide the control dynamically. Use with <code className="text-text-faint">:OnChange</code> to create dependent controls that appear when a checkbox is enabled. Returns self for chaining.</Fn>
+            <Fn name="control:GetKey" args="" ret="integer">Read the keybind value from any control that stores one (KeyBind or CheckboxKeybind). Returns 0 if none is set.</Fn>
             <p className="text-xs mt-1">
               Properties: <code className="text-text-faint">.id</code>,{" "}
               <code className="text-text-faint">.kind</code>,{" "}
@@ -619,6 +629,18 @@ local fov = g:SliderFloat("FOV", 1, 90, 15)
 -- Show FOV slider only when aimbot is enabled
 fov:SetVisible(aim:Get())
 aim:OnChange(function() fov:SetVisible(aim:Get()) end)`}</Example>
+          <Example title="Example — subtabs and inline keybind">{`local tab = ui.Tab("My Script")
+local aim = tab:SubTab("Aimbot")
+local vis = tab:SubTab("Visuals")
+
+-- Aimbot subtab children
+local g = aim:Child("cfg", "Config", 0, 0, 10, 20)
+local enable = g:CheckboxKeybind("Enable", false, 0x02)  -- right click
+local fov    = g:SliderFloat("FOV", 1, 90, 15)
+
+-- Visuals subtab children
+local v = vis:Group("ESP")
+v:Checkbox("Box", true)`}</Example>
         </Section>
 
         {/* ───────────── events ───────────── */}
@@ -1240,6 +1262,12 @@ end`}</Example>
           </Fn>
           <Fn name="usercmd.SetButtons" args="cmd, held: integer" ret="boolean">
             Set the held button bitflags. Clears conflicting subtick steps automatically.
+          </Fn>
+          <Fn name="usercmd.SubtickJump" args="cmd, when: number" ret="boolean">
+            Insert a subtick jump at the given tick fraction (0–1). Adds a release step
+            at <code className="text-accent">when − 1/64</code> and a press at <code className="text-accent">when</code>,
+            then sets the IN_JUMP held bit. Used for frame-perfect bhop by passing the predicted
+            landing fraction from a downward trace.
           </Fn>
           <Example title="Example — silent movement override">{`events.On("createmove", function(cmd)
   local fwd, left, up = usercmd.GetMove(cmd)
