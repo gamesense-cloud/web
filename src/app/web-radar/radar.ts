@@ -399,7 +399,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, v: View, img: HTMLImageEl
     ctx.clip();
   }
   ctx.globalAlpha = 0.85;
-  ctx.imageSmoothingQuality = "high"; // the radars are 2048px, drawn into the 1024 radar space
+  ctx.imageSmoothingQuality = "high"; // the radars are 4096px (AI-upscaled), drawn into the 1024 radar space
   ctx.drawImage(img, 0, 0, 1024, 1024);
   ctx.restore();
 }
