@@ -124,6 +124,12 @@ export default function Docs() {
           <Fn name="engine.GetGameMode" args="" ret="string">
             Current game mode: <code className="text-accent">&quot;competitive&quot;</code>, <code className="text-accent">&quot;casual&quot;</code>, <code className="text-accent">&quot;deathmatch&quot;</code>, <code className="text-accent">&quot;wingman&quot;</code>, etc.
           </Fn>
+          <Fn name="engine.AimAt" args="pitch, yaw [, smooth]">
+            Queue view-angle interpolation. Inside a createmove callback it aims that tick&apos;s usercmd and camera; otherwise the next CreateMoves each move 1/<code className="text-text-faint">smooth</code> of the way there. Pitch is clamped to [-89, 89], yaw wrapped to [-180, 180], smooth defaults to 1.0 (instant).
+          </Fn>
+          <Fn name="engine.CancelAim" args="">
+            Drop a pending AimAt that the CreateMove hook has not yet applied.
+          </Fn>
           <Fn name="engine.IsWarmup" args="" ret="boolean">Whether the game is in warmup phase.</Fn>
           <Fn name="engine.GetBombPlanted" args="" ret="boolean">Whether the bomb is currently planted.</Fn>
           <Fn name="engine.GetGlobalVars" args="" ret="table">
@@ -303,6 +309,28 @@ end`}</Example>
           </Fn>
           <Fn name="entity.GetSpectators" args="ent" ret="table">
             Returns a table of player indices currently spectating this entity.
+          </Fn>
+          <Fn name="entity.IsInFire" args="ent" ret="boolean">
+            True if the entity was recently damaged by molotov or their origin overlaps a burning inferno.
+          </Fn>
+          <Fn name="entity.IsBot" args="ent" ret="boolean">True if the player is a bot (zero Steam ID, non-HLTV).</Fn>
+          <Fn name="entity.IsConnected" args="ent" ret="boolean">True if the player controller reports a connected state.</Fn>
+          <Fn name="entity.GetKills" args="ent" ret="integer">Total match kills from the scoreboard.</Fn>
+          <Fn name="entity.GetDeaths" args="ent" ret="integer">Total match deaths.</Fn>
+          <Fn name="entity.GetAssists" args="ent" ret="integer">Total match assists.</Fn>
+          <Fn name="entity.GetDamage" args="ent" ret="integer">Total match damage dealt.</Fn>
+          <Fn name="entity.GetHeadshotKills" args="ent" ret="integer">Total headshot kills.</Fn>
+          <Fn name="entity.GetRoundKills" args="ent" ret="integer">Kills in the current round.</Fn>
+          <Fn name="entity.GetMVPs" args="ent" ret="integer">MVP award count.</Fn>
+          <Fn name="entity.GetScore" args="ent" ret="integer">Scoreboard score.</Fn>
+          <Fn name="entity.GetPing" args="ent" ret="integer">Network ping in milliseconds.</Fn>
+          <Fn name="entity.GetClanTag" args="ent" ret="string">Player&apos;s clan tag string.</Fn>
+          <Fn name="entity.GetRank" args="ent" ret="rank, rankType">
+            Competitive ranking and rank type as two integers.
+          </Fn>
+          <Fn name="entity.GetCompetitiveWins" args="ent" ret="integer">Competitive win count.</Fn>
+          <Fn name="entity.GetStats" args="ent" ret="table | nil">
+            All scoreboard stats in one call. Returns a table with keys: <code className="text-text-faint">kills</code>, <code className="text-text-faint">deaths</code>, <code className="text-text-faint">assists</code>, <code className="text-text-faint">damage</code>, <code className="text-text-faint">headshot_kills</code>, <code className="text-text-faint">round_kills</code>, <code className="text-text-faint">mvps</code>, <code className="text-text-faint">score</code>, <code className="text-text-faint">ping</code>, <code className="text-text-faint">clan</code>, <code className="text-text-faint">rank</code>, <code className="text-text-faint">wins</code>, <code className="text-text-faint">is_bot</code>, <code className="text-text-faint">connected</code>. Returns nil if no controller found.
           </Fn>
           <Example title="Example — iterate enemies and draw boxes">{`events.Add("Paint", "esp_boxes", function()
   for _, ply in ipairs(entity.GetPlayers()) do
@@ -544,6 +572,9 @@ local combined = bit.bor(0xF0, 0x0F) -- 0xFF`}</Example>
               <code className="text-text-faint">gx, gy</code> = position,{" "}
               <code className="text-text-faint">gw, gh</code> = size. Returns a group handle for adding widgets.
             </Fn>
+            <Fn name="tab:Group" args="name: string" ret="group">
+              Add an auto-laid-out group to the tab. Controls are placed into the tab&apos;s shorter column automatically. Returns a group handle.
+            </Fn>
           </div>
 
           <div className="mt-1">
@@ -567,6 +598,8 @@ local combined = bit.bor(0xF0, 0x0F) -- 0xFF`}</Example>
             <Fn name="control:Get" args="" ret="value">Read current value.</Fn>
             <Fn name="control:Set" args="value">Write a new value.</Fn>
             <Fn name="control:OnChange" args="callback" ret="self">Register a value-change callback. Returns self for chaining.</Fn>
+            <Fn name="control:SetTooltip" args="text: string" ret="self">Set a hover tooltip on the control. Pass nil or empty string to clear. Returns self for chaining.</Fn>
+            <Fn name="control:SetVisible" args="visible: boolean" ret="self">Show or hide the control dynamically. Use with <code className="text-text-faint">:OnChange</code> to create dependent controls that appear when a checkbox is enabled. Returns self for chaining.</Fn>
             <p className="text-xs mt-1">
               Properties: <code className="text-text-faint">.id</code>,{" "}
               <code className="text-text-faint">.kind</code>,{" "}
@@ -579,6 +612,13 @@ local g = tab:Child("main", "Settings", 0, 0, 20, 20)
 local enabled = g:Checkbox("Enabled", true)
 local speed   = g:SliderFloat("Speed", 0, 10, 5.0)
 g:Button("Apply", function() cheat.Notify("Applied!") end)`}</Example>
+          <Example title="Example — tooltip, dependent visibility">{`local g = tab:Child("cfg", "Config", 0, 0, 10, 10)
+local aim = g:Checkbox("Aimbot", false):SetTooltip("Enable aim assistance")
+local fov = g:SliderFloat("FOV", 1, 90, 15)
+
+-- Show FOV slider only when aimbot is enabled
+fov:SetVisible(aim:Get())
+aim:OnChange(function() fov:SetVisible(aim:Get()) end)`}</Example>
         </Section>
 
         {/* ───────────── events ───────────── */}
@@ -731,6 +771,7 @@ end)`}</Example>
         {/* ───────────── cheat ───────────── */}
         <Section id="cheat" title="cheat">
           <p>Cheat identity, control, and utility functions.</p>
+          <Fn name="cheat.GetVersion" args="" ret="string">Returns the build version string.</Fn>
           <Fn name="cheat.IsLoaded" args="" ret="boolean">Always returns true.</Fn>
           <Fn name="cheat.Unload" args="">Queue the calling script for unload.</Fn>
           <Fn name="cheat.Reload" args="">Queue the calling script for reload.</Fn>
@@ -1173,6 +1214,177 @@ local hb, dmg, vis = trace.GetBestHitbox(me, targetIdx, 10)
 if hb >= 0 then
     local label = vis and "visible" or "wallbang"
     cheat.Log("Best hitbox: " .. hb .. " for " .. dmg .. " dmg (" .. label .. ")")
+end`}</Example>
+        </Section>
+
+        {/* ───────────── usercmd ───────────── */}
+        <Section id="usercmd" title="usercmd">
+          <p>
+            Direct user-command access. All functions require the live <code className="text-accent">cmd</code> lightuserdata
+            passed to a <code className="text-text-faint">createmove</code> callback — they are invalid outside that context.
+          </p>
+          <Fn name="usercmd.GetViewAngles" args="cmd" ret="pitch, yaw | nil">
+            Read the usercmd&apos;s view angles. Returns nil if the command is invalid.
+          </Fn>
+          <Fn name="usercmd.SetViewAngles" args="cmd, pitch, yaw" ret="boolean">
+            Set the usercmd&apos;s view angles. Pitch is clamped to [-89, 89], yaw wrapped to [-180, 180]. Zeroes all subtick angle deltas and updates input history.
+          </Fn>
+          <Fn name="usercmd.GetMove" args="cmd" ret="fwd, left, up | nil">
+            Read the current tick&apos;s movement input as three floats in [-1, 1].
+          </Fn>
+          <Fn name="usercmd.SetMove" args="cmd, forward, left [, up]" ret="boolean">
+            Replace the movement input for this tick. Values are clamped to [-1, 1]. Rebuilds subtick movement steps and button flags to match.
+          </Fn>
+          <Fn name="usercmd.GetButtons" args="cmd" ret="integer | nil">
+            Read the held button state as IN_* bitflags.
+          </Fn>
+          <Fn name="usercmd.SetButtons" args="cmd, held: integer" ret="boolean">
+            Set the held button bitflags. Clears conflicting subtick steps automatically.
+          </Fn>
+          <Example title="Example — silent movement override">{`events.On("createmove", function(cmd)
+  local fwd, left, up = usercmd.GetMove(cmd)
+  if fwd then
+    usercmd.SetMove(cmd, 1.0, 0, 0) -- always move forward
+  end
+end)`}</Example>
+        </Section>
+
+        {/* ───────────── visuals ───────────── */}
+        <Section id="visuals" title="visuals">
+          <p>
+            Visual modifier overrides — toggle smoke removal, flash effects, FOV, night mode,
+            chicken fun, and more via key-value pairs.
+          </p>
+          <Fn name="visuals.Set" args="key: string, value">
+            Set a visual modifier. Value type depends on the key: boolean for flags, number for numeric settings, Color for color keys.
+          </Fn>
+          <Fn name="visuals.Get" args="key: string" ret="value">
+            Read the current value of a visual modifier.
+          </Fn>
+          <Fn name="visuals.GetKeys" args="" ret="table">
+            Returns the list of all valid key names as a string array.
+          </Fn>
+          <div className="mt-2">
+            <h4 className="label mb-1">Keys</h4>
+            <p className="text-xs">
+              <strong className="text-text-muted">Boolean:</strong>{" "}
+              <code className="text-text-faint">no_smoke</code>,{" "}
+              <code className="text-text-faint">no_flash</code>,{" "}
+              <code className="text-text-faint">no_scope</code>,{" "}
+              <code className="text-text-faint">no_anim</code>,{" "}
+              <code className="text-text-faint">no_fog</code>,{" "}
+              <code className="text-text-faint">no_3d_skybox</code>,{" "}
+              <code className="text-text-faint">thirdperson</code>,{" "}
+              <code className="text-text-faint">radar_reveal</code>,{" "}
+              <code className="text-text-faint">glow</code>,{" "}
+              <code className="text-text-faint">glow_enemy_only</code>,{" "}
+              <code className="text-text-faint">night_mode</code>,{" "}
+              <code className="text-text-faint">color_correction</code>,{" "}
+              <code className="text-text-faint">chicken_spin</code>,{" "}
+              <code className="text-text-faint">fish</code>,{" "}
+              <code className="text-text-faint">fish_spin</code>
+            </p>
+            <p className="text-xs mt-1">
+              <strong className="text-text-muted">Number:</strong>{" "}
+              <code className="text-text-faint">fov</code>,{" "}
+              <code className="text-text-faint">aspect_ratio</code>,{" "}
+              <code className="text-text-faint">cc_brightness</code>,{" "}
+              <code className="text-text-faint">cc_saturation</code>,{" "}
+              <code className="text-text-faint">cc_exposure</code>,{" "}
+              <code className="text-text-faint">chicken_scale</code>,{" "}
+              <code className="text-text-faint">chicken_spin_speed</code>,{" "}
+              <code className="text-text-faint">fish_spin_speed</code>
+            </p>
+            <p className="text-xs mt-1">
+              <strong className="text-text-muted">Color:</strong>{" "}
+              <code className="text-text-faint">glow_enemy_color</code>,{" "}
+              <code className="text-text-faint">glow_team_color</code>
+            </p>
+          </div>
+          <Example title="Example — night mode + FOV">{`visuals.Set("night_mode", true)
+visuals.Set("fov", 110)
+visuals.Set("no_flash", true)`}</Example>
+        </Section>
+
+        {/* ───────────── chams ───────────── */}
+        <Section id="chams" title="chams">
+          <p>
+            Chams (colored material overlays) and screen-space shader effects. Set built-in or
+            custom materials on entity categories, control visibility through walls, and apply
+            screen-wide post-processing shaders.
+          </p>
+          <Fn name="chams.Set" args="key: string, value">
+            Set a chams config value. Value type depends on the key: boolean for toggles, string for material names, number for amounts, Color for colors.
+          </Fn>
+          <Fn name="chams.Get" args="key: string" ret="value">
+            Read the current value of a chams config key.
+          </Fn>
+          <Fn name="chams.GetKeys" args="" ret="table">
+            Returns the list of all valid key names as a string array.
+          </Fn>
+          <Fn name="chams.CreateMaterial" args="name: string, kv3: string" ret="true | nil, error">
+            Queue a custom KV3 material for creation. Returns true on success, or nil + error string on failure.
+          </Fn>
+          <Fn name="chams.GetMaterialStatus" args="name: string" ret="string | nil">
+            Load state of a material: <code className="text-accent">&quot;pending&quot;</code>, <code className="text-accent">&quot;ready&quot;</code>, or <code className="text-accent">&quot;failed&quot;</code>. Returns nil if not found.
+          </Fn>
+          <Fn name="chams.GetMaterials" args="" ret="table">
+            List all available material names (built-in then custom).
+          </Fn>
+          <Fn name="chams.SetScreenShader" args="hlsl: string | nil">
+            Set a custom screen-space pixel shader (HLSL source). Pass nil to clear.
+          </Fn>
+          <Fn name="chams.GetScreenShaderStatus" args="" ret="status [, error]">
+            Screen shader compilation status: <code className="text-accent">&quot;none&quot;</code>, <code className="text-accent">&quot;pending&quot;</code>, <code className="text-accent">&quot;ok&quot;</code>, or <code className="text-accent">&quot;error&quot;</code>. When status is &quot;error&quot;, a second string with the error text is returned.
+          </Fn>
+          <div className="mt-2">
+            <h4 className="label mb-1">Keys</h4>
+            <p className="text-xs">
+              <strong className="text-text-muted">Boolean:</strong>{" "}
+              <code className="text-text-faint">enabled</code>,{" "}
+              <code className="text-text-faint">enemy_occluded_enabled</code>,{" "}
+              <code className="text-text-faint">team_occluded_enabled</code>,{" "}
+              <code className="text-text-faint">dropped_weapons_occluded_enabled</code>,{" "}
+              <code className="text-text-faint">chicken_occluded_enabled</code>,{" "}
+              <code className="text-text-faint">fish_occluded_enabled</code>,{" "}
+              <code className="text-text-faint">fx_through_walls</code>
+            </p>
+            <p className="text-xs mt-1">
+              <strong className="text-text-muted">String (material):</strong>{" "}
+              <code className="text-text-faint">material</code>,{" "}
+              <code className="text-text-faint">shader_name</code>,{" "}
+              <code className="text-text-faint">fx_effect</code>,{" "}
+              <code className="text-text-faint">shader_effect</code>
+            </p>
+            <p className="text-xs mt-1">
+              <strong className="text-text-muted">Color:</strong>{" "}
+              <code className="text-text-faint">enemy_visible</code>,{" "}
+              <code className="text-text-faint">enemy_occluded</code>,{" "}
+              <code className="text-text-faint">team_visible</code>,{" "}
+              <code className="text-text-faint">team_occluded</code>,{" "}
+              <code className="text-text-faint">local_visible</code>,{" "}
+              <code className="text-text-faint">local_weapons_visible</code>,{" "}
+              <code className="text-text-faint">dropped_weapons_visible</code>,{" "}
+              <code className="text-text-faint">dropped_weapons_occluded</code>,{" "}
+              <code className="text-text-faint">chicken_visible</code>,{" "}
+              <code className="text-text-faint">chicken_occluded</code>,{" "}
+              <code className="text-text-faint">fish_visible</code>,{" "}
+              <code className="text-text-faint">fish_occluded</code>,{" "}
+              <code className="text-text-faint">fx_color</code>
+            </p>
+            <p className="text-xs mt-1">
+              <strong className="text-text-muted">Number:</strong>{" "}
+              <code className="text-text-faint">fx_amount</code>
+            </p>
+          </div>
+          <Example title="Example — enemy chams + screen shader">{`chams.Set("enabled", true)
+chams.Set("enemy_visible", Color(0, 255, 100))
+chams.Set("enemy_occluded", Color(255, 50, 50))
+chams.Set("enemy_occluded_enabled", true)
+
+-- check available materials
+for _, name in ipairs(chams.GetMaterials()) do
+  print(name)
 end`}</Example>
         </Section>
 
