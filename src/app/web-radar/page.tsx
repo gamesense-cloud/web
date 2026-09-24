@@ -5,18 +5,19 @@ import { useSearchParams } from "next/navigation";
 import * as I from "../icons";
 import { demoFrame } from "./demo";
 import {
-  BOMB_RADIUS, COMP_COLORS, CT, MAPS, NadeTracker, SHOT_MS, T, Walls,
-  drawBomb, drawMap, drawNades, drawPlayer, drawShots, drawViewLine, hpColor, iconSrc, loadout,
+  BLAST, COMP_COLORS, CT, MAPS, NadeTracker, SHOT_MS, T, Walls,
+  drawBlast, drawBomb, drawMap, drawNades, drawPlayer, drawShots, drawViewLine, hpColor, iconSrc, loadout,
   radarToWorld, screenAngle, teamColor, toRadar, toScreen, unitsToPx, weaponName,
   type Box, type Bomb, type MapInfo, type NadeType, type Player, type RadarData, type Shot, type View,
 } from "./radar";
 
-type Status = "demo" | "connecting" | "live" | "waiting" | "stale" | "no_session" | "error";
+type Status = "demo" | "connecting" | "live" | "paused" | "waiting" | "stale" | "no_session" | "error";
 
 const STATUS: Record<Status, { label: string; tone: string; text: string }> = {
   demo:       { label: "Demo",       tone: "accent", text: "" },
   connecting: { label: "Connecting", tone: "",       text: "Connecting to the session…" },
   live:       { label: "Live",       tone: "ok",     text: "" },
+  paused:     { label: "Paused",     tone: "warn",   text: "The client isn't in a match right now. The radar picks up again as soon as it joins one." },
   waiting:    { label: "Waiting",    tone: "warn",   text: "Client connected, waiting for a match to start…" },
   stale:      { label: "Stale",      tone: "warn",   text: "The client stopped sending data. The session may have ended." },
   no_session: { label: "No session", tone: "bad",    text: "No active client session for this link. The client makes a new one each time it starts." },
@@ -202,13 +203,13 @@ function Radar() {
 
     const map = data.map ? MAPS[data.map] : undefined;
     const rounds = data.roundsPlayed ?? -1;
+    // the kill feed rides over the round change, as in game; the client resends
+    // recent kills for a few seconds and seenKills keeps them from showing twice
     if (round.current !== rounds) {
       round.current = rounds;
       tracker.reset();
       shots.current = [];
-      seenKills.current.clear();
       blastFx.current = null;
-      setFeed([]);
     }
 
     tracker.update(data.grenades ?? [], now, data.curtime);
@@ -236,6 +237,7 @@ function Radar() {
     for (const k of data.kills ?? []) {
       const id = `${k.killer}|${k.victim}|${k.weapon}|${k.t}`;
       if (seenKills.current.has(id)) continue;
+      if (seenKills.current.size > 500) seenKills.current.clear();
       seenKills.current.add(id);
       fresh.push({ id, killer: k.killer, victim: k.victim, weapon: k.weapon, hs: k.hs, kt: teamOf(k.killer), vt: teamOf(k.victim), at: Date.now() });
     }
@@ -292,24 +294,35 @@ function Radar() {
     return () => clearInterval(id);
   }, [demo, ingest]);
 
+  // Polls at the client's own pace, a little faster so no update waits long, and
+  // skips snapshots it has already seen (or older ones that land late).
   useEffect(() => {
     if (demo) return;
     let alive = true;
     (async () => {
+      let lastSeq = -1;
       while (alive) {
+        const started = performance.now();
+        let wait = 1000;
         try {
-          const res = await fetch(`/api/radar/data?session=${encodeURIComponent(session!)}`);
+          const res = await fetch(`/api/radar/data?session=${encodeURIComponent(session!)}`, { cache: "no-store" });
           const data = (await res.json()) as RadarData;
           const s: Status = !res.ok ? "error" : data.status === "no_session" ? "no_session" : data.status === "stale" ? "stale"
-            : data.status === "waiting" || !data.connected ? "waiting" : "live";
+            : data.status === "paused" ? "paused" : data.status === "waiting" || !data.connected ? "waiting" : "live";
           if (!alive) break;
           setStatus(s);
-          if (s === "live") ingest(data);
-          else { dataRef.current = null; currRef.current = new Map(); snaps.current = []; }
+          if (s === "live") {
+            wait = Math.min(1000, Math.max(40, (data.interval ?? 150) * 0.6));
+            if (data.seq == null || data.seq > lastSeq) ingest(data);
+            if (data.seq != null) lastSeq = Math.max(lastSeq, data.seq);
+          } else {
+            dataRef.current = null; currRef.current = new Map(); snaps.current = [];
+            if (s === "paused") wait = 1500;
+          }
         } catch {
           if (alive) setStatus("error");
         }
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, Math.max(0, wait - (performance.now() - started))));
       }
     })();
     return () => { alive = false; };
@@ -336,6 +349,7 @@ function Radar() {
       if (!stage || !canvas) return;
       const dpr = window.devicePixelRatio || 1;
       const w = stage.clientWidth, h = stage.clientHeight;
+      if (w < 2 || h < 2) return; // hidden or mid-layout: a zero fit scale would turn the camera NaN
       if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
         canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
       }
@@ -388,7 +402,20 @@ function Radar() {
       const img = mapImg.current.img;
       if (img) drawMap(ctx, v, img, wing ? [wing[0] - 40, wing[1] - 40, wing[2] + 40, wing[3] + 40] : undefined);
 
+      // A carried bomb rides on its carrier's marker; a loose one is eased like the players.
+      const carried = players.some(([, p]) => p.alive && p.hasBomb);
+      const bA = A?.bomb, bB = B?.bomb;
+      const bomb = bA && bB && !bA.planted && !bB.planted
+        ? { ...bB, x: lerp(bA.x, bB.x, f), y: lerp(bA.y, bB.y, f), z: lerp(bA.z, bB.z, f) }
+        : bB;
+      const showBomb = bomb && !bomb.exploded && (bomb.planted || !carried);
+
       const levelAlpha = (z: number) => (!map.lower ? 1 : (z < map.lower.below) === lower ? 1 : 0.28);
+      if (showBomb && prefs.radius) {
+        ctx.globalAlpha = levelAlpha(bomb.z);
+        drawBlast(ctx, v, bomb, mapImg.current.walls);
+        ctx.globalAlpha = 1;
+      }
       drawNades(ctx, v, tracker, rt, levelAlpha);
 
       if (prefs.lines) {
@@ -403,27 +430,19 @@ function Radar() {
         }
       }
 
-      // A carried bomb rides on its carrier's marker; a loose one is eased like the players.
-      const carried = players.some(([, p]) => p.alive && p.hasBomb);
-      const bA = A?.bomb, bB = B?.bomb;
-      const bomb = bA && bB && !bA.planted && !bB.planted
-        ? { ...bB, x: lerp(bA.x, bB.x, f), y: lerp(bA.y, bB.y, f), z: lerp(bA.z, bB.z, f) }
-        : bB;
-      if (bomb && !bomb.exploded && (bomb.planted || !carried)) {
+      if (showBomb) {
         const cur = clockRef.current.server + (now - clockRef.current.at) / 1000;
         const remaining = bomb.planted && bomb.blowTime ? Math.max(0, bomb.blowTime - cur) : undefined;
         const defuseLeft = bomb.defuseEnd && bomb.defuseEnd > cur ? bomb.defuseEnd - cur : undefined;
         ctx.globalAlpha = levelAlpha(bomb.z);
-        drawBomb(ctx, v, bomb, {
-          remaining, total: bomb.timerLength || 40, defuseLeft, defuseTotal: defuse.current.total, now, radius: prefs.radius,
-        });
+        drawBomb(ctx, v, bomb, { remaining, total: bomb.timerLength || 40, defuseLeft, defuseTotal: defuse.current.total, now });
         ctx.globalAlpha = 1;
       }
       const fx = blastFx.current;
       if (fx && now - fx.t < 1600) {
         const [x, y] = toScreen(v, fx.x, fx.y);
         const e = (now - fx.t) / 1600;
-        const R = unitsToPx(v, (bomb?.radius ?? BOMB_RADIUS) * 0.7) * Math.sqrt(e);
+        const R = unitsToPx(v, BLAST.lethal * 0.7) * Math.sqrt(e);
         const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(1, R));
         g.addColorStop(0, `rgba(255,244,214,${(0.9 * (1 - e)).toFixed(3)})`);
         g.addColorStop(0.5, `rgba(240,138,60,${(0.55 * (1 - e)).toFixed(3)})`);
@@ -670,7 +689,7 @@ function Radar() {
           )}
 
           {debug && (
-            <pre className="rd-debug">{JSON.stringify({ status, map: hud.mapKey, age: hud.age, players: hud.rows.length, nades: tracker.tracks.size, scan: dataRef.current?.entityScan, sdk: dataRef.current?.debug }, null, 1)}</pre>
+            <pre className="rd-debug">{JSON.stringify({ status, map: hud.mapKey, mode: dataRef.current?.mode, age: hud.age, seq: dataRef.current?.seq, interval: dataRef.current?.interval, players: hud.rows.length, nades: tracker.tracks.size }, null, 1)}</pre>
           )}
         </div>
 

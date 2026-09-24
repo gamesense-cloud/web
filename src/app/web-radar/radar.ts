@@ -1,8 +1,8 @@
 // Radar model, map table and canvas drawing for /web-radar.
 //
-// The payload types mirror what the client pushes to /api/radar/push. Fields marked
-// "planned" are not sent yet: the page uses them as soon as the client does, and
-// until then infers the same thing from positions (see NadeTracker, Walls).
+// The payload types mirror what the client pushes to /api/radar/push. Older clients
+// leave some fields out (aim, weapons, grenade ids); the page then infers the same
+// thing from positions (see NadeTracker, Walls).
 
 export type NadeType = "smoke" | "flash" | "he" | "molotov" | "decoy";
 
@@ -11,12 +11,11 @@ export interface Player {
   team: number; alive: boolean; health: number;
   name: string; dormant: boolean; enemy: boolean;
   yaw?: number; pitch?: number;
-  vx?: number; vy?: number;
   armor?: number; helmet?: boolean; defuser?: boolean;
   weapon?: string;
-  weapons?: string[];              // planned: everything carried, a grenade once per count
-  aim?: [number, number, number];  // planned: where the in-game view trace hits a wall
-  fired?: number;                  // planned: curtime of the latest shot (weapon_fire)
+  weapons?: string[];              // everything carried, a grenade once per count
+  aim?: [number, number, number];  // where the in-game view trace hits something
+  fired?: number;                  // shots fired so far; a rise is a new shot
   scoped?: boolean; defusing?: boolean; hasBomb?: boolean;
   flashAlpha?: number; money?: number; color?: number;
   kills?: number; deaths?: number; assists?: number; mvps?: number;
@@ -29,41 +28,41 @@ export interface Bomb {
   planted: boolean;
   site?: string;
   blowTime?: number; defuseEnd?: number; timerLength?: number;
-  radius?: number;    // planned: blast radius in world units
-  defused?: boolean;  // planned
-  exploded?: boolean; // planned
+  defused?: boolean;
+  exploded?: boolean;
 }
 
 export interface Grenade {
   x: number; y: number; z: number;
   type: NadeType;
-  id?: number;       // planned: entity index, so each tracer follows the right nade
-  active?: boolean;  // planned: smoke billowing / fire burning
-  expires?: number;  // planned: curtime the smoke or fire ends
-  radius?: number;   // planned: effect radius in world units
+  id?: number;       // entity index, so each tracer follows the right nade
+  active?: boolean;  // smoke billowing / fire burning
+  expires?: number;  // curtime the smoke or fire ends
+  radius?: number;   // effect radius in world units
+  fires?: [number, number][]; // a fire's burning patches
 }
 
 export interface Kill { killer: string; victim: string; weapon: string; hs: boolean; t: number }
 
 export interface RadarData {
-  status: "live" | "waiting" | "stale" | "no_session" | "error";
+  status: "live" | "paused" | "waiting" | "stale" | "no_session" | "error";
   connected: boolean;
+  paused?: boolean;   // the client is up but not in a match
   reason?: string;
   age_ms?: number;
+  seq?: number;       // snapshot number, to skip repeats and late arrivals
+  interval?: number;  // ms between the client's updates, which it picks itself
   map?: string;
-  mode?: string; // planned: "competitive", "wingman", ...
+  mode?: string;      // "competitive", "wingman", ...
   localPlayer?: Player;
   players?: Player[];
   bomb?: Bomb;
   grenades?: Grenade[];
   curtime?: number;
-  tickCount?: number;
   tScore?: number; ctScore?: number;
   phase?: string;
   roundTime?: number; roundStartTime?: number; roundsPlayed?: number;
   kills?: Kill[];
-  debug?: Record<string, unknown>;
-  entityScan?: { total: number; null: number; noPawn: number; badPos?: number; added: number };
 }
 
 // ------------------------------------------------------------------- maps
@@ -192,6 +191,7 @@ export interface Track {
   until: number;  // when that effect ends
   gone: number;   // when it dropped out of the data; only its tracer is left
   radius?: number;
+  fires?: [number, number][];
 }
 
 export interface Burst { type: NadeType; x: number; y: number; z: number; t0: number; t1: number; radius?: number }
@@ -200,13 +200,21 @@ export class NadeTracker {
   tracks = new Map<string, Track>();
   bursts: Burst[] = [];
   private seq = 0;
+  private byId = new Map<number, string>(); // entity index -> the track following it
 
-  reset() { this.tracks.clear(); this.bursts = []; }
+  reset() { this.tracks.clear(); this.bursts = []; this.byId.clear(); }
 
   update(nades: Grenade[], now: number, curtime?: number) {
     const seen = new Set<string>();
     for (const g of nades) {
-      const key = g.id != null ? `#${g.id}` : this.match(g, seen);
+      let key: string;
+      if (g.id != null) {
+        // the game reuses entity indices, so a finished or different nade starts a new track
+        const k = this.byId.get(g.id);
+        const old = k ? this.tracks.get(k) : undefined;
+        key = k && old && !old.gone && old.type === g.type ? k : `#${g.id}:${++this.seq}`;
+        this.byId.set(g.id, key);
+      } else key = this.match(g, seen);
       let tr = this.tracks.get(key);
       if (!tr) {
         tr = { key, type: g.type, x: g.x, y: g.y, z: g.z, pts: [], still: 0, landed: 0, until: 0, gone: 0 };
@@ -219,11 +227,17 @@ export class NadeTracker {
       } else if (!tr.still) tr.still = now;
       tr.x = g.x; tr.y = g.y; tr.z = g.z;
       if (g.radius) tr.radius = g.radius;
+      if (g.fires) tr.fires = g.fires;
 
       // Smokes and fires sit where they land; without the planned `active` flag,
       // a smoke that has stopped moving has popped.
       const lingers = g.type === "smoke" || g.type === "molotov";
-      if (!tr.landed && (g.active || (g.type === "smoke" && tr.still && now - tr.still > 250))) tr.landed = now;
+      if (!tr.landed && (g.active || (g.type === "smoke" && tr.still && now - tr.still > 250))) {
+        tr.landed = now;
+        // a fire the client reports replaces the one guessed when its grenade vanished
+        if (g.type === "molotov")
+          this.bursts = this.bursts.filter((b) => b.type !== "molotov" || now - b.t0 > 1500 || Math.hypot(b.x - g.x, b.y - g.y) > 500);
+      }
       if (tr.landed && lingers) {
         if (g.expires != null && curtime != null) tr.until = now + (g.expires - curtime) * 1000;
         else if (!tr.until) tr.until = tr.landed + (NADES[g.type].ms ?? 0);
@@ -237,7 +251,9 @@ export class NadeTracker {
       // Dropped out mid-flight: it went off where it was last seen.
       if (!tr.landed && tr.pts.length > 1) {
         const base = { x: tr.x, y: tr.y, z: tr.z, t0: now };
-        if (tr.type === "molotov") this.bursts.push({ ...base, type: "molotov", t1: now + NADES.molotov.ms!, radius: tr.radius });
+        const burning = () => [...this.tracks.values()].some((o) =>
+          o !== tr && o.type === "molotov" && o.landed && !o.gone && Math.hypot(o.x - tr.x, o.y - tr.y) < 500);
+        if (tr.type === "molotov") { if (!burning()) this.bursts.push({ ...base, type: "molotov", t1: now + NADES.molotov.ms!, radius: tr.radius }); }
         else if (tr.type === "he") this.bursts.push({ ...base, type: "he", t1: now + 700 });
         else if (tr.type === "flash") this.bursts.push({ ...base, type: "flash", t1: now + 500 });
       }
@@ -292,7 +308,76 @@ export class Walls {
     for (; t < limit; t += 1.25) if (!this.isOpen(x + dx * t, y + dy * t)) return t;
     return limit;
   }
+
+  private field = { key: "", canvas: null as HTMLCanvasElement | null };
+
+  // The bomb's blast as a 1024px overlay, following open floor out from (x, y):
+  // path distance on 4px cells (5/7 chamfer steps, no cutting wall corners), red
+  // where it kills, fading out to where it dies. Null when the image gives too
+  // little floor to go on, and the caller falls back to a circle.
+  blast(x: number, y: number, unitsPerPx: number) {
+    const key = `${x | 0},${y | 0},${unitsPerPx}`;
+    if (this.field.key === key) return this.field.canvas;
+    const N = 256, S = 4;
+    const cell = new Uint8Array(N * N);
+    for (let cy = 0; cy < N; cy++)
+      for (let cx = 0; cx < N; cx++) {
+        let open = 1;
+        for (let py = 0; py < S && open; py++)
+          for (let px = 0; px < S; px++)
+            if (!this.open[(cy * S + py) * 1024 + cx * S + px]) { open = 0; break; }
+        cell[cy * N + cx] = open;
+      }
+
+    const step = (S * unitsPerPx) / 5; // world units per chamfer unit
+    const limit = Math.ceil((BLAST.lethal + BLAST.fade) / step);
+    const dist = new Uint16Array(N * N).fill(0xffff);
+    const start = Math.min(N - 1, Math.max(0, (y / S) | 0)) * N + Math.min(N - 1, Math.max(0, (x / S) | 0));
+    cell[start] = 1; // the bomb's own cell, whatever is drawn there
+    dist[start] = 0;
+    const buckets: number[][] = [[start]];
+    let reached = 0;
+    for (let d = 0; d < buckets.length; d++) {
+      for (const i of buckets[d] ?? []) {
+        if (dist[i] !== d) continue;
+        reached++;
+        const cx = i % N, cy = (i - cx) / N;
+        for (const [dx, dy, w] of STEPS) {
+          const nx = cx + dx, ny = cy + dy;
+          if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+          const j = ny * N + nx, nd = d + w;
+          if (!cell[j] || nd > limit || nd >= dist[j]) continue;
+          if (dx && dy && !(cell[cy * N + nx] && cell[ny * N + cx])) continue;
+          dist[j] = nd;
+          (buckets[nd] ??= []).push(j);
+        }
+      }
+    }
+
+    let canvas: HTMLCanvasElement | null = null;
+    if (reached > 200) {
+      canvas = document.createElement("canvas");
+      canvas.width = canvas.height = N;
+      const g = canvas.getContext("2d")!;
+      const img = g.createImageData(N, N);
+      for (let i = 0; i < N * N; i++) {
+        if (dist[i] === 0xffff) continue;
+        const u = dist[i] * step;
+        const t = u < BLAST.lethal ? 0 : Math.min(1, (u - BLAST.lethal) / BLAST.fade);
+        const p = i * 4;
+        img.data[p] = 224;
+        img.data[p + 1] = 101 + 75 * t;
+        img.data[p + 2] = 106 - 31 * t;
+        img.data[p + 3] = 255 * (u < BLAST.lethal ? 0.24 : 0.17 * Math.pow(1 - t, 1.6));
+      }
+      g.putImageData(img, 0, 0);
+    }
+    this.field = { key, canvas };
+    return canvas;
+  }
 }
+
+const STEPS = [[1, 0, 5], [-1, 0, 5], [0, 1, 5], [0, -1, 5], [1, 1, 7], [1, -1, 7], [-1, 1, 7], [-1, -1, 7]] as const;
 
 // ------------------------------------------------------------------ camera
 
@@ -337,39 +422,44 @@ export function drawMap(ctx: CanvasRenderingContext2D, v: View, img: HTMLImageEl
 
 // ------------------------------------------------------------------- bomb
 
-// Blast damage falls off as a gaussian with sigma = radius / 3 from a peak of
-// radius / 3.5; these are the distances that still kill at 100 hp.
-export function blast(radius: number) {
-  const sigma = radius / 3, peak = radius / 3.5;
-  const reach = (need: number) => (peak > need ? sigma * Math.sqrt(2 * Math.log(peak / need)) : 0);
-  return { lethal: reach(100), lethalArmored: reach(200) };
-}
+// Since July 2026 the C4 blast is a shockwave that runs through the map instead
+// of a plain radius: walls stop it and corners weaken it, from damage fields baked
+// into each map. Out in the open it kills to about 35 m and fades to nothing over
+// roughly 32 m more (world units, ~52.5 to the metre); Walls.blast follows it along
+// open floor, and the circle is the fallback.
+export const BLAST = { lethal: 1800, fade: 1700 };
 
-export const BOMB_RADIUS = 1750;
+// The blast of a planted bomb, drawn under everything but the map.
+export function drawBlast(ctx: CanvasRenderingContext2D, v: View, b: Bomb, walls: Walls | null) {
+  if (!b.planted || b.defused || b.exploded) return;
+  const [mx, my] = toRadar(v.map, b.x, b.y);
+  const field = walls?.blast(mx, my, v.map.scale);
+  if (field) {
+    ctx.save();
+    ctx.translate(v.sx, v.sy);
+    ctx.rotate(v.rot);
+    ctx.scale(v.scale, v.scale);
+    ctx.translate(-v.cx, -v.cy);
+    ctx.drawImage(field, 0, 0, 1024, 1024);
+    ctx.restore();
+    return;
+  }
+  const [x, y] = toScreen(v, b.x, b.y);
+  const L = unitsToPx(v, BLAST.lethal), R = unitsToPx(v, BLAST.lethal + BLAST.fade);
+  const g = ctx.createRadialGradient(x, y, 0, x, y, R);
+  g.addColorStop(0, "rgba(224,101,106,0.24)");
+  g.addColorStop(L / R, "rgba(224,101,106,0.18)");
+  g.addColorStop(1, "rgba(224,176,75,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+}
 
 export function drawBomb(
   ctx: CanvasRenderingContext2D, v: View, b: Bomb,
-  o: { remaining?: number; total: number; defuseLeft?: number; defuseTotal?: number; now: number; radius: boolean },
+  o: { remaining?: number; total: number; defuseLeft?: number; defuseTotal?: number; now: number },
 ) {
   const [x, y] = toScreen(v, b.x, b.y);
   const live = b.planted && !b.defused && !b.exploded;
-
-  if (live && o.radius) {
-    const radius = b.radius ?? BOMB_RADIUS;
-    const R = unitsToPx(v, radius);
-    const L = unitsToPx(v, blast(radius).lethal);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, R);
-    g.addColorStop(0, "rgba(224,101,106,0.22)");
-    g.addColorStop(Math.min(0.99, L / R), "rgba(224,101,106,0.09)");
-    g.addColorStop(1, "rgba(224,101,106,0)");
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
-    ctx.setLineDash([5, 5]);
-    ctx.strokeStyle = "rgba(224,101,106,0.6)"; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(x, y, L, 0, Math.PI * 2); ctx.stroke();
-    ctx.setLineDash([]);
-    label(ctx, "lethal", x, y - L - 4, "rgba(224,101,106,0.8)", "center");
-  }
 
   const pulse = 0.5 + 0.5 * Math.sin(o.now / (live ? 220 : 900));
   if (live && o.remaining != null) {
@@ -410,12 +500,12 @@ export function drawNades(ctx: CanvasRenderingContext2D, v: View, tracker: NadeT
   // smokes and fires under everything else
   for (const tr of tracker.tracks.values()) {
     if (!over(tr.landed) || over(tr.gone) || tr.until <= now) continue;
-    area(ctx, v, tr.type, tr.x, tr.y, tr.radius, tr.landed, tr.until, now, alpha(tr.z));
+    area(ctx, v, tr.type, tr.x, tr.y, tr.radius, tr.landed, tr.until, now, alpha(tr.z), seedOf(tr.key), tr.fires);
   }
   for (const b of tracker.bursts) {
     if (b.t0 > now || b.t1 <= now) continue;
     ctx.globalAlpha = alpha(b.z);
-    if (b.type === "molotov") area(ctx, v, "molotov", b.x, b.y, b.radius, b.t0, b.t1, now, alpha(b.z));
+    if (b.type === "molotov") area(ctx, v, "molotov", b.x, b.y, b.radius, b.t0, b.t1, now, alpha(b.z), b.t0 % 997);
     else burst(ctx, v, b, now);
   }
   ctx.globalAlpha = 1;
@@ -445,7 +535,7 @@ export function drawNades(ctx: CanvasRenderingContext2D, v: View, tracker: NadeT
       ctx.strokeStyle = `rgba(${n.rgb},${(0.8 * fade * a).toFixed(3)})`;
       ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
     }
-    if (over(tr.landed) || over(tr.gone)) continue;
+    if (over(tr.landed) || over(tr.gone) || (tr.landed && pts.length < 2)) continue;
     // in flight: the grenade's own icon, over a soft glow in its colour
     const [x, y] = toScreen(v, head.x, head.y);
     ctx.globalAlpha = a;
@@ -480,6 +570,7 @@ function nadeIcon(ctx: CanvasRenderingContext2D, type: NadeType, x: number, y: n
 function area(
   ctx: CanvasRenderingContext2D, v: View, type: NadeType, wx: number, wy: number,
   radius: number | undefined, t0: number, t1: number, now: number, a: number,
+  seed: number, fires?: [number, number][],
 ) {
   const n = NADES[type];
   const [x, y] = toScreen(v, wx, wy);
@@ -487,30 +578,119 @@ function area(
   const grow = Math.min(1, (now - t0) / 450);
   const fade = Math.min(1, (t1 - now) / 900);
   const k = grow * fade * a;
+  if (k <= 0) return;
   const r = R * (0.55 + 0.45 * grow);
   const fire = type === "molotov";
-  const flicker = fire ? 0.82 + 0.18 * Math.sin(now / 90) * Math.sin(now / 157) : 1;
 
-  const g = ctx.createRadialGradient(x, y, r * 0.15, x, y, r);
-  g.addColorStop(0, `rgba(${n.rgb},${(0.42 * k * flicker).toFixed(3)})`);
-  g.addColorStop(0.8, `rgba(${n.rgb},${(0.28 * k * flicker).toFixed(3)})`);
-  g.addColorStop(1, `rgba(${n.rgb},${(0.08 * k).toFixed(3)})`);
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = `rgba(${n.rgb},${(0.55 * k).toFixed(3)})`;
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  if (fire) drawFire(ctx, v, x, y, r, k, now, seed, grow, fires);
+  else drawCloud(ctx, x, y, r, k, now, seed);
 
   // time left, as a draining arc and a number
   const left = Math.max(0, t1 - now);
   const frac = left / (t1 - t0);
   ctx.strokeStyle = `rgba(${n.rgb},${(0.9 * k).toFixed(3)})`;
   ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(x, y, r + 3, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, r + 4, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
   ctx.globalAlpha = k;
-  const iconed = nadeIcon(ctx, type, x, y - 5, 14);
-  label(ctx, `${Math.ceil(left / 1000)}`, x, iconed ? y + 14 : y + 4, fire ? "#ffd2b0" : "#f0f0f4", "center", true, iconed ? 9 : 10);
+  label(ctx, `${Math.ceil(left / 1000)}`, x, y + 4, fire ? "#ffd2b0" : "#f0f0f4", "center", true, 10);
   ctx.globalAlpha = 1;
+}
+
+const TAU = Math.PI * 2;
+const hash = (n: number) => { const s = Math.sin(n * 12.9898) * 43758.5453; return s - Math.floor(s); };
+const seedOf = (key: string) => { let h = 7; for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) % 9973; return h; };
+
+let cloudLayer: HTMLCanvasElement | null = null;
+
+// A smoke seen from above, as it looks in game: a lumpy grey-white mass of puffs,
+// lit from the top left and slowly billowing. Drawn opaque on a scratch canvas and
+// laid down in one go, so overlapping puffs keep their edges but never stack alpha.
+function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, k: number, now: number, seed: number) {
+  const size = Math.ceil(r * 2.7) + 4;
+  if (size < 6) return;
+  cloudLayer ??= document.createElement("canvas");
+  if (cloudLayer.width < size) cloudLayer.width = cloudLayer.height = Math.max(size, 64);
+  const g = cloudLayer.getContext("2d")!;
+  g.clearRect(0, 0, size, size);
+  const c = size / 2;
+
+  const puffs = [{ dx: 0, dy: 0, rr: 0.6 }];
+  for (let i = 0; i < 7; i++) {
+    const ang = (i / 7) * TAU + hash(seed + i) * 0.7;
+    const breathe = 1 + 0.05 * Math.sin(now / 650 + i * 1.7 + seed);
+    const d = 0.46 + 0.1 * hash(seed + i * 3.1);
+    puffs.push({ dx: Math.cos(ang) * d, dy: Math.sin(ang) * d, rr: (0.4 + 0.14 * hash(seed + i * 7.3)) * breathe });
+  }
+  puffs.sort((p, q) => p.dy - q.dy); // nearer (lower) puffs over farther ones
+
+  g.fillStyle = "#565a63"; // the shaded underside, peeking out bottom right
+  for (const p of puffs) { g.beginPath(); g.arc(c + (p.dx + 0.05) * r, c + (p.dy + 0.07) * r, p.rr * r * 1.03, 0, TAU); g.fill(); }
+  for (const p of puffs) {
+    const px = c + p.dx * r, py = c + p.dy * r, pr = p.rr * r;
+    const body = g.createRadialGradient(px - pr * 0.32, py - pr * 0.38, pr * 0.08, px, py, pr);
+    body.addColorStop(0, "#f1f2f5");
+    body.addColorStop(0.65, "#c6c9d0");
+    body.addColorStop(1, "#9ca1ab");
+    g.fillStyle = body;
+    g.beginPath(); g.arc(px, py, pr, 0, TAU); g.fill();
+  }
+
+  ctx.globalAlpha = 0.86 * k;
+  ctx.drawImage(cloudLayer, 0, 0, size, size, x - c, y - c, size, size);
+  ctx.globalAlpha = 1;
+}
+
+// Burning patches: a warm glow on the ground under each and a flickering flame on
+// top, lower flames drawn over higher ones. The client sends where each patch is;
+// without that they spread out from the centre as the fire takes.
+function drawFire(
+  ctx: CanvasRenderingContext2D, v: View, x: number, y: number, r: number, k: number,
+  now: number, seed: number, grow: number, fires?: [number, number][],
+) {
+  const pts: [number, number][] = fires?.length
+    ? fires.map(([fx, fy]) => toScreen(v, fx, fy))
+    : Array.from({ length: 11 }, (_, i) => {
+        const ang = i * 2.39996 + seed, d = r * 0.8 * Math.sqrt((i + 0.5) / 11) * grow;
+        return [x + Math.cos(ang) * d, y + Math.sin(ang) * d] as [number, number];
+      });
+
+  const glow = Math.max(6, unitsToPx(v, 60));
+  for (const [fx, fy] of pts) {
+    const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, glow);
+    g.addColorStop(0, `rgba(255,120,40,${(0.3 * k).toFixed(3)})`);
+    g.addColorStop(1, "rgba(200,50,20,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(fx, fy, glow, 0, TAU); ctx.fill();
+  }
+
+  const h0 = Math.min(16, Math.max(5, unitsToPx(v, 30)));
+  const order = pts.map(([fx, fy], i) => [fx, fy, i] as const).sort((p, q) => p[1] - q[1]);
+  for (const [fx, fy, i] of order) {
+    const ph = seed + i * 1.93;
+    const flick = 0.82 + 0.18 * Math.sin(now / 70 + ph) * Math.sin(now / 113 + ph * 1.7);
+    flame(ctx, fx, fy, h0 * flick * (0.8 + 0.35 * hash(ph)), Math.sin(now / 160 + ph) * 0.18, k);
+  }
+}
+
+function flame(ctx: CanvasRenderingContext2D, x: number, y: number, h: number, sway: number, a: number) {
+  const tip = x + sway * h;
+  const outer = ctx.createLinearGradient(0, y - h, 0, y + h * 0.3);
+  outer.addColorStop(0, "rgba(220,50,20,0)");
+  outer.addColorStop(0.35, `rgba(240,105,35,${(0.92 * a).toFixed(3)})`);
+  outer.addColorStop(1, `rgba(255,185,70,${a.toFixed(3)})`);
+  ctx.fillStyle = outer;
+  teardrop(ctx, x, y, tip, h, h * 0.46);
+  ctx.fillStyle = `rgba(255,236,160,${(0.9 * a).toFixed(3)})`;
+  teardrop(ctx, x, y + h * 0.06, x + (tip - x) * 0.6, h * 0.5, h * 0.24);
+}
+
+function teardrop(ctx: CanvasRenderingContext2D, x: number, y: number, tip: number, h: number, w: number) {
+  ctx.beginPath();
+  ctx.moveTo(tip, y - h);
+  ctx.bezierCurveTo(x + w * 0.3, y - h * 0.55, x + w, y - h * 0.15, x + w * 0.6, y + h * 0.12);
+  ctx.quadraticCurveTo(x, y + h * 0.32, x - w * 0.6, y + h * 0.12);
+  ctx.bezierCurveTo(x - w, y - h * 0.15, x - w * 0.3, y - h * 0.55, tip, y - h);
+  ctx.fill();
 }
 
 function burst(ctx: CanvasRenderingContext2D, v: View, b: Burst, now: number) {

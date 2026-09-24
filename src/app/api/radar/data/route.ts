@@ -38,10 +38,11 @@ export async function GET(req: Request) {
       }, { headers: NO_CACHE });
     }
 
+    // the client sends a heartbeat every 5 s while it is out of a match
     const gd = data.game_data as Record<string, unknown>;
     const result = {
       ...gd,
-      status: gd.connected ? "live" : "waiting",
+      status: gd.paused ? "paused" : gd.connected ? "live" : "waiting",
       age_ms: age,
     };
 

@@ -197,7 +197,6 @@ export function demoFrame(ms: number): RadarData {
     const p: Player = {
       x: s.p[0], y: s.p[1], z: 0,
       yaw: deg(yaw),
-      vx: s.moving && alive ? Math.cos(s.yaw) * SPEED : 0, vy: s.moving && alive ? Math.sin(s.yaw) * SPEED : 0,
       team: a.team, alive, health: hp, name: a.name, dormant: false, enemy: a.team !== CT,
       armor: alive ? Math.max(0, 100 - Math.round((100 - hp) * 0.6)) : 0, helmet: a.helmet, defuser: a.defuser,
       weapon: !alive ? undefined : planting ? "weapon_c4" : throwing ? (throwing.item ?? NADE_ITEM[throwing.type]) : a.gear[0],
@@ -232,7 +231,7 @@ export function demoFrame(ms: number): RadarData {
   let bomb: Bomb | undefined;
   if (t < BOMB_AT) bomb = { x: carrier[0], y: carrier[1], z: 0, planted: false };
   else {
-    bomb = { x: site[0], y: site[1], z: 0, planted: true, site: "A", blowTime: cur(BLOW), timerLength: BOMB_TIMER, radius: 1750 };
+    bomb = { x: site[0], y: site[1], z: 0, planted: true, site: "A", blowTime: cur(BLOW), timerLength: BOMB_TIMER };
     if (t >= 54.5 && t < 57.2) bomb.defuseEnd = cur(59.5);
     else if (t >= retake && t < end) bomb.defuseEnd = cur(retake + 10);
     if (over) { if (odd) bomb.exploded = true; else bomb.defused = true; }
