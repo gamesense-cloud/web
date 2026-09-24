@@ -18,6 +18,8 @@ export const Scope = (p: P) => <Svg {...p}><circle cx="8" cy="8" r="4.6" /><path
 export const Nade = (p: P) => <Svg {...p}><circle cx="7" cy="10" r="3.7" /><path d="M9.6 7.3 11.2 5.7M10 3.2h3.3" /></Svg>;
 export const Shader = (p: P) => <Svg {...p}><circle cx="8" cy="8" r="5.8" /><path d="M8 2.2a5.8 5.8 0 0 0 0 11.6z" fill="currentColor" /></Svg>;
 export const Bolt = (p: P) => <Svg {...p}><path d="M9.2 1.6 4 9h4l-1.2 5.4L12 7H8z" /></Svg>;
+// The menu's Features page: a five-point star (as dll/src/ui/Icons.cpp draws it).
+export const Star = (p: P) => <Svg {...p}><path d="M8 2.4 9.59 6.42 13.9 6.68 10.57 9.43 11.64 13.62 8 11.3 4.36 13.62 5.43 9.43 2.1 6.68 6.41 6.42z" /></Svg>;
 export const Gear = (p: P) => (
   <Svg {...p}>
     <circle cx="8" cy="8" r="2.2" />

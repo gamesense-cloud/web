@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Hint from "../Hint";
 import * as I from "../icons";
 import { demoFrame } from "./demo";
 import {
@@ -690,9 +691,10 @@ function Radar() {
               {display && (
                 <div className="panel rd-tools">
                   {(Object.keys(PREFS) as Pref[]).map((k) => (
-                    <label key={k} className={`check${k === "rotate" && !follow ? " opacity-40" : ""}`}>
+                    <label key={k} className="check">
                       <input type="checkbox" checked={prefs[k]} onChange={() => togglePref(k)} />
                       {PREFS[k].label}
+                      {k === "rotate" && <Hint text="Turns the map with the view of the player you follow: click one first." />}
                       <kbd className="kbd push">{PREFS[k].key}</kbd>
                     </label>
                   ))}

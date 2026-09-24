@@ -211,8 +211,8 @@ export default async function Home() {
       </section>
 
       <section id="requirements" className="sec grid2">
-        <div className="panel">
-          <div className="panel-head">Requirements</div>
+        <div className="group">
+          <span className="group-title">Requirements</span>
           <dl className="kv">
             <div><dt>System</dt><dd>Windows 10 / 11, 64-bit</dd></div>
             <div><dt>Game</dt><dd>Counter-Strike 2</dd></div>
@@ -221,8 +221,8 @@ export default async function Home() {
             <div><dt>Client</dt><dd>{client ? `updated ${date(client.published_at)}` : "fetched on every inject"}</dd></div>
           </dl>
         </div>
-        <div className="panel cta">
-          <span className="label">Ready?</span>
+        <div className="group cta">
+          <span className="group-title">Ready?</span>
           <h3>One download, no setup.</h3>
           <p>
             Grab the loader, start the game and press Inject. Questions or ideas? The Discord is the fastest way
