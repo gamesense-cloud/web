@@ -17,13 +17,15 @@ const SCRIPTS = [
   { file: "timers.lua", name: "Timers", version: "1.0.0", desc: "Delayed, repeating and next-frame work." },
 ];
 
-// The menu's pages, top to bottom.
+// The menu's pages: the tools on top, then the game's features under their heading.
 const PAGES = [
   { label: "Scripts", Icon: I.Code },
-  { label: "Web", Icon: I.Globe },
-  { label: "Helper", Icon: I.Nade },
   { label: "Shaders", Icon: I.Shader },
-  { label: "Features", Icon: I.Star },
+  { label: "Helper", Icon: I.Nade },
+];
+const FEATURES = [
+  { label: "Web radar", Icon: I.Globe },
+  { label: "Misc", Icon: I.Sliders },
 ];
 
 const DESIGN_WIDTH = 900; // below this the whole window scales down instead of reflowing
@@ -75,6 +77,11 @@ export default function MenuPreview() {
               {PAGES.map(({ label, Icon }, i) => (
                 <span key={label} className={i === 0 ? "on" : undefined}><Icon size={13} />{label}</span>
               ))}
+            </div>
+            <div className="mp-rule" />
+            <div className="mp-label">Features</div>
+            <div className="mp-nav">
+              {FEATURES.map(({ label, Icon }) => <span key={label}><Icon size={13} />{label}</span>)}
             </div>
             <div className="mp-rule" />
             <div className="mp-label">Script tabs</div>
