@@ -210,6 +210,7 @@ export class NadeTracker {
   bursts: Burst[] = [];
   private seq = 0;
   private byId = new Map<number, string>(); // entity index -> the track following it
+  private firesReported = false; // the client has sent a fire's burning patches: it reports every fire
 
   reset() { this.tracks.clear(); this.bursts = []; this.byId.clear(); }
 
@@ -250,7 +251,7 @@ export class NadeTracker {
       } else if (!tr.still) tr.still = now;
       tr.x = g.x; tr.y = g.y; tr.z = g.z;
       if (g.radius) tr.radius = g.radius;
-      if (g.fires) tr.fires = g.fires;
+      if (g.fires) { tr.fires = g.fires; this.firesReported = true; }
 
       // Smokes and fires sit where they land; for clients that do not send `active`,
       // a smoke that has stopped moving has popped.
@@ -273,15 +274,18 @@ export class NadeTracker {
       // Dropped out mid-flight with no blast reported: it went off where last seen.
       if (!tr.landed && tr.pts.length > 1) {
         const base = { x: tr.x, y: tr.y, z: tr.z, t0: now };
-        // A client that sends entity ids sends the fire entity too, so a molotov that just
-        // vanished only pops: burst in the air, or its fire arrives in the data. Older
-        // clients get a guessed fire, unless one is reported or it lands in a smoke.
-        if (tr.type === "molotov" && !tr.key.startsWith("#")) {
+        if (tr.type === "molotov" && !this.firesReported) {
+          // A client that has not reported a fire of its own may never: guess one, unless
+          // a reported one is there or it lands in a smoke.
           const burning = [...this.tracks.values()].some((o) =>
             o !== tr && o.type === "molotov" && o.landed && !o.gone && Math.hypot(o.x - tr.x, o.y - tr.y) < 500);
           if (!burning && !this.smoked(tr.x, tr.y, tr.z, now))
             this.bursts.push({ ...base, t0: now + GUESS_DELAY, t1: now + GUESS_DELAY + NADES.molotov.ms!, type: "molotov", fire: true, radius: tr.radius });
-        } else if (BLAST_MS[tr.type]) this.bursts.push({ ...base, type: tr.type, t1: now + BLAST_MS[tr.type] });
+        } else if (BLAST_MS[tr.type]) {
+          // Once it has, every fire comes in the data, and a molotov that vanishes without
+          // one burst in the air: it only pops.
+          this.bursts.push({ ...base, type: tr.type, t1: now + BLAST_MS[tr.type] });
+        }
       }
     }
     // kept a little past their end: the page draws them up to half a second late
