@@ -6,8 +6,8 @@ import * as I from "../icons";
 import { demoFrame } from "./demo";
 import {
   BLAST, COMP_COLORS, CT, ENEMY, MAPS, NadeTracker, SHOT_MS, T, Walls,
-  drawBlast, drawBomb, drawExplosion, drawMap, drawNades, drawPlayer, drawShots, drawViewLine, drawWallbang, hpColor, iconSrc, loadout,
-  markColor, radarToWorld, screenAngle, teamColor, toRadar, toScreen, unitsToPx, weaponName,
+  drawBlast, drawBomb, drawExplosion, drawFov, drawMap, drawNades, drawPlayer, drawShots, drawViewLine, drawWallbang, hpColor,
+  iconSrc, loadout, markColor, offAim, radarToWorld, screenAngle, sees, teamColor, toRadar, toScreen, unitsToPx, weaponName,
   type Box, type Bomb, type MapInfo, type NadeType, type Player, type RadarData, type Shot, type View,
 } from "./radar";
 
@@ -43,6 +43,7 @@ function lerpAngle(a: number | undefined, b: number | undefined, t: number) {
 const PREFS = {
   lines:  { label: "View lines",     key: "L", on: true },
   pen:    { label: "Wallbang lines", key: "W", on: true },
+  fov:    { label: "FOV cones",      key: "V", on: true },
   warn:   { label: "Aim warning",    key: "A", on: true },
   names:  { label: "Names & weapons", key: "P", on: true },
   health: { label: "HP rings",       key: "B", on: true },
@@ -75,15 +76,27 @@ function aimEnd(p: Player, map: MapInfo, demoWalls: Walls | null): [number, numb
   return radarToWorld(map, mx + Math.cos(a) * d, my + Math.sin(a) * d);
 }
 
+// The demo's stand-in for the fan of rays the client traces for what each enemy can see:
+// the same fan, marched across the radar image.
+function demoCone(p: Player, map: MapInfo, walls: Walls) {
+  const half = p.scoped ? 20 : 45, n = 25, range = p.scoped ? 4096 : 3000, yaw = p.yaw ?? 0;
+  const [mx, my] = toRadar(map, p.x, p.y);
+  const cone = [yaw, half];
+  for (let i = 0; i < n; i++) {
+    const a = (-(yaw - half + (2 * half * i) / (n - 1)) * Math.PI) / 180;
+    cone.push(Math.round((walls.cast(mx, my, a, range / map.scale) * map.scale) / 8));
+  }
+  return cone;
+}
+
 // The first enemy whose view line reaches `target` before a wall does, or goes on to it
 // through walls their gun shoots through (`wall`). In a free for all everyone is an enemy.
 function aimingAt(target: Player, others: Player[], map: MapInfo, demoWalls: Walls | null, ffa: boolean) {
   for (const e of others) {
     if (!e.alive || e.dormant || e.yaw == null || (!ffa && e.team === target.team)) continue;
-    const dx = target.x - e.x, dy = target.y - e.y, dist = Math.hypot(dx, dy);
+    const dist = Math.hypot(target.x - e.x, target.y - e.y);
     if (dist < 1 || dist > 5000) continue;
-    const off = Math.abs(((Math.atan2(dy, dx) * 180) / Math.PI - e.yaw + 540) % 360 - 180) * (Math.PI / 180);
-    if (off > Math.atan2(36, dist) + 0.015) continue;
+    if (offAim(e, target) > Math.atan2(36, dist) + 0.015) continue;
     const end = aimEnd(e, map, demoWalls);
     if (end && Math.hypot(end[0] - e.x, end[1] - e.y) + 24 >= dist) return { e, wall: false };
     const pen = e.pen?.[e.pen.length - 1];
@@ -224,6 +237,8 @@ function Radar() {
     }
 
     tracker.update(data.grenades ?? [], now, data.curtime);
+    const demoWalls = demo ? mapImg.current.walls : null;
+    if (map && demoWalls) for (const p of next.values()) if (p.alive && p.yaw != null) p.cone = demoCone(p, map, demoWalls);
 
     // every new shot: muzzle flash plus a tracer to wherever the view line ends
     for (const [k, p] of next) {
@@ -462,6 +477,18 @@ function Radar() {
         ctx.globalAlpha = 1;
       }
       drawNades(ctx, v, tracker, rt, levelAlpha);
+
+      // what the watched player's enemies see, red for those who have them in view
+      const watchKey = follow ?? LOCAL;
+      const watched = players.find(([k]) => k === watchKey)?.[1];
+      if (prefs.fov) {
+        for (const [key, p] of players) {
+          if (key === watchKey || !p.alive || p.dormant || (watched && !ffa && p.team === watched.team)) continue;
+          ctx.globalAlpha = levelAlpha(p.z);
+          drawFov(ctx, v, p, markColor(p, ffa), !!watched?.alive && sees(p, watched));
+        }
+        ctx.globalAlpha = 1;
+      }
 
       if (prefs.lines) {
         for (const [key, p] of players) {
@@ -846,6 +873,7 @@ function PlayerCard({ row, rank, follow, hover, onFollow, onHover, aimed }: {
             ))}
             {gear.zeus && <span className={gear.held === "taser" ? "on" : ""}><img src="/weapons/taser.svg" alt="Zeus" /></span>}
             {!gear.full && !gear.guns.length && gear.held && <span className="on">{weaponName(gear.held)}</span>}
+            {p.scoped && <span className="pc-scope on" title="Scoped in"><I.Scope size={11} />Scoped</span>}
           </div>
           {(gear.nades.length > 0 || gear.healthshots > 0 || gear.c4 || p.defuser) && (
             <div className="pc-util">

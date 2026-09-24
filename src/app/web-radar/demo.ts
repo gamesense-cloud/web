@@ -194,6 +194,7 @@ export function demoFrame(ms: number): RadarData {
     }
 
     const kills = KILLS.filter((k) => k.by === a.name && k.at <= t).length;
+    const scoped = alive && a.gear[0] === "weapon_awp" && !s.moving && !throwing && t >= FREEZE; // AWPs holding an angle
     const p: Player = {
       x: s.p[0], y: s.p[1], z: 0,
       yaw: deg(yaw),
@@ -202,7 +203,7 @@ export function demoFrame(ms: number): RadarData {
       weapon: !alive ? undefined : planting ? "weapon_c4" : throwing ? (throwing.item ?? NADE_ITEM[throwing.type]) : a.gear[0],
       weapons: alive ? items : [],
       hasBomb: alive && a.name === "rook" && t < BOMB_AT,
-      defusing, flashAlpha: flash, money: a.money, color: a.color,
+      defusing, scoped, flashAlpha: flash, money: a.money, color: a.color,
       kills: a.kda[0] + kills, deaths: a.kda[1] + (alive ? 0 : 1), assists: a.kda[2], mvps: a.name === "kronos" ? 3 : 1,
       ping: a.ping, slot: slot + 1,
       fired: fired >= 0 ? cur(fired) : undefined,

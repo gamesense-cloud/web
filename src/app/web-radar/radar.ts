@@ -18,6 +18,7 @@ export interface Player {
   pen?: [number, number, number, number][]; // past `aim`, each stretch the gun in hand shoots through a wall to
   fired?: number;                  // shots fired so far; a rise is a new shot
   scoped?: boolean; defusing?: boolean; hasBomb?: boolean;
+  cone?: number[];                 // what they can see: [yaw, half the view's width, then how far each ray across it got, in 8s of units]
   flashAlpha?: number;             // how blind, 0-255, as the game draws it
   money?: number; color?: number;
   kills?: number; deaths?: number; assists?: number; mvps?: number;
@@ -866,6 +867,50 @@ export function drawViewLine(ctx: CanvasRenderingContext2D, x: number, y: number
   ctx.beginPath(); ctx.arc(x2, y2, alert ? 2.5 : 1.75, 0, Math.PI * 2); ctx.fill();
 }
 
+// How far off where `p` looks `to` is, in radians.
+export function offAim(p: Player, to: { x: number; y: number }) {
+  const deg = (Math.atan2(to.y - p.y, to.x - p.x) * 180) / Math.PI - (p.yaw ?? 0);
+  return Math.abs((((deg + 540) % 360) - 180) * (Math.PI / 180));
+}
+
+// Whether `t` is inside what `p` can see: within their view, and no further than where the
+// rays either side of them stopped.
+export function sees(p: Player, t: Player) {
+  const c = p.cone;
+  if (!c || c.length < 4) return false;
+  const [yaw, half] = c, n = c.length - 2;
+  const dist = Math.hypot(t.x - p.x, t.y - p.y);
+  const off = ((((Math.atan2(t.y - p.y, t.x - p.x) * 180) / Math.PI - yaw) + 540) % 360) - 180;
+  if (dist < 1 || Math.abs(off) > half) return false;
+  const i = Math.min(n - 2, Math.max(0, Math.floor(((off + half) / (2 * half)) * (n - 1))));
+  return dist <= Math.max(c[2 + i], c[3 + i]) * 8 + 16;
+}
+
+// What a player can see, from above: their field of view cut off where the client's rays
+// met walls, fading with distance. Red when the watched player is inside it.
+export function drawFov(ctx: CanvasRenderingContext2D, v: View, p: Player, color: string, seen: boolean) {
+  const c = p.cone;
+  if (!c || c.length < 4) return;
+  const [yaw, half] = c, n = c.length - 2;
+  const [x, y] = toScreen(v, p.x, p.y);
+  let far = 0;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  for (let i = 0; i < n; i++) {
+    const a = screenAngle(v, yaw - half + (2 * half * i) / (n - 1)), d = unitsToPx(v, c[2 + i] * 8);
+    far = Math.max(far, d);
+    ctx.lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d);
+  }
+  ctx.closePath();
+  if (far < 2) return;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, far);
+  g.addColorStop(0, seen ? "rgba(224,101,106,0.34)" : `${color}40`);
+  g.addColorStop(1, seen ? "rgba(224,101,106,0.06)" : `${color}0a`);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = seen ? "rgba(224,101,106,0.7)" : `${color}59`;
+  ctx.lineWidth = 1; ctx.stroke();
+}
+
 // A stretch of the view line past a wall the gun in hand shoots through: dashed pink,
 // from a ring where it comes out of the wall.
 export function drawWallbang(ctx: CanvasRenderingContext2D, x: number, y: number, x2: number, y2: number) {
@@ -959,6 +1004,16 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, m: PlayerMark, now: nu
     ctx.beginPath(); ctx.arc(x, y, ring, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = hpColor(hp);
     ctx.beginPath(); ctx.arc(x, y, ring, -Math.PI / 2, -Math.PI / 2 + (hp / 100) * Math.PI * 2); ctx.stroke();
+  }
+
+  if (p.scoped) { // a scope reticle at the top left
+    const sx = x - ring - 4, sy = y - ring + 1;
+    ctx.strokeStyle = "#e6e6ea"; ctx.lineWidth = 1.25;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 3.2, 0, Math.PI * 2);
+    ctx.moveTo(sx - 5.5, sy); ctx.lineTo(sx + 5.5, sy);
+    ctx.moveTo(sx, sy - 5.5); ctx.lineTo(sx, sy + 5.5);
+    ctx.stroke();
   }
 
   if (p.hasBomb) {

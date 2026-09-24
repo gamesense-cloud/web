@@ -14,6 +14,7 @@ export const Home = (p: P) => <Svg {...p}><path d="M2.5 7.2 8 2.8l5.5 4.4V13.2H9
 export const Code = (p: P) => <Svg {...p}><path d="M5.2 4.5 1.8 8l3.4 3.5M10.8 4.5 14.2 8l-3.4 3.5M9.2 3 6.8 13" /></Svg>;
 export const Globe = (p: P) => <Svg {...p}><circle cx="8" cy="8" r="5.8" /><ellipse cx="8" cy="8" rx="2.4" ry="5.8" /><path d="M2.4 8h11.2" /></Svg>;
 export const Radar = (p: P) => <Svg {...p}><circle cx="8" cy="8" r="5.8" /><circle cx="8" cy="8" r="2.6" /><circle cx="8" cy="8" r=".6" fill="currentColor" /></Svg>;
+export const Scope = (p: P) => <Svg {...p}><circle cx="8" cy="8" r="4.6" /><path d="M8 1.5v4M8 10.5v4M1.5 8h4M10.5 8h4" /></Svg>;
 export const Nade = (p: P) => <Svg {...p}><circle cx="7" cy="10" r="3.7" /><path d="M9.6 7.3 11.2 5.7M10 3.2h3.3" /></Svg>;
 export const Shader = (p: P) => <Svg {...p}><circle cx="8" cy="8" r="5.8" /><path d="M8 2.2a5.8 5.8 0 0 0 0 11.6z" fill="currentColor" /></Svg>;
 export const Bolt = (p: P) => <Svg {...p}><path d="M9.2 1.6 4 9h4l-1.2 5.4L12 7H8z" /></Svg>;

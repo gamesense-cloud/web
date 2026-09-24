@@ -425,6 +425,7 @@
   .pc-armor { display: inline-flex; align-items: center; gap: 3px; color: var(--color-text-muted); font: 11px var(--font-mono); }
   .pc-flash { display: inline-flex; align-items: center; gap: 3px; color: #f2e28a; font: bold 11px var(--font-mono); }
   .pc-flash img { width: auto; height: 11px; }
+  .pc-gear span.pc-scope { gap: 3px; font: bold 11px var(--font-mono); }
   .pc-rank { min-width: 14px; color: var(--color-text-faint); font: bold 11px var(--font-mono); }
   .pc-gear { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-height: 16px; color: var(--color-text-muted); font-size: 11px; }
   .pc-gear span { display: inline-flex; align-items: center; opacity: .4; transition: opacity .15s; }
