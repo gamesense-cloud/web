@@ -13,18 +13,21 @@ export async function GET(req: Request) {
 
   try {
     const db = supabaseAdmin();
+    const started = performance.now();
     const { data, error } = await db
       .from("radar_data")
       .select("game_data, updated_at")
       .eq("session_id", session)
       .single();
+    // how long the database read took, for measuring (browser dev tools show it)
+    const headers = { ...NO_CACHE, "Server-Timing": `db;dur=${(performance.now() - started).toFixed(1)}` };
 
     if (error || !data) {
       return NextResponse.json({
         status: "no_session",
         connected: false,
         reason: "session_not_found",
-      }, { headers: NO_CACHE });
+      }, { headers });
     }
 
     const age = Date.now() - new Date(data.updated_at).getTime();
@@ -35,7 +38,7 @@ export async function GET(req: Request) {
         connected: false,
         reason: "stale",
         age_ms: age,
-      }, { headers: NO_CACHE });
+      }, { headers });
     }
 
     // the client sends a heartbeat every 5 s while it is out of a match
@@ -46,7 +49,7 @@ export async function GET(req: Request) {
       age_ms: age,
     };
 
-    return NextResponse.json(result, { headers: NO_CACHE });
+    return NextResponse.json(result, { headers });
   } catch (e) {
     console.error("[radar/data] exception:", e);
     return NextResponse.json({ status: "error", connected: false }, { status: 500, headers: NO_CACHE });
