@@ -50,7 +50,7 @@ const ACTORS: Actor[] = [
     gear: ["weapon_ak47", "weapon_glock", "weapon_knife_t", "weapon_smokegrenade", "weapon_hegrenade", "weapon_flashbang"],
     legs: [{ at: 4.2, route: "t2", look: [700, 140] }] },
   { name: "mako", team: T, color: 0, money: 750, kda: [9, 12, 2], ping: 48,
-    gear: ["weapon_awp", "weapon_p250", "weapon_knife_t", "weapon_flashbang"],
+    gear: ["weapon_awp", "weapon_p250", "weapon_knife_t", "weapon_flashbang", "weapon_healthshot"],
     legs: [{ at: 4.4, route: "t3", look: [900, 262] }] },
   { name: "juno", team: T, color: 4, money: 3350, kda: [13, 9, 4], ping: 29, helmet: true,
     gear: ["weapon_ak47", "weapon_tec9", "weapon_knife_t", "weapon_molotov", "weapon_flashbang", "weapon_smokegrenade"],

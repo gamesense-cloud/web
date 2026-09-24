@@ -387,6 +387,7 @@
   .rd-timer.text-ok { color: var(--color-ok); }
   .rd-icon-btn { width: 26px; padding: 0; }
   .rd-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 250px minmax(0, 1fr) 250px; }
+  .rd-body.ffa { grid-template-columns: 250px minmax(0, 1fr); }
   .rd-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--color-bg); user-select: none; }
   .rd-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 
@@ -422,6 +423,9 @@
   .pc-bar i { display: block; height: 100%; transition: width .35s var(--ease), background-color .35s; }
   .pc-hp b { min-width: 22px; text-align: right; font: bold 11px var(--font-mono); }
   .pc-armor { display: inline-flex; align-items: center; gap: 3px; color: var(--color-text-muted); font: 11px var(--font-mono); }
+  .pc-flash { display: inline-flex; align-items: center; gap: 3px; color: #f2e28a; font: bold 11px var(--font-mono); }
+  .pc-flash img { width: auto; height: 11px; }
+  .pc-rank { min-width: 14px; color: var(--color-text-faint); font: bold 11px var(--font-mono); }
   .pc-gear { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-height: 16px; color: var(--color-text-muted); font-size: 11px; }
   .pc-gear span { display: inline-flex; align-items: center; opacity: .4; transition: opacity .15s; }
   .pc-gear span.on { opacity: 1; color: var(--color-text); }
@@ -482,10 +486,14 @@
   .rd-help .kv dt { white-space: nowrap; }
   .rd-debug { position: absolute; left: 10px; top: 10px; z-index: 4; max-width: 360px; max-height: 50%; overflow: auto; margin: 0; padding: 8px; background: rgba(0, 0, 0, .75); color: var(--color-text-muted); font: 10px/1.4 var(--font-mono); }
 
-  @media (max-width: 1180px) { .rd-body { grid-template-columns: 214px minmax(0, 1fr) 214px; } }
+  @media (max-width: 1180px) {
+    .rd-body { grid-template-columns: 214px minmax(0, 1fr) 214px; }
+    .rd-body.ffa { grid-template-columns: 214px minmax(0, 1fr); }
+  }
   @media (max-width: 900px) {
     .rd { height: auto; }
     .rd-body { grid-template-columns: 1fr 1fr; }
+    .rd-body.ffa { grid-template-columns: 1fr; }
     .rd-stage { grid-column: 1 / -1; order: -1; height: min(100vw, 78vh); }
     .tp:first-child, .tp:last-child { border: 0; border-top: 2px solid var(--color-raised); }
     .tp:last-child { border-left: 2px solid var(--color-raised); }

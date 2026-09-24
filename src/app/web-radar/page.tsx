@@ -5,9 +5,9 @@ import { useSearchParams } from "next/navigation";
 import * as I from "../icons";
 import { demoFrame } from "./demo";
 import {
-  BLAST, COMP_COLORS, CT, MAPS, NadeTracker, SHOT_MS, T, Walls,
-  drawBlast, drawBomb, drawMap, drawNades, drawPlayer, drawShots, drawViewLine, hpColor, iconSrc, loadout,
-  radarToWorld, screenAngle, teamColor, toRadar, toScreen, unitsToPx, weaponName,
+  BLAST, COMP_COLORS, CT, ENEMY, MAPS, NadeTracker, SHOT_MS, T, Walls,
+  drawBlast, drawBomb, drawExplosion, drawMap, drawNades, drawPlayer, drawShots, drawViewLine, drawWallbang, hpColor, iconSrc, loadout,
+  markColor, radarToWorld, screenAngle, teamColor, toRadar, toScreen, unitsToPx, weaponName,
   type Box, type Bomb, type MapInfo, type NadeType, type Player, type RadarData, type Shot, type View,
 } from "./radar";
 
@@ -42,6 +42,7 @@ function lerpAngle(a: number | undefined, b: number | undefined, t: number) {
 
 const PREFS = {
   lines:  { label: "View lines",     key: "L", on: true },
+  pen:    { label: "Wallbang lines", key: "W", on: true },
   warn:   { label: "Aim warning",    key: "A", on: true },
   names:  { label: "Names & weapons", key: "P", on: true },
   health: { label: "HP rings",       key: "B", on: true },
@@ -74,20 +75,24 @@ function aimEnd(p: Player, map: MapInfo, demoWalls: Walls | null): [number, numb
   return radarToWorld(map, mx + Math.cos(a) * d, my + Math.sin(a) * d);
 }
 
-// The first enemy whose view line reaches `target` before a wall does.
-function aimingAt(target: Player, others: Player[], map: MapInfo, demoWalls: Walls | null) {
+// The first enemy whose view line reaches `target` before a wall does, or goes on to it
+// through walls their gun shoots through (`wall`). In a free for all everyone is an enemy.
+function aimingAt(target: Player, others: Player[], map: MapInfo, demoWalls: Walls | null, ffa: boolean) {
   for (const e of others) {
-    if (!e.alive || e.dormant || e.yaw == null || e.team === target.team) continue;
+    if (!e.alive || e.dormant || e.yaw == null || (!ffa && e.team === target.team)) continue;
     const dx = target.x - e.x, dy = target.y - e.y, dist = Math.hypot(dx, dy);
     if (dist < 1 || dist > 5000) continue;
     const off = Math.abs(((Math.atan2(dy, dx) * 180) / Math.PI - e.yaw + 540) % 360 - 180) * (Math.PI / 180);
     if (off > Math.atan2(36, dist) + 0.015) continue;
     const end = aimEnd(e, map, demoWalls);
-    if (!end || Math.hypot(end[0] - e.x, end[1] - e.y) + 24 < dist) continue;
-    return e;
+    if (end && Math.hypot(end[0] - e.x, end[1] - e.y) + 24 >= dist) return { e, wall: false };
+    const pen = e.pen?.[e.pen.length - 1];
+    if (pen && Math.hypot(pen[2] - e.x, pen[3] - e.y) + 24 >= dist) return { e, wall: true };
   }
   return null;
 }
+
+const MODES: Record<string, string> = { casual: "Casual", competitive: "Competitive", wingman: "Wingman", deathmatch: "Deathmatch" };
 
 const NADE_ICON: Record<NadeType, [string, string]> = { // [T, CT]
   flash: ["flashbang", "flashbang"], smoke: ["smokegrenade", "smokegrenade"], he: ["hegrenade", "hegrenade"],
@@ -111,6 +116,7 @@ interface Hud {
   ctScore?: number; tScore?: number;
   phase?: string; round?: number; roundStart?: number; roundTime?: number;
   bomb?: Bomb; age?: number; wingman: boolean;
+  mode?: string; ffa: boolean;
 }
 interface FeedItem { id: string; killer: string; victim: string; weapon: string; hs: boolean; kt: number; vt: number; at: number }
 
@@ -151,11 +157,11 @@ function Radar() {
   const lastLevel = useRef<boolean | null>(null);
 
   const [status, setStatus] = useState<Status>(demo ? "demo" : "connecting");
-  const [hud, setHud] = useState<Hud>({ rows: [], wingman: false });
+  const [hud, setHud] = useState<Hud>({ rows: [], wingman: false, ffa: false });
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [follow, setFollow] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
-  const [alert, setAlert] = useState<{ by: string; at: string; you: boolean } | null>(null);
+  const [alert, setAlert] = useState<{ by: string; at: string; you: boolean; wall: boolean } | null>(null);
   const [lower, setLower] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(() => {
     const out = {} as Prefs;
@@ -268,14 +274,14 @@ function Radar() {
     // aim warning for the focused player
     const targetKey = live.current.follow ?? LOCAL;
     const target = next.get(targetKey);
-    let by: Player | null = null;
-    if (map && target?.alive && live.current.prefs.warn)
-      by = aimingAt(target, [...next.values()].filter((p) => p !== target), map, demo ? mapImg.current.walls : null);
-    live.current.alertKey = by ? [...next].find(([, p]) => p === by)?.[0] ?? "" : "";
+    const by = map && target?.alive && live.current.prefs.warn
+      ? aimingAt(target, [...next.values()].filter((p) => p !== target), map, demo ? mapImg.current.walls : null, !!data.ffa)
+      : null;
+    live.current.alertKey = by ? [...next].find(([, p]) => p === by.e)?.[0] ?? "" : "";
     setAlert((a) => {
       if (!by || !target) return a ? null : a;
-      const n = { by: by.name, at: target.name, you: targetKey === LOCAL };
-      return a && a.by === n.by && a.at === n.at ? a : n;
+      const n = { by: by.e.name, at: target.name, you: targetKey === LOCAL, wall: by.wall };
+      return a && a.by === n.by && a.at === n.at && a.wall === n.wall ? a : n;
     });
 
     setHud({
@@ -283,7 +289,7 @@ function Radar() {
       rows: [...next].map(([key, p]) => ({ key, p, local: key === LOCAL })),
       ctScore: data.ctScore, tScore: data.tScore,
       phase: data.phase, round: data.roundsPlayed, roundStart: data.roundStartTime, roundTime: data.roundTime,
-      bomb, age: data.age_ms, wingman,
+      bomb, age: data.age_ms, wingman, mode: data.mode, ffa: !!data.ffa,
     });
   }, [tracker]);
 
@@ -402,6 +408,7 @@ function Radar() {
       const map = data?.map ? MAPS[data.map] : undefined;
       if (!data || !map) { rendered.current = []; return; }
       const { prefs, follow, hover, lower, alertKey } = live.current;
+      const ffa = !!data.ffa;
 
       // Draw the world ~1.25 update intervals in the past and ease players
       // between the two frames either side of that moment.
@@ -464,7 +471,8 @@ function Radar() {
           const [x, y] = toScreen(v, p.x, p.y);
           const [x2, y2] = toScreen(v, end[0], end[1]);
           ctx.globalAlpha = levelAlpha(p.z);
-          drawViewLine(ctx, x, y, x2, y2, teamColor(p.team), prefs.warn && key === alertKey);
+          drawViewLine(ctx, x, y, x2, y2, markColor(p, ffa), prefs.warn && key === alertKey);
+          if (prefs.pen) for (const [ax, ay, bx, by] of p.pen ?? []) drawWallbang(ctx, ...toScreen(v, ax, ay), ...toScreen(v, bx, by));
           ctx.globalAlpha = 1;
         }
       }
@@ -478,17 +486,7 @@ function Radar() {
         ctx.globalAlpha = 1;
       }
       const fx = blastFx.current;
-      if (fx && now - fx.t < 1600) {
-        const [x, y] = toScreen(v, fx.x, fx.y);
-        const e = (now - fx.t) / 1600;
-        const R = unitsToPx(v, BLAST.lethal * 0.7) * Math.sqrt(e);
-        const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(1, R));
-        g.addColorStop(0, `rgba(255,244,214,${(0.9 * (1 - e)).toFixed(3)})`);
-        g.addColorStop(0.5, `rgba(240,138,60,${(0.55 * (1 - e)).toFixed(3)})`);
-        g.addColorStop(1, "rgba(224,101,106,0)");
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(x, y, Math.max(1, R), 0, Math.PI * 2); ctx.fill();
-      }
+      if (fx) drawExplosion(ctx, ...toScreen(v, fx.x, fx.y), unitsToPx(v, BLAST.lethal * 0.7), now - fx.t, 7, false);
 
       drawShots(ctx, v, shots.current, rt);
 
@@ -500,7 +498,7 @@ function Radar() {
         drawPlayer(ctx, {
           p, x, y, angle: p.yaw != null ? screenAngle(v, p.yaw) : undefined,
           local: key === LOCAL, followed: key === follow, hovered: key === hover,
-          names: prefs.names, health: prefs.health, alpha: levelAlpha(p.z),
+          names: prefs.names, health: prefs.health, ffa, alpha: levelAlpha(p.z),
         }, now);
         if (p.alive) hits.push({ key, x, y });
       }
@@ -578,15 +576,16 @@ function Radar() {
       <div className="rd-hud">
         <div className="rd-hud-side">
           <b>{hud.map?.name ?? "Web Radar"}</b>
-          {hud.round != null && <span className="text-text-faint">Round {hud.round + 1}</span>}
-          {hud.wingman && <span className="badge">Wingman</span>}
+          {hud.round != null && !hud.ffa && <span className="text-text-faint">Round {hud.round + 1}</span>}
+          {hud.mode && MODES[hud.mode] && <span className="badge">{MODES[hud.mode]}</span>}
+          {hud.ffa && <span className="badge bad">Free for all</span>}
           {hud.phase === "warmup" && <span className="badge warn">Warmup</span>}
           {hud.phase === "freezetime" && <span className="badge ok">Freeze time</span>}
         </div>
         <div className="rd-score">
-          <b style={{ color: teamColor(CT) }}>{hud.ctScore ?? "–"}</b>
+          {!hud.ffa && <b style={{ color: teamColor(CT) }}>{hud.ctScore ?? "–"}</b>}
           <span className={`rd-timer ${timerTone}`}>{timer || "–:––"}</span>
-          <b style={{ color: teamColor(T) }}>{hud.tScore ?? "–"}</b>
+          {!hud.ffa && <b style={{ color: teamColor(T) }}>{hud.tScore ?? "–"}</b>}
         </div>
         <div className="rd-hud-side justify-end">
           <button type="button" className={`badge ${st.tone}`} onClick={() => { if (demo) { setConnect(true); setDisplay(false); } }} title={demo ? "Connect your own session" : undefined}>
@@ -604,8 +603,8 @@ function Radar() {
         </div>
       </div>
 
-      <div className="rd-body">
-        <TeamPanel team={CT} rows={hud.rows} score={hud.ctScore} follow={follow} hover={hover} onFollow={setFollow} onHover={setHover} alertAt={alert?.at} />
+      <div className={`rd-body${hud.ffa ? " ffa" : ""}`}>
+        <TeamPanel team={hud.ffa ? undefined : CT} rows={hud.rows} score={hud.ctScore} follow={follow} hover={hover} onFollow={setFollow} onHover={setHover} alertAt={alert?.at} />
 
         <div
           ref={stageRef}
@@ -621,7 +620,7 @@ function Radar() {
             {alert && prefs.warn && (
               <div className="rd-alert" key={`${alert.by}-${alert.at}`}>
                 <I.Bolt size={14} />
-                <b>{alert.by}</b> is aiming at {alert.you ? "you" : <b>{alert.at}</b>}
+                <b>{alert.by}</b> is aiming at {alert.you ? "you" : <b>{alert.at}</b>}{alert.wall && " through a wall"}
               </div>
             )}
             {planted && (
@@ -650,10 +649,10 @@ function Radar() {
             <div className="rd-feed">
               {feed.map((k) => (
                 <div key={k.id} className="rd-kill">
-                  <b style={{ color: teamColor(k.kt) }}>{k.killer || "C4"}</b>
+                  <b style={{ color: hud.ffa ? undefined : teamColor(k.kt) }}>{k.killer || "C4"}</b>
                   {k.weapon && iconSrc(k.weapon) ? <img src={iconSrc(k.weapon)!} alt={weaponName(k.weapon)} /> : <span>{weaponName(k.weapon)}</span>}
                   {k.hs && <span className="text-bad">HS</span>}
-                  <b style={{ color: teamColor(k.vt) }}>{k.victim}</b>
+                  <b style={{ color: hud.ffa ? undefined : teamColor(k.vt) }}>{k.victim}</b>
                 </div>
               ))}
             </div>
@@ -732,7 +731,7 @@ function Radar() {
           )}
         </div>
 
-        <TeamPanel team={T} rows={hud.rows} score={hud.tScore} follow={follow} hover={hover} onFollow={setFollow} onHover={setHover} alertAt={alert?.at} />
+        {!hud.ffa && <TeamPanel team={T} rows={hud.rows} score={hud.tScore} follow={follow} hover={hover} onFollow={setFollow} onHover={setHover} alertAt={alert?.at} />}
       </div>
 
       {help && (
@@ -759,41 +758,48 @@ function Radar() {
 
 // ------------------------------------------------------------------ panels
 
+// A team's players in slot order; with no team (a free for all), everyone, most kills first.
 function TeamPanel({ team, rows, score, follow, hover, onFollow, onHover, alertAt }: {
-  team: number; rows: Row[]; score?: number; follow: string | null; hover: string | null;
+  team?: number; rows: Row[]; score?: number; follow: string | null; hover: string | null;
   onFollow: (k: string | null) => void; onHover: (k: string | null) => void; alertAt?: string;
 }) {
-  const list = rows.filter((r) => r.p.team === team).sort((a, b) => (a.p.slot ?? 99) - (b.p.slot ?? 99));
+  const ffa = team == null;
+  const list = ffa
+    ? [...rows].sort((a, b) => (b.p.kills ?? 0) - (a.p.kills ?? 0) || (a.p.deaths ?? 0) - (b.p.deaths ?? 0))
+    : rows.filter((r) => r.p.team === team).sort((a, b) => (a.p.slot ?? 99) - (b.p.slot ?? 99));
   const alive = list.filter((r) => r.p.alive);
-  const money = list.reduce((s, r) => s + (r.p.money ?? 0), 0);
+  const money = ffa ? 0 : list.reduce((s, r) => s + (r.p.money ?? 0), 0);
   const avg = list.length ? money / list.length : 0;
   const buy = !list.length || !money ? "" : avg >= 4000 ? "Full buy" : avg >= 2000 ? "Force" : "Eco";
-  const color = teamColor(team);
+  const color = ffa ? ENEMY : teamColor(team);
 
   return (
     <aside className="tp" style={{ "--team": color } as React.CSSProperties}>
       <div className="tp-head">
-        <span>{team === CT ? "Counter-Terrorists" : "Terrorists"}</span>
-        <b>{score ?? ""}</b>
+        <span>{ffa ? "Free for all" : team === CT ? "Counter-Terrorists" : "Terrorists"}</span>
+        <b>{ffa ? "" : score ?? ""}</b>
       </div>
       <div className="tp-sub">
-        {alive.length}/{list.length} alive{money > 0 && <> · ${money.toLocaleString()}</>}{buy && <> · {buy}</>}
+        {alive.length}/{list.length} alive{money > 0 && <> · ${money.toLocaleString()}</>}{buy && <> · {buy}</>}{ffa && " · most kills first"}
       </div>
       <div className="tp-list">
-        {list.map((r) => <PlayerCard key={r.key} row={r} follow={follow} hover={hover} onFollow={onFollow} onHover={onHover} aimed={alertAt === r.p.name} />)}
+        {list.map((r, i) => <PlayerCard key={r.key} row={r} rank={ffa ? i + 1 : undefined} follow={follow} hover={hover} onFollow={onFollow} onHover={onHover} aimed={alertAt === r.p.name} />)}
         {!list.length && <div className="tp-empty">No players yet</div>}
       </div>
     </aside>
   );
 }
 
-function PlayerCard({ row, follow, hover, onFollow, onHover, aimed }: {
-  row: Row; follow: string | null; hover: string | null;
+// `rank` only in a free for all, where the list is a leaderboard.
+function PlayerCard({ row, rank, follow, hover, onFollow, onHover, aimed }: {
+  row: Row; rank?: number; follow: string | null; hover: string | null;
   onFollow: (k: string | null) => void; onHover: (k: string | null) => void; aimed: boolean;
 }) {
   const { key, p, local } = row;
+  const ffa = rank != null;
   const gear = loadout(p);
   const hp = Math.max(0, Math.min(100, p.health));
+  const flash = Math.round((p.flashAlpha ?? 0) / 2.55);
   const side = p.team === CT ? 1 : 0;
   const cls = ["pc", follow === key && "following", hover === key && "hover", !p.alive && "dead", local && "local", aimed && p.alive && "aimed"]
     .filter(Boolean).join(" ");
@@ -809,11 +815,12 @@ function PlayerCard({ row, follow, hover, onFollow, onHover, aimed }: {
       onMouseLeave={() => onHover(null)}
     >
       <div className="pc-top">
-        <span className="dot" style={{ "--c": COMP_COLORS[p.color ?? -1] ?? teamColor(p.team) } as React.CSSProperties} />
+        {ffa && <span className="pc-rank">{rank}</span>}
+        <span className="dot" style={{ "--c": ffa ? markColor(p, true) : COMP_COLORS[p.color ?? -1] ?? teamColor(p.team) } as React.CSSProperties} />
         <b className="pc-name">{p.name}</b>
         {local && <span className="badge accent">You</span>}
         {follow === key && <I.Radar size={12} className="text-text" />}
-        {p.money != null && <span className="pc-money">${p.money.toLocaleString()}</span>}
+        {p.money != null && !ffa && <span className="pc-money">${p.money.toLocaleString()}</span>}
       </div>
       {p.alive ? (
         <>
@@ -823,6 +830,11 @@ function PlayerCard({ row, follow, hover, onFollow, onHover, aimed }: {
             {(p.armor ?? 0) > 0 && (
               <span className="pc-armor" title={p.helmet ? "Kevlar + helmet" : "Kevlar"}>
                 <I.Shield size={11} />{p.armor}{p.helmet && "H"}
+              </span>
+            )}
+            {flash > 0 && (
+              <span className="pc-flash" title="Flashed: how blind they are">
+                <img src="/weapons/flashbang.svg" alt="" />{flash}%
               </span>
             )}
           </div>
@@ -835,10 +847,13 @@ function PlayerCard({ row, follow, hover, onFollow, onHover, aimed }: {
             {gear.zeus && <span className={gear.held === "taser" ? "on" : ""}><img src="/weapons/taser.svg" alt="Zeus" /></span>}
             {!gear.full && !gear.guns.length && gear.held && <span className="on">{weaponName(gear.held)}</span>}
           </div>
-          {(gear.nades.length > 0 || gear.c4 || p.defuser) && (
+          {(gear.nades.length > 0 || gear.healthshots > 0 || gear.c4 || p.defuser) && (
             <div className="pc-util">
               {gear.nades.map((n, i) => (
                 <img key={`${n}${i}`} className={gear.held && NADE_ICON[n].includes(gear.held) ? "on" : ""} src={`/weapons/${NADE_ICON[n][side]}.svg`} alt={n} title={n} />
+              ))}
+              {Array.from({ length: gear.healthshots }, (_, i) => (
+                <img key={`hs${i}`} className={gear.held === "healthshot" ? "on" : ""} src="/weapons/healthshot.svg" alt="Healthshot" title="Healthshot" />
               ))}
               {gear.c4 && <img className="c4" src="/weapons/c4.svg" alt="C4" title="Carrying the bomb" />}
               {p.defuser && <img src="/weapons/defuser.svg" alt="Defuse kit" title="Defuse kit" />}

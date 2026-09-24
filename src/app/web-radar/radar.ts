@@ -15,9 +15,11 @@ export interface Player {
   weapon?: string;
   weapons?: string[];              // everything carried, a grenade once per count
   aim?: [number, number, number];  // where the in-game view trace hits something
+  pen?: [number, number, number, number][]; // past `aim`, each stretch the gun in hand shoots through a wall to
   fired?: number;                  // shots fired so far; a rise is a new shot
   scoped?: boolean; defusing?: boolean; hasBomb?: boolean;
-  flashAlpha?: number; money?: number; color?: number;
+  flashAlpha?: number;             // how blind, 0-255, as the game draws it
+  money?: number; color?: number;
   kills?: number; deaths?: number; assists?: number; mvps?: number;
   ping?: number;
   slot?: number;
@@ -56,6 +58,7 @@ export interface RadarData {
   interval?: number;  // ms between the client's updates, which it picks itself
   map?: string;
   mode?: string;      // "competitive", "wingman", ...
+  ffa?: boolean;      // free for all: every other player is an enemy
   localPlayer?: Player;
   players?: Player[];
   bomb?: Bomb;
@@ -111,6 +114,9 @@ export const toRadar = (m: MapInfo, x: number, y: number): [number, number] => [
 export const CT = 3, T = 2;
 export const TEAM_COLOR: Record<number, string> = { [CT]: "#4a9eff", [T]: "#e0b04b" };
 export const teamColor = (team: number) => TEAM_COLOR[team] ?? "#8a8a93";
+// In a free for all the teams mean nothing: every player but the local one is an enemy.
+export const ENEMY = "#e0656a";
+export const markColor = (p: Player, ffa?: boolean) => (ffa && p.enemy ? ENEMY : teamColor(p.team));
 export const COMP_COLORS = ["#4a9eff", "#5fc98a", "#e0b04b", "#e08840", "#a597ff"];
 
 // ---------------------------------------------------------------- weapons
@@ -123,7 +129,7 @@ const WEAPON_NAMES: Record<string, string> = {
   glock: "Glock-18", hkp2000: "P2000", usp_silencer: "USP-S", elite: "Dual Berettas", p250: "P250",
   fiveseven: "Five-SeveN", tec9: "Tec-9", cz75a: "CZ75", deagle: "Deagle", revolver: "R8",
   taser: "Zeus", c4: "C4", planted_c4: "C4", hegrenade: "HE", flashbang: "Flash", smokegrenade: "Smoke",
-  molotov: "Molotov", incgrenade: "Incendiary", decoy: "Decoy",
+  molotov: "Molotov", incgrenade: "Incendiary", decoy: "Decoy", healthshot: "Healthshot",
 };
 
 const PISTOLS = new Set(["glock", "hkp2000", "usp_silencer", "elite", "p250", "fiveseven", "tec9", "cz75a", "deagle", "revolver"]);
@@ -144,6 +150,7 @@ export function weaponName(raw: string) {
 export interface Loadout {
   guns: string[];  // primary first, then secondary
   nades: NadeType[];
+  healthshots: number;
   knife: boolean; zeus: boolean; c4: boolean;
   held?: string;
   full: boolean;   // true when the client sent the whole inventory, false when only the held weapon is known
@@ -154,11 +161,12 @@ export const NADE_ORDER: NadeType[] = ["flash", "smoke", "he", "molotov", "decoy
 export function loadout(p: Player): Loadout {
   const full = !!p.weapons?.length;
   const items = full ? p.weapons! : p.weapon ? [p.weapon] : [];
-  const out: Loadout = { guns: [], nades: [], knife: false, zeus: false, c4: !!p.hasBomb, held: p.weapon && weaponKey(p.weapon), full };
+  const out: Loadout = { guns: [], nades: [], healthshots: 0, knife: false, zeus: false, c4: !!p.hasBomb, held: p.weapon && weaponKey(p.weapon), full };
   let primary: string | undefined, secondary: string | undefined;
   for (const raw of items) {
     const k = weaponKey(raw);
     if (NADE_OF[k]) out.nades.push(NADE_OF[k]);
+    else if (k === "healthshot") out.healthshots++;
     else if (k === "c4") out.c4 = true;
     else if (k === "taser") out.zeus = true;
     else if (isKnife(k)) out.knife = true;
@@ -198,7 +206,7 @@ export interface Track {
 // A blast the client reported (HE, flash, a molotov bursting in the air, a decoy).
 export interface Burst { type: NadeType; x: number; y: number; z: number; t0: number; t1: number }
 
-const BLAST_MS: Record<NadeType, number> = { he: 700, flash: 500, molotov: 450, decoy: 400, smoke: 0 };
+const BLAST_MS: Record<NadeType, number> = { he: 1500, flash: 700, molotov: 900, decoy: 400, smoke: 0 };
 
 // Draws what the client reports and nothing else: flights from positions, blasts from
 // `boom`, smokes and fires from `active`, their end from `expires`, and a grenade that
@@ -679,27 +687,132 @@ function teardrop(ctx: CanvasRenderingContext2D, x: number, y: number, tip: numb
 
 function burst(ctx: CanvasRenderingContext2D, v: View, b: Burst, now: number) {
   const [x, y] = toScreen(v, b.x, b.y);
-  const t = (now - b.t0) / (b.t1 - b.t0);
-  const n = NADES[b.type];
-  if (b.type === "flash") {
-    const r = unitsToPx(v, 260) * (0.3 + 0.7 * t);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, `rgba(255,255,240,${(0.85 * (1 - t)).toFixed(3)})`);
-    g.addColorStop(1, "rgba(255,255,240,0)");
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  } else {
-    const r = unitsToPx(v, b.type === "he" ? 350 : b.type === "molotov" ? 170 : 90) * Math.sqrt(t);
-    ctx.fillStyle = `rgba(${n.rgb},${(0.25 * (1 - t)).toFixed(3)})`;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  const ms = now - b.t0;
+  const seed = hash(b.x * 0.137 + b.y * 0.071) * 100;
+  if (b.type === "he") drawExplosion(ctx, x, y, unitsToPx(v, 350), ms, seed, false); // the HE's damage radius
+  else if (b.type === "molotov") drawExplosion(ctx, x, y, unitsToPx(v, 170), ms, seed, true);
+  else if (b.type === "flash") flashBurst(ctx, x, y, unitsToPx(v, 260), ms);
+  else {
+    const t = ms / (b.t1 - b.t0), n = NADES[b.type];
     ctx.strokeStyle = `rgba(${n.rgb},${(0.9 * (1 - t)).toFixed(3)})`;
     ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, unitsToPx(v, 90) * Math.sqrt(t), 0, TAU); ctx.stroke();
+    const keep = ctx.globalAlpha;
+    ctx.globalAlpha = keep * Math.max(0, 1 - t * 1.6);
+    nadeIcon(ctx, b.type, x, y, 14);
+    ctx.globalAlpha = keep;
+  }
+}
+
+const easeOut = (t: number) => 1 - (1 - Math.min(1, Math.max(0, t))) ** 3;
+const a3 = (n: number) => Math.max(0, n).toFixed(3);
+
+// An explosion seen from above, `R` its reach in screen px and `ms` its age: a white-hot
+// flash, lumpy fireball swelling and cooling from yellow to red, a shockwave ring out to
+// R, sparks thrown out and smoke left hanging as the fire dies. `small` (a molotov
+// bursting in the air) is all fire, with no shockwave. Gone after 1.5 s.
+export function drawExplosion(
+  ctx: CanvasRenderingContext2D, x: number, y: number, R: number, ms: number, seed: number, small: boolean,
+) {
+  if (ms < 0 || ms > 1500 || R < 1) return;
+
+  // smoke, spreading slowly under the fire
+  const s = ms / 1500;
+  const smoke = Math.min(1, ms / 300) * (1 - s) ** 1.5 * (small ? 0.35 : 0.5);
+  for (let i = 0; i < 6 && smoke > 0.01; i++) {
+    const a = hash(seed + i) * TAU, d = R * (0.1 + 0.22 * easeOut(s)) * (0.5 + 0.5 * hash(seed + i * 2.3));
+    const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d;
+    const pr = R * (small ? 0.22 : 0.18 + 0.2 * easeOut(s)) * (0.8 + 0.4 * hash(seed + i * 4.1));
+    const g = ctx.createRadialGradient(px, py, 0, px, py, pr);
+    g.addColorStop(0, `rgba(46,44,48,${a3(smoke)})`);
+    g.addColorStop(1, "rgba(46,44,48,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(px, py, pr, 0, TAU); ctx.fill();
+  }
+
+  ctx.globalCompositeOperation = "lighter"; // light adds up, as fire does
+
+  // shockwave: a bright ring racing out to the edge, a faint wash behind it
+  if (!small && ms < 520) {
+    const k = ms / 520, r = R * easeOut(k);
+    const w = ctx.createRadialGradient(x, y, r * 0.55, x, y, r);
+    w.addColorStop(0, "rgba(255,140,70,0)");
+    w.addColorStop(1, `rgba(255,140,70,${a3(0.2 * (1 - k))})`);
+    ctx.fillStyle = w;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = `rgba(255,220,170,${a3(0.9 * (1 - k) ** 1.5)})`;
+    ctx.lineWidth = 1 + 3 * (1 - k);
     ctx.stroke();
   }
-  const keep = ctx.globalAlpha;
-  ctx.globalAlpha = keep * Math.max(0, 1 - t * 1.6);
-  nadeIcon(ctx, b.type, x, y, 14);
-  ctx.globalAlpha = keep;
+
+  // fireball: a few lumps around the centre, cooling as it grows
+  if (ms < 950) {
+    const heat = 1 - ms / 950;
+    const size = R * (small ? 0.5 : 0.36) * (0.35 + 0.65 * easeOut(ms / 200));
+    for (let i = 0; i < 5; i++) {
+      const a = hash(seed + i * 5.7) * TAU, d = i ? size * 0.5 * (0.6 + 0.4 * hash(seed + i)) : 0;
+      const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d, pr = size * (i ? 0.65 : 0.9);
+      const g = ctx.createRadialGradient(px, py, 0, px, py, pr);
+      g.addColorStop(0, `rgba(255,${Math.round(190 + 60 * heat)},${Math.round(90 + 140 * heat)},${a3(0.85 * heat)})`);
+      g.addColorStop(0.5, `rgba(255,${Math.round(90 + 70 * heat)},30,${a3(0.6 * heat)})`);
+      g.addColorStop(1, "rgba(150,25,10,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(px, py, pr, 0, TAU); ctx.fill();
+    }
+  }
+
+  // the first instant: white
+  if (ms < 150) {
+    const r = R * (small ? 0.4 : 0.3);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(255,255,255,${a3(1 - ms / 150)})`);
+    g.addColorStop(1, "rgba(255,240,200,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+  }
+
+  // sparks: short streaks flying out and burning out
+  if (ms < 650) {
+    const k = ms / 650, n = small ? 7 : 12;
+    ctx.strokeStyle = `rgba(255,215,140,${a3(0.95 * (1 - k))})`;
+    ctx.lineWidth = 1.25;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU + hash(seed + i * 3.3) * 0.5;
+      const d1 = R * (small ? 0.55 : 0.8) * (0.5 + 0.5 * hash(seed + i * 9.1)) * easeOut(k), d0 = Math.max(0, d1 - R * 0.1);
+      ctx.moveTo(x + Math.cos(a) * d0, y + Math.sin(a) * d0);
+      ctx.lineTo(x + Math.cos(a) * d1, y + Math.sin(a) * d1);
+    }
+    ctx.stroke();
+  }
+
+  ctx.globalCompositeOperation = "source-over";
+}
+
+// A flash going off: a white bloom and short rays, gone in a blink.
+function flashBurst(ctx: CanvasRenderingContext2D, x: number, y: number, R: number, ms: number) {
+  const k = Math.min(1, ms / 700);
+  ctx.globalCompositeOperation = "lighter";
+  const r = R * (0.3 + 0.7 * easeOut(ms / 250));
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(255,255,250,${a3(0.95 * (1 - k) ** 1.5)})`);
+  g.addColorStop(0.3, `rgba(255,248,215,${a3(0.45 * (1 - k) ** 2)})`);
+  g.addColorStop(1, "rgba(255,248,215,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+  if (ms < 300) {
+    const q = ms / 300;
+    ctx.strokeStyle = `rgba(255,255,240,${a3(0.85 * (1 - q))})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU + 0.2, d0 = R * 0.12, d1 = R * (0.3 + 0.45 * easeOut(q));
+      ctx.moveTo(x + Math.cos(a) * d0, y + Math.sin(a) * d0);
+      ctx.lineTo(x + Math.cos(a) * d1, y + Math.sin(a) * d1);
+    }
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation = "source-over";
 }
 
 // ----------------------------------------------------------- weapon icons
@@ -708,7 +821,7 @@ function burst(ctx: CanvasRenderingContext2D, v: View, b: Burst, now: number) {
 const ICON_KEYS = new Set((
   "ak47 m4a1 m4a1_silencer awp famas galilar aug sg556 ssg08 scar20 g3sg1 mp9 mac10 mp7 mp5sd ump45 p90 bizon " +
   "nova xm1014 mag7 sawedoff negev m249 glock hkp2000 usp_silencer elite p250 fiveseven tec9 cz75a deagle revolver " +
-  "taser c4 hegrenade flashbang smokegrenade molotov incgrenade decoy knife knife_t defuser"
+  "taser c4 hegrenade flashbang smokegrenade molotov incgrenade decoy healthshot knife knife_t defuser"
 ).split(" "));
 
 export function iconSrc(raw: string) {
@@ -738,7 +851,7 @@ export interface PlayerMark {
   x: number; y: number;  // screen
   angle?: number;        // screen view angle
   local: boolean; followed: boolean; hovered: boolean;
-  names: boolean; health: boolean;
+  names: boolean; health: boolean; ffa: boolean;
   alpha: number;
 }
 
@@ -753,13 +866,30 @@ export function drawViewLine(ctx: CanvasRenderingContext2D, x: number, y: number
   ctx.beginPath(); ctx.arc(x2, y2, alert ? 2.5 : 1.75, 0, Math.PI * 2); ctx.fill();
 }
 
+// A stretch of the view line past a wall the gun in hand shoots through: dashed pink,
+// from a ring where it comes out of the wall.
+export function drawWallbang(ctx: CanvasRenderingContext2D, x: number, y: number, x2: number, y2: number) {
+  const g = ctx.createLinearGradient(x, y, x2, y2);
+  g.addColorStop(0, "rgba(255,95,190,0.9)");
+  g.addColorStop(1, "rgba(255,95,190,0.3)");
+  ctx.strokeStyle = g;
+  ctx.lineWidth = 1.25;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = "rgba(255,95,190,0.9)";
+  ctx.beginPath(); ctx.arc(x, y, 2.25, 0, TAU); ctx.stroke();
+  ctx.fillStyle = "rgba(255,95,190,0.6)";
+  ctx.beginPath(); ctx.arc(x2, y2, 1.75, 0, TAU); ctx.fill();
+}
+
 export const hpColor = (hp: number) => (hp > 60 ? "#5fc98a" : hp > 25 ? "#e0b04b" : "#e0656a");
 
 // A filled dot in the team colour, a thin HP ring around it, a notch for where
 // they face, the name above and the held weapon's icon below.
 export function drawPlayer(ctx: CanvasRenderingContext2D, m: PlayerMark, now: number) {
   const { p, x, y } = m;
-  const color = teamColor(p.team);
+  const color = markColor(p, m.ffa);
   ctx.globalAlpha = m.alpha;
 
   if (!p.alive) {
@@ -803,12 +933,23 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, m: PlayerMark, now: nu
     ctx.closePath(); ctx.fill();
   }
 
+  // flashed: a white glow as strong as they are blind, and how blind in per cent
+  const blind = Math.min(1, (p.flashAlpha ?? 0) / 255);
+  if (blind >= 0.01) {
+    const g = ctx.createRadialGradient(x, y, r, x, y, ring + 9);
+    g.addColorStop(0, `rgba(255,255,235,${(0.75 * blind).toFixed(3)})`);
+    g.addColorStop(1, "rgba(255,255,235,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, ring + 9, 0, Math.PI * 2); ctx.fill();
+  }
+
   ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fillStyle = color; ctx.fill();
   ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 1; ctx.stroke();
-  if ((p.flashAlpha ?? 0) > 10) {
-    ctx.fillStyle = `rgba(255,255,255,${(Math.min(1, (p.flashAlpha ?? 0) / 255) * 0.8).toFixed(2)})`;
+  if (blind >= 0.01) {
+    ctx.fillStyle = `rgba(255,255,255,${(0.8 * blind).toFixed(3)})`;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    label(ctx, `${Math.round(blind * 100)}%`, x + ring + 5, y + 3.5, "#f2e28a", "left", true, 9);
   }
 
   if (m.health) {
