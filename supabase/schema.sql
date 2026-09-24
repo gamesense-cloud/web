@@ -220,6 +220,16 @@ alter table announcements   enable row level security;
 alter table sessions        enable row level security;
 alter table radar_data      enable row level security;
 
+-- ------------------------------------------------------------- realtime --
+-- Open web radar pages get each update pushed over Realtime, on a private channel
+-- per session ("radar:<session id>"). Anyone may listen on a radar channel (the
+-- session id in the share link is the secret); only the site can send, with the
+-- service-role key, since there is no insert policy.
+drop policy if exists "radar viewers can listen" on realtime.messages;
+create policy "radar viewers can listen" on realtime.messages
+  for select to anon, authenticated
+  using (realtime.topic() like 'radar:%' and realtime.messages.extension = 'broadcast');
+
 -- --------------------------------------------------------------- counts --
 -- Daily event counts for the admin chart, so the whole 14-day series is one
 -- round trip rather than fourteen.

@@ -23,6 +23,41 @@ export function supabaseAdmin(): SupabaseClient {
   return adminClient;
 }
 
+// Sends one radar update to everyone watching it, over Realtime on the session's private
+// channel. Only the service-role key can send there; viewers can only listen (see the
+// policy in supabase/schema.sql).
+export async function broadcastRadar(session: string, event: string, payload: unknown) {
+  const key = required("SUPABASE_SERVICE_ROLE_KEY");
+  const res = await fetch(`${required("NEXT_PUBLIC_SUPABASE_URL")}/realtime/v1/api/broadcast`, {
+    method: "POST",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: [{ topic: `radar:${session}`, event, payload, private: true }] }),
+  });
+  if (!res.ok) console.error("[radar] broadcast failed:", res.status, (await res.text().catch(() => "")).slice(0, 200));
+}
+
+// Realtime carries up to REALTIME_BUDGET updates a second between all open radars: up
+// to three run at the client's full 32/s, and from the fourth on they all slow down to
+// the same share. The count comes from the radars' database rows, at most every 5 s.
+const REALTIME_BUDGET = 96;
+const radars = { live: 1, checked: 0 };
+
+export function radarShareMs() {
+  return Math.ceil(1000 / Math.min(32, REALTIME_BUDGET / Math.max(1, radars.live)));
+}
+
+export async function refreshRadarCount() {
+  const now = Date.now();
+  if (now - radars.checked < 5000) return;
+  radars.checked = now;
+  const { count, error } = await supabaseAdmin()
+    .from("radar_data")
+    .select("*", { count: "exact", head: true })
+    .gte("updated_at", new Date(now - 10_000).toISOString())
+    .eq("game_data->>connected", "true");
+  if (!error && count != null) radars.live = count;
+}
+
 let lastPrune = 0;
 
 // Radar sessions and online pings are live data only: rows untouched for ten

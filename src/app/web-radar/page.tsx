@@ -25,6 +25,11 @@ const STATUS: Record<Status, { label: string; tone: string; text: string }> = {
 };
 
 const LOCAL = "__local";
+
+// Realtime, for live updates pushed to the page; without the public key the page polls.
+const REALTIME = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ? { url: process.env.NEXT_PUBLIC_SUPABASE_URL, key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY }
+  : null;
 const keyOf = (p: Player, i: number) => (p.slot != null ? `s${p.slot}` : p.name || `p${i}`);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 function lerpAngle(a: number | undefined, b: number | undefined, t: number) {
@@ -290,45 +295,75 @@ function Radar() {
     return () => clearInterval(id);
   }, [demo, ingest]);
 
-  // Polls at the client's own pace with up to three requests in flight, so the rate
-  // is not bound to one round trip, and skips snapshots it already has (or older
-  // ones that land late).
+  // Live data: every update is pushed to the page over Realtime the moment the site
+  // gets it. The data route gives the latest copy on opening, and is polled (at the
+  // client's pace, three requests in flight) only while Realtime is not delivering.
+  // Snapshots already seen, or older ones landing late, are skipped.
   useEffect(() => {
     if (demo) return;
     const url = `/api/radar/data?session=${encodeURIComponent(session!)}`;
-    let alive = true, lastSeq = -1, inFlight = 0, gap = 250, timer = 0;
+    let alive = true, lastSeq = -1, inFlight = 0, gap = 250, timer = 0, lastPush = 0, subscribed = false;
+
+    const show = (data: RadarData, ok = true) => {
+      const s: Status = !ok ? "error" : data.status === "no_session" ? "no_session" : data.status === "stale" ? "stale"
+        : data.status === "paused" ? "paused" : data.status === "waiting" || !data.connected ? "waiting" : "live";
+      if (s === "live") {
+        gap = Math.min(1000, Math.max(25, (data.interval ?? 150) * 0.75));
+        if (data.seq != null && data.seq <= lastSeq) return;
+        if (data.seq != null) lastSeq = data.seq;
+        setStatus(s);
+        ingest(data);
+      } else {
+        gap = s === "paused" ? 1500 : 1000;
+        setStatus(s);
+        dataRef.current = null; currRef.current = new Map(); snaps.current = [];
+      }
+    };
+
     const poll = async () => {
       inFlight++;
       try {
         const res = await fetch(url, { cache: "no-store" });
         const data = (await res.json()) as RadarData;
-        if (!alive) return;
-        const s: Status = !res.ok ? "error" : data.status === "no_session" ? "no_session" : data.status === "stale" ? "stale"
-          : data.status === "paused" ? "paused" : data.status === "waiting" || !data.connected ? "waiting" : "live";
-        if (s === "live") {
-          gap = Math.min(1000, Math.max(25, (data.interval ?? 150) * 0.75));
-          if (data.seq != null && data.seq <= lastSeq) return;
-          if (data.seq != null) lastSeq = data.seq;
-          setStatus(s);
-          ingest(data);
-        } else {
-          gap = s === "paused" ? 1500 : 1000;
-          setStatus(s);
-          dataRef.current = null; currRef.current = new Map(); snaps.current = [];
-        }
+        if (alive) show(data, res.ok);
       } catch {
         if (alive) setStatus("error");
       } finally {
         inFlight--;
       }
     };
+
+    // the Realtime client is only loaded for a live session, not for the demo
+    let stopRealtime = () => {};
+    if (REALTIME) void import("@supabase/supabase-js").then(({ createClient }) => {
+      if (!alive) return;
+      const sb = createClient(REALTIME.url, REALTIME.key, { auth: { persistSession: false } });
+      const channel = sb.channel(`radar:${session}`, { config: { private: true } })
+        .on("broadcast", { event: "snap" }, ({ payload }) => {
+          if (!alive) return;
+          lastPush = performance.now();
+          const p = payload as RadarData & { sent?: number };
+          const age = p.sent ? Date.now() - p.sent : undefined;
+          show({ ...p, status: p.paused ? "paused" : p.connected ? "live" : "waiting", age_ms: age != null && age >= 0 && age < 10_000 ? age : undefined });
+        })
+        .on("broadcast", { event: "ended" }, () => { if (alive) show({ status: "no_session", connected: false }); })
+        .subscribe((state) => { subscribed = state === "SUBSCRIBED"; });
+      stopRealtime = () => { void sb.removeChannel(channel); };
+    });
+
+    // quiet: nothing pushed for longer than the client's 5 s heartbeat, or no Realtime at all
     const tick = () => {
       if (!alive) return;
-      if (inFlight < 3) void poll();
-      timer = window.setTimeout(tick, gap);
+      const quiet = !subscribed || performance.now() - lastPush > 6000;
+      if (quiet && inFlight < 3) void poll();
+      timer = window.setTimeout(tick, quiet ? gap : 1000);
     };
     tick();
-    return () => { alive = false; clearTimeout(timer); };
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+      stopRealtime();
+    };
   }, [demo, session, ingest]);
 
   // ---- radar image and its walls, per map and level
@@ -368,9 +403,9 @@ function Radar() {
       if (!data || !map) { rendered.current = []; return; }
       const { prefs, follow, hover, lower, alertKey } = live.current;
 
-      // Draw the world ~1.5 update intervals in the past and ease players
+      // Draw the world ~1.25 update intervals in the past and ease players
       // between the two frames either side of that moment.
-      const rt = now - Math.min(500, Math.max(60, net.current.interval * 1.5));
+      const rt = now - Math.min(500, Math.max(40, net.current.interval * 1.25));
       const S = snaps.current;
       let ia = 0;
       for (let i = S.length - 1; i >= 0; i--) if (S[i].t <= rt) { ia = i; break; }

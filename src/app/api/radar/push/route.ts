@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextResponse, after } from "next/server";
-import { pruneStale, supabaseAdmin } from "@/lib/supabase";
+import { broadcastRadar, pruneStale, radarShareMs, refreshRadarCount, supabaseAdmin } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
 
 const MAX_PAYLOAD_BYTES = 64 * 1024;
@@ -43,23 +43,33 @@ export async function POST(req: Request) {
 
     // The client stopped the radar or unloaded: the session goes with it.
     if (gameData.ended === true) {
+      after(() => broadcastRadar(session_id, "ended", {}));
       const { error } = await supabaseAdmin().from("radar_data").delete().eq("session_id", session_id);
       if (error) console.error("[radar/push] supabase error:", error.message);
       return NextResponse.json({ ok: true });
     }
 
-    // Answer first and write after: the client paces itself on this round trip,
-    // which should measure its own connection rather than the database.
-    const updated_at = new Date().toISOString();
+    // Answer first, then pass it on: the client paces itself on this round trip. Open
+    // radar pages get the update pushed over Realtime straight away; the database only
+    // keeps a copy (every 16th live update, every heartbeat) for a page just opened and
+    // for the counters.
+    const sent = Date.now();
+    const seq = typeof gameData.seq === "number" ? gameData.seq : null;
+    const persist = gameData.connected !== true || seq == null || seq % 16 === 0;
     after(async () => {
-      const { error } = await supabaseAdmin()
-        .from("radar_data")
-        .upsert({ session_id, game_data: gameData, updated_at }, { onConflict: "session_id" });
-      if (error) console.error("[radar/push] supabase error:", error.message);
+      await broadcastRadar(session_id, "snap", { ...gameData, sent });
+      if (persist) {
+        const { error } = await supabaseAdmin()
+          .from("radar_data")
+          .upsert({ session_id, game_data: gameData, updated_at: new Date(sent).toISOString() }, { onConflict: "session_id" });
+        if (error) console.error("[radar/push] supabase error:", error.message);
+      }
+      await refreshRadarCount();
       await pruneStale();
     });
 
-    return NextResponse.json({ ok: true });
+    // every open radar gets the same share of the realtime budget
+    return NextResponse.json({ ok: true, interval: radarShareMs() });
   } catch (e) {
     console.error("[radar/push] exception:", e);
     return NextResponse.json({ error: "internal" }, { status: 500 });
