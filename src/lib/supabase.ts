@@ -72,10 +72,11 @@ export async function pruneStale() {
   lastPrune = now;
   const cutoff = new Date(now - 10 * 60_000).toISOString();
   const db = supabaseAdmin();
-  const [radar, online] = await Promise.all([
+  const [radar, online, emotes] = await Promise.all([
     db.from("radar_data").delete().lt("updated_at", cutoff),
     db.from("sessions").delete().lt("last_ping", cutoff),
+    db.from("emote_states").delete().lt("updated_at", new Date(now - 60_000).toISOString()),
   ]);
-  const error = radar.error ?? online.error;
+  const error = radar.error ?? online.error ?? emotes.error;
   if (error) console.error("[prune]", error.message);
 }

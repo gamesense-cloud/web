@@ -201,6 +201,21 @@ create table if not exists radar_data (
 );
 create index if not exists radar_data_updated_idx on radar_data (updated_at desc);
 
+-- ----------------------------------------------------------- emote states --
+-- Who is emoting right now, so gamesense.cloud users in the same match see each other's
+-- emotes (/api/emotes/sync). steam_hash = sha256(server pepper : SteamID64): the table
+-- never holds a SteamID. owner = sha256(the client's per-injection key), so only the
+-- client that set a state can change it. value = the client's emote (0-18 a CS2 clip,
+-- 1000+ a Fortnite dance). Rows live seconds and are pruned after a minute.
+create table if not exists emote_states (
+  steam_hash text primary key,
+  owner      text not null,
+  value      integer not null,
+  started_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists emote_states_updated_idx on emote_states (updated_at desc);
+
 -- ------------------------------------------------------------------ rls --
 -- Everything is service-role only. The dashboard never queries Supabase from
 -- the browser, so there are deliberately no policies: with RLS on and no
@@ -219,6 +234,7 @@ alter table ticket_messages enable row level security;
 alter table announcements   enable row level security;
 alter table sessions        enable row level security;
 alter table radar_data      enable row level security;
+alter table emote_states    enable row level security;
 
 -- ------------------------------------------------------------- realtime --
 -- Open web radar pages get each update pushed over Realtime, on a private channel
