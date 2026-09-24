@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getLatestRelease } from "@/lib/github";
-import { DISCORD_URL } from "@/lib/site";
+import { DISCORD_URL, EMOTE_PACK_HINT, EMOTE_PACK_URL } from "@/lib/site";
 import { supabaseAdmin } from "@/lib/supabase";
 import * as I from "./icons";
 import LuaCode from "./LuaCode";
@@ -132,6 +132,7 @@ export default async function Home() {
         </p>
         <div className="hero-cta rise" style={beat(3)}>
           <a href="/api/download" className="btn primary lg"><I.Download />Download loader</a>
+          <a href={EMOTE_PACK_URL} className="btn lg" title={EMOTE_PACK_HINT}><I.Download />Emote Pack</a>
           <Link href="/docs" className="btn lg">Read the docs</Link>
           <Link href="/web-radar" className="btn lg">Open web radar</Link>
         </div>
@@ -230,6 +231,7 @@ export default async function Home() {
           </p>
           <div className="hero-cta">
             <a href="/api/download" className="btn primary"><I.Download size={14} />Download loader</a>
+            <a href={EMOTE_PACK_URL} className="btn" title={EMOTE_PACK_HINT}><I.Download size={14} />Emote Pack</a>
             <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="btn">
               <I.Chat size={14} />Join the Discord
             </a>
